@@ -14,7 +14,7 @@ recurring failure modes:
 
 1. **Tautologies**: Comments restating what the next line of code already says,
    adding noise and token overhead.
-2. **Stale comments**: Comments contradicting current behavior (e.g., claiming
+2. **Stale comments**: Comments contradicting current behaviour (e.g., claiming
    `shell-auth/` components are symlinked after they were switched to audited
    vendored copies).
 3. **Excuses**: Comments justifying hacky workarounds (sleep races, inflated
@@ -52,7 +52,7 @@ preventing any new ones from entering.
    - Python docstrings (string literals, not `#` comments)
 
 3. **Repeatable triage workflow (`.devin/skills/delete-comment/SKILL.md`)**:
-   - Categorize every comment in the target slice as **Tautology**, **Stale**,
+   - Categorise every comment in the target slice as **Tautology**, **Stale**,
      **Excuse**, or **Decision Record**.
    - Delete Tautology and Stale comments directly.
    - Delete Excuse comments and file a GitHub issue to fix the underlying hack.

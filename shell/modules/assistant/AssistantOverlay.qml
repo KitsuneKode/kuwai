@@ -337,7 +337,7 @@ Scope {
                                         visible: root.studioMode
                                         width: 30; height: 30
                                         icon: "sidebar-simple"
-                                        tip: "Chats · ⌃B"
+                                        tip: "Chats · Ctrl+B"
                                         anchors.verticalCenter: parent.verticalCenter
                                         onClicked: root.sidebarOpen = !root.sidebarOpen
                                     }
@@ -368,10 +368,10 @@ Scope {
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 2
 
-                                    MessageAction { width: 30; height: 30; icon: "note-pencil"; tip: "New chat · ⌃N"; onClicked: { OllamaService.newChat(); promptInput.focusInput(); } }
-                                    MessageAction { width: 30; height: 30; icon: "squares-four"; tip: "Open an app · ⌃O"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
-                                    MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; tip: (root.studioMode ? "Smaller" : "Bigger, with your chats") + " · ⌃M"; onClicked: root.studioMode = !root.studioMode }
-                                    MessageAction { width: 30; height: 30; icon: root.fullMode ? "corners-in" : "corners-out"; tip: (root.fullMode ? "Back to studio" : "Almost full screen") + " · ⌃⇧M"; onClicked: root.fullMode = !root.fullMode }
+                                    MessageAction { width: 30; height: 30; icon: "note-pencil"; tip: "New chat · Ctrl+N"; onClicked: { OllamaService.newChat(); promptInput.focusInput(); } }
+                                    MessageAction { width: 30; height: 30; icon: "squares-four"; tip: "Open an app · Ctrl+O"; onClicked: root.appLauncherOpen = !root.appLauncherOpen }
+                                    MessageAction { width: 30; height: 30; icon: root.studioMode ? "arrows-in-simple" : "arrows-out-simple"; tip: (root.studioMode ? "Smaller" : "Bigger, with your chats") + " · Ctrl+M"; onClicked: root.studioMode = !root.studioMode }
+                                    MessageAction { width: 30; height: 30; icon: root.fullMode ? "corners-in" : "corners-out"; tip: (root.fullMode ? "Back to studio" : "Almost full screen") + " · Ctrl+Shift+M"; onClicked: root.fullMode = !root.fullMode }
                                     MessageAction { width: 30; height: 30; icon: "x"; tip: "Close · Esc"; tipAlign: 1; onClicked: Assistant.hide() }
                                 }
                             }
@@ -469,7 +469,7 @@ Scope {
                                         // Auto-follow bottom during stream unless user manually scrolled up
                                         if (!userScrolledUp || !OllamaService.busyHere) {
                                             Qt.callLater(() => {
-                                                scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height);
+                                                if (scroll) scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height);
                                             });
                                         }
                                     }
@@ -639,15 +639,15 @@ Scope {
                     items: [
                         { id: "snap", label: "Attach this window", keys: [], section: "Context" },
                         { id: "shot", label: "Attach a region of the screen", keys: [] },
-                        { id: "paste", label: "Paste an image", keys: ["⌃", "V"] },
-                        { id: "model", label: "Choose model", keys: ["⌃", "K"], section: "Chat" },
-                        { id: "new", label: "New chat", keys: ["⌃", "N"] },
-                        { id: "clear", label: "Clear this chat", keys: ["⌃", "L"] },
+                        { id: "paste", label: "Paste an image", keys: ["Ctrl", "V"] },
+                        { id: "model", label: "Choose model", keys: ["Ctrl", "K"], section: "Chat" },
+                        { id: "new", label: "New chat", keys: ["Ctrl", "N"] },
+                        { id: "clear", label: "Clear this chat", keys: ["Ctrl", "L"] },
                         { id: "copychat", label: "Copy chat as Markdown", keys: [] },
                         { id: "compact", label: "Summarise this chat now", keys: [] },
                         { id: "fork", label: "Fork this chat", keys: [] },
-                        { id: "search", label: "Search chats", keys: ["⌃", "F"] },
-                        { id: "apps", label: "Open an app", keys: ["⌃", "O"] }
+                        { id: "search", label: "Search chats", keys: ["Ctrl", "F"] },
+                        { id: "apps", label: "Open an app", keys: ["Ctrl", "O"] }
                     ]
                     onPicked: id => {
                         if (id === "snap") OllamaService.snapshotActiveWindow();
@@ -914,7 +914,8 @@ Scope {
                 focus: true
                 title: "Clear this chat?"
                 standardButtons: Dialog.Cancel | Dialog.Ok
-                contentItem: Label { text: "Remove this chat's messages and queued work? Other chats keep running."; wrapMode: Text.WordWrap; width: 300 }
+                width: 340
+                contentItem: Label { text: "Remove this chat's messages and queued work? Other chats keep running."; wrapMode: Text.WordWrap }
                 onOpened: standardButton(Dialog.Cancel).forceActiveFocus()
                 onAccepted: OllamaService.confirmClear()
                 onRejected: OllamaService.cancelClear()

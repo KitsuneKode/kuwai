@@ -46,10 +46,10 @@ What `install.sh` puts in place:
 3. Writes `~/.config/kuwai/hypr/hyprland.lua` and creates empty `monitors.lua` and `user.lua` beside it if missing (never overwritten). `~/.config/hypr` is untouched.
 4. Symlinks `~/.local/bin/kuwai` to `~/.local/share/kuwai/bin/kuwai`.
 5. Links user systemd units (`kuwai-shell.service`, `kuwai-shell-broken.service`, `kuwai-auth.service`, `kuwai-wallpaper.service`, `kuwai-backup.service`, `kuwai-backup.timer`, plus opt-in `kuwai-clipboard.service` and `kuwai-feeds.service`).
-6. Installs the **Kuwai** login session entry (`sudo /usr/local/lib/kuwai/current/system/session`) and pins the polkit password prompt (`kuwai auth pin`) from root's checked copy when run interactively; without that copy it says how to get it.
+6. Installs the **kuwai** login session entry (`sudo /usr/local/lib/kuwai/current/system/session`) and pins the polkit password prompt (`kuwai auth pin`) from root's checked copy when run interactively; without that copy it says how to get it.
 7. Downloads the first wallpaper from `themes/kuwai-night/wallpapers.tsv` (verified by checksum) when no wallpaper or HyDE setup is present.
 
-Log out and choose **Kuwai** on your display manager, or start it from a TTY with `kuwai-session`.
+Log out and choose **kuwai** on your display manager, or start it from a TTY with `kuwai-session`.
 
 ## AUR package
 
@@ -63,6 +63,10 @@ All of them run only from root's checked copy, check it again first, and are rev
 sudo /usr/local/lib/kuwai/current/greeter/install   # greetd login screen (--code updates its root copy; --undo restores the previous login)
 sudo /usr/local/lib/kuwai/current/system/install    # kuwai-wake RTC alarm wake helper (--undo removes it)
 kuwai update install-helper                          # /usr/local/lib/kuwai/kuwai-update-root for Software Update, from root's copy (--trust-clone: from your clone, before root has a release)
+sudo greeter/install          # greetd login screen (--code updates its root copy; --undo restores previous DM)
+sudo system/install           # kuwai-wake RTC alarm wake helper (--undo removes it)
+kuwai update install-helper   # installs /usr/local/lib/kuwai/kuwai-update-root for Software Update
+sudo system/plymouth/install  # boot splash theme (see boot.md; --dry-run first, --undo removes it)
 ```
 
 `greeter/install` writes a receipt the first time (`/var/lib/kuwai-greeter/original/receipt`, root's, `0600`): the files it replaced, the digest of each kept copy, and the login manager that was on. `--undo` restores only what that receipt lists, from copies that still match it. An install from before receipts has none: `--undo` then records what is kept, but only when every folder down to the kept copies, and each copy, is root's alone; otherwise it restores nothing.

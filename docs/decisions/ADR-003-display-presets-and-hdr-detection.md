@@ -1,4 +1,4 @@
-# ADR-003: Display Presets, Automatic Color/HDR Management, and Wire-Level HDR Detection
+# ADR-003: Display Presets, Automatic Colour/HDR Management, and Wire-Level HDR Detection
 
 ## Status
 Accepted
@@ -7,7 +7,7 @@ Accepted
 2026-11-21
 
 ## Context
-Color-critical work, cinema playback, gaming, and battery operation require
+Colour-critical work, cinema playback, gaming, and battery operation require
 conflicting display signal settings (refresh rate, Night Shift, ICC profile,
 direct scanout, and HDR modesets):
 
@@ -28,7 +28,7 @@ direct scanout, and HDR modesets):
 
 1. **Five display presets layered over `monitors.lua` (`hypr/kuwai/display.lua`)**:
    - `everyday` (user's `monitors.lua` rates + sunset Night Shift),
-     `accurate` (Night Shift held off, shader-managed color, no direct scanout,
+     `accurate` (Night Shift held off, shader-managed colour, no direct scanout,
      optional per-screen ICC profile under `~/.local/share/kuwai-data/icc/<desc>.icc`
      with trailing serial stripped), `movie` (120 Hz for even 24/30/60 fps
      cadence on external screens, panel rate unchanged), `gaming` (pairs with
@@ -36,13 +36,13 @@ direct scanout, and HDR modesets):
      untouched).
    - Wrap `hl.monitor` once via `_G.__kuwai_raw_monitor` (avoiding wrapper
      stacking across reloads) so presets re-issue each screen's own rule with
-     only mode/color overrides while preserving position, scale, VRR, and bit
+     only mode/colour overrides while preserving position, scale, VRR, and bit
      depth.
    - Apply presets via config reload so leaving any preset restores the exact
      declared configuration.
 
 2. **Automatic preset precedence (`auto_display`, active only over `everyday`)**:
-   - Precedence: color-critical app (`accurate`, except under fullscreen video
+   - Precedence: colour-critical app (`accurate`, except under fullscreen video
      where reloading sRGB while PQ is active leaves wide primaries stuck) >
      external-screen video player (`movie`, applied only to the monitor hosting
      the player, never modesetting under fullscreen video, and held until the
@@ -73,7 +73,7 @@ direct scanout, and HDR modesets):
 
 ## Consequences
 - Everyday desktop usage incurs zero spurious HDR or refresh-rate blackouts.
-- Color apps automatically disable Night Shift and apply measured ICC profiles
+- Colour apps automatically disable Night Shift and apply measured ICC profiles
   without manual toggling.
 - `bin/kuwai-hdr` depends on Linux DRM `hdr_output_metadata` struct layout via
   `ctypes` and degrades cleanly to `{}` if unreadable.

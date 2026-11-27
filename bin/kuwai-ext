@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""kuwai-ext: the two ways to add to Kuwai without changing it.
+"""kuwai-ext: the two ways to add to kuwai without changing it.
 
 Launcher providers: ~/.config/kuwai/providers/NAME.json
     {"prefix": "gh", "title": "GitHub", "glyph": "", "command": ["/home/you/bin/gh-search"]}

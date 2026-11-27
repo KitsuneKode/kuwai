@@ -66,7 +66,7 @@ Item {
         else if (k === Qt.Key_Backspace) query = query.slice(0, -1);
         else if (event.text && event.text.length === 1 && event.text >= " " && !(event.modifiers & Qt.ControlModifier)) query += event.text;
         else if (!(event.modifiers & Qt.ControlModifier) || k !== Qt.Key_K) return true;     // swallow the rest
-        else open = false;                                                                  // ⌃K again closes
+        else open = false;                                                                  // Ctrl+K again closes
         return true;
     }
 

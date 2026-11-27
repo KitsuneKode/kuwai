@@ -200,7 +200,7 @@ cmd_stop() {
   if ! is_recognizing; then
     rm -f "$PID_FILE"
     refresh_waybar
-    notify "Shazam" "Not recognizing." "low"
+    notify "Shazam" "Not recognising." "low"
     return 0
   fi
 
@@ -693,7 +693,7 @@ cmd_recognize() {
   exec 9>"$LOCK_FILE"
 
   if ! flock -n 9; then
-    notify "Shazam" "Already recognizing. Press toggle again to stop." "normal"
+    notify "Shazam" "Already recognising. Press toggle again to stop." "normal"
     exit 0
   fi
 
@@ -712,7 +712,7 @@ cmd_recognize() {
   trap cleanup EXIT
   trap 'cleanup; exit 0' INT TERM
 
-  notify "Shazam" "Recognizing…" "normal"
+  notify "Shazam" "Recognising…" "normal"
   log "Recognition started. device=$DEVICE timeout=${RECOGNIZE_TIMEOUT}s"
 
   set +e
@@ -726,10 +726,10 @@ cmd_recognize() {
 
   if ! json_output="$(parse_detection_output "$out_file" 2>/dev/null)"; then
     if [ "$status" = "124" ]; then
-      notify "Shazam" "No song recognized in ${RECOGNIZE_TIMEOUT}s." "normal"
+      notify "Shazam" "No song recognised in ${RECOGNIZE_TIMEOUT}s." "normal"
       log "Recognition timed out."
     else
-      notify "Shazam" "No song recognized." "normal"
+      notify "Shazam" "No song recognised." "normal"
       log "No detection parsed."
     fi
     exit 1

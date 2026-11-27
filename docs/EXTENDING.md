@@ -1,4 +1,4 @@
-# Extending Kuwai without changing it
+# Extending kuwai without changing it
 
 Two small contracts, both checked by `bin/kuwai-ext` before anything reaches
 the shell. Neither needs a fork or a restart.
@@ -11,7 +11,7 @@ Put a manifest in `~/.config/kuwai/providers/NAME.json`:
 { "prefix": "gh", "title": "GitHub", "glyph": "", "command": ["/home/you/bin/gh-search"] }
 ```
 
-Type `gh something` in Search (Super+A): Kuwai runs the command with
+Type `gh something` in Search (Super+A): kuwai runs the command with
 `something` as its last argument and lists what it prints, either a JSON array
 or one JSON object per line:
 

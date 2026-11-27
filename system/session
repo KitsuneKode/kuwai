@@ -21,12 +21,12 @@ for a in "$@"; do
     esac
 done
 
-ours() { [ ! -e "$1" ] || cmp -s "$1" "$2" || grep -qs 'kuwai-session\|X-Kuwai-Owned=true' "$1"; }
+ours() { [ ! -e "$1" ] || cmp -s "$1" "$2" || grep -qs 'kuwai-session\|X-kuwai-Owned=true' "$1"; }
 owned_by_package() { [ -z "$ROOT" ] && command -v pacman >/dev/null && pacman -Qoq "$1" >/dev/null 2>&1; }
 
 if [ $MODE = check ]; then
-    cmp -s "$BIN" "$SRC_BIN" && cmp -s "$ENTRY" "$SRC_ENTRY" && { echo "Kuwai session: installed"; exit 0; }
-    echo "Kuwai session: not installed or out of date"; exit 1
+    cmp -s "$BIN" "$SRC_BIN" && cmp -s "$ENTRY" "$SRC_ENTRY" && { echo "kuwai session: installed"; exit 0; }
+    echo "kuwai session: not installed or out of date"; exit 1
 fi
 
 if [ $MODE = undo ]; then
@@ -35,10 +35,10 @@ if [ $MODE = undo ]; then
     for pair in "$ENTRY:$SRC_ENTRY" "$BIN:$SRC_BIN"; do
         f=${pair%%:*}; src=${pair#*:}
         [ -e "$f" ] || continue
-        if owned_by_package "$f" || ! ours "$f" "$src"; then echo "  left $f: it isn't Kuwai's"; continue; fi
+        if owned_by_package "$f" || ! ours "$f" "$src"; then echo "  left $f: it isn't kuwai's"; continue; fi
         rm -f "$f"; echo "  removed $f"
     done
-    echo "The Kuwai session is gone from the login screen; your other sessions are as they were."
+    echo "The kuwai session is gone from the login screen; your other sessions are as they were."
     exit 0
 fi
 
@@ -46,9 +46,9 @@ fi
 from_release "$(dirname "$HERE")" "$TRUST" "system/session"
 for pair in "$ENTRY:$SRC_ENTRY" "$BIN:$SRC_BIN"; do
     f=${pair%%:*}; src=${pair#*:}
-    if owned_by_package "$f" || ! ours "$f" "$src"; then echo "$f exists and isn't Kuwai's; not replacing it" >&2; exit 1; fi
+    if owned_by_package "$f" || ! ours "$f" "$src"; then echo "$f exists and isn't kuwai's; not replacing it" >&2; exit 1; fi
 done
 own=(); [ -n "$ROOT" ] || own=(-o root -g root)
 install -D "${own[@]}" -m 0755 "$SRC_BIN" "$BIN"
 install -D "${own[@]}" -m 0644 "$SRC_ENTRY" "$ENTRY"
-echo "Kuwai is a session on the login screen now (pick \"Kuwai\"); Hyprland and your other sessions are untouched."
+echo "kuwai is a session on the login screen now (pick \"kuwai\"); Hyprland and your other sessions are untouched."

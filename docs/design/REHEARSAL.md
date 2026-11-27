@@ -49,6 +49,22 @@ with no scene data shows what it shows on a machine that has nothing yet.
 - `seed` (top level) are files written into the private home before start;
   `running` are helpers whose stand-in stays up instead of exiting.
 
+A scene is not limited to an island panel. `panel` may name any component as
+`../lock/LockView`: a full-screen face takes `size` (`[1920, 1080]`) and, for
+the lock and login screens, `props: {"lock": "@lock", "preview": true}` with
+`fake` overrides for the stand-in session (`password`, `error`, `checking`,
+`name`). `window: true` stages a surface that lives in its own window (the
+clipboard shelf, the assistant, the volume and brightness HUD, the toasts): the
+sandbox copy of the shell is made mappable without a compositor, the scope is
+created, `set` puts services in state (`["Notifs", "at", "items.0.popup", true]`
+sets a property of one list entry), `calls` runs a method of the scope once
+(`showBrightness`), `after` assigns its properties once it is up (`"@screens"`
+is every screen's name), and the picture is the window's own pixels.
+
+A scene may carry `scales` (a list of text sizes) with a `why` when its surface
+does not follow Text size yet; today only the clipboard shelf, and a test keeps
+it so: fix the surface, then drop the field.
+
 Every `*Panel.qml` under `shell/modules/island/` must have a scene
 (`tests/test_rehearse_gate.py`). A new panel gets at least: what a new machine
 shows, ordinary data, and the worst data you can think of. A new state of an
@@ -102,7 +118,7 @@ x11 --motion full --output DIR`). Each rule of a gesture is a check:
 - with reduced motion nothing is left half-way.
 
 Every swipe in the shell is `components/SwipeAway` (the notch's list, the
-center, agents, T3, the lock screen's cards), so these checks cover them all.
+centre, agents, T3, the lock screen's cards), so these checks cover them all.
 The checks were proven by breaking the swipe eight ways and watching each one
 fail; when you add a check, break the thing it guards and see it fail first.
 A new drag is built on `Spring` (interruptible, keeps its velocity), `Fling`

@@ -326,7 +326,7 @@ Rectangle {
                 anchors.topMargin: 4
                 color: Theme.textPrimary
                 font.family: Theme.fontText
-                font.pixelSize: 15
+                font.pixelSize: Theme.sp(15)
                 wrapMode: TextEdit.Wrap
                 selectByMouse: true
                 selectionColor: Theme.accent
@@ -335,7 +335,7 @@ Rectangle {
                 Text {
                     textFormat: Text.PlainText
                     anchors.fill: parent
-                    text: root.micState === "recording" ? "Listening… click the mic or ⌃D to stop"
+                    text: root.micState === "recording" ? "Listening… click the mic or Ctrl+D to stop"
                         : root.micState === "transcribing" ? "Writing it down…"
                         : root.editIndex >= 0 ? "Edit your message"
                         : OllamaService.pendingHere && OllamaService.pendingHere.kind === "question"
@@ -344,7 +344,7 @@ Rectangle {
                         : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
-                    font.pixelSize: 15
+                    font.pixelSize: Theme.sp(15)
                     visible: !inputArea.text && !inputArea.inputMethodComposing
                 }
 
@@ -513,7 +513,7 @@ Rectangle {
                         icon: ""
                         enabled: false
                         opacity: 1
-                        tip: root.micState === "recording" ? "Stop and write it down · ⌃D" : root.micState === "transcribing" ? "Writing it down…" : "Dictate · ⌃D"
+                        tip: root.micState === "recording" ? "Stop and write it down · Ctrl+D" : root.micState === "transcribing" ? "Writing it down…" : "Dictate · Ctrl+D"
                         hoverSource: micArea
                     }
                 }
@@ -580,9 +580,9 @@ Rectangle {
                         }
                     }
                     MessageAction { x: 0; width: chatSeg.width; height: 30; color: "transparent"; icon: ""; enabled: false; hoverSource: chatSegArea
-                                    tip: "Chat: answers, search, prices, your screen · reads, never changes · ⌃." }
+                                    tip: "Chat: answers, search, prices, your screen · reads, never changes · Ctrl+." }
                     MessageAction { x: chatSeg.width; width: agentSeg.width; height: 30; color: "transparent"; icon: ""; enabled: false; hoverSource: agentSegArea
-                                    tip: "Agent: files, sandbox, plans, your machine (asks first) · ⌃." }
+                                    tip: "Agent: files, sandbox, plans, your machine (asks first) · Ctrl+." }
                 }
 
                 Item { width: 2; height: 1 }
@@ -609,7 +609,7 @@ Rectangle {
                             weight: Theme.wMedium
                             color: Theme.textPrimary
                             elide: Text.ElideRight
-                            width: Math.min(implicitWidth, 130)
+                            width: Math.min(implicitWidth, Theme.sp(130))
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Icon {
@@ -640,7 +640,7 @@ Rectangle {
                     MessageAction {
                         anchors.fill: parent
                         color: "transparent"; icon: ""; enabled: false
-                        tip: "Model · ⌃K"
+                        tip: "Model · Ctrl+K"
                         hoverSource: modelArea
                     }
                 }
@@ -708,7 +708,7 @@ Rectangle {
 
     function submit() {
         const val = inputArea.text.trim();
-        const prompt = val !== "" ? val : (OllamaService.pendingImage !== "" ? "Analyze this screenshot in detail." : "");
+        const prompt = val !== "" ? val : (OllamaService.pendingImage !== "" ? "Analyse this screenshot in detail." : "");
         if (prompt === "") return;
 
         inputArea.text = "";

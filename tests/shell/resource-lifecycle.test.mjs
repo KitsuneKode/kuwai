@@ -7,17 +7,26 @@ const source = path => readFileSync(new URL('../../' + path, import.meta.url), '
 
 function loadsWallpaper(state) {
   const qml = source(wallpaperPath);
-  const scope = { root: {video:'/loop.mp4', locked:false, ...state.root}, Saver:{locked:false, screensOff:false, showing:false, ...state.Saver}, fadeOut:false };
+  const scope = {
+    root: { video: '/loop.mp4', locked: false, viaMpv: false, ...state.root },
+    Saver: { locked: false, screensOff: false, showing: false, isOutputOff: () => false, ...state.Saver },
+    slot: { dpmsOff: false, released: false, shouldPlay: true, ...state.slot },
+    fadeOut: false,
+  };
   const obscured = qml.match(/readonly property bool obscured: (.*)/);
   if (obscured) scope.root.obscured = new Function('s', `with(s){return ${obscured[1]}}`)(scope);
+  scope.slot.slotObscured = scope.root.obscured || scope.slot.dpmsOff;
   return new Function('s', `with(s){return ${qml.match(/^\s*active: (.*)/m)[1]}}`)(scope);
 }
 
-test('wallpaper resources unload while the saver, lock, or display power-off hides them', () => {
+test('wallpaper resources unload while the saver, lock, display power-off, or 10 s cover release hides them', () => {
   expect(loadsWallpaper({})).toBe(true);
   expect(loadsWallpaper({root:{video:''}})).toBe(false);
   for (const property of ['locked','showing','screensOff']) expect(loadsWallpaper({Saver:{[property]:true}})).toBe(false);
   expect(loadsWallpaper({root:{locked:true}})).toBe(false);
+  expect(loadsWallpaper({slot:{dpmsOff:true}})).toBe(false);
+  expect(loadsWallpaper({slot:{released:true, shouldPlay:false}})).toBe(false);
+  expect(loadsWallpaper({slot:{released:false, shouldPlay:false}})).toBe(true);
 });
 
 const clipboardPath = 'shell/services/Clipboard.qml';
@@ -252,7 +261,7 @@ test('mpv plays the saver film once for every screen, refusing what it could not
   expect(src).not.toMatch(/pkill/);
   expect(src).toMatch(/exec setpriv --pdeathsig KILL mpvpaper/);
   // It starts once the screen is dark; the black over it lifts once it plays.
-  expect(src).toMatch(/wantedFilm: showing && darkened \? film : ""/);
+  expect(src).toMatch(/wantedFilm: showing && darkened && !longDark \? film : ""/);
   expect(src).toMatch(/input-ipc-server=" \+ ipcPath/);
   expect(src).toMatch(/observe_property",1,"playback-time"/);
   expect(src).toMatch(/m\.name === "playback-time" && typeof m\.data === "number" && m\.data > 0\) \{\s*root\.reveal\(\)/);

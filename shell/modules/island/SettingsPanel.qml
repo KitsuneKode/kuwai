@@ -510,7 +510,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifSurface"
                     label: "Where they appear"
-                    detail: Settings.notifSurface === "both" ? "In the island and as a toast" : "One place each: urgent, warnings and replies in the island; the rest as a toast; low ones only in the center"
+                    detail: Settings.notifSurface === "both" ? "In the island and as a toast" : "One place each: urgent, warnings and replies in the island; the rest as a toast; low ones only in the centre"
                     Segmented {
                         options: [{ id: "one", label: "One place" }, { id: "both", label: "Both" }]
                         current: Settings.notifSurface
@@ -520,7 +520,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifFullscreen"
                     label: "In fullscreen"
-                    detail: Settings.notifFullscreen === "off" ? "Nothing interrupts a fullscreen app; it all waits in the center"
+                    detail: Settings.notifFullscreen === "off" ? "Nothing interrupts a fullscreen app; it all waits in the centre"
                           : Settings.notifFullscreen === "critical" ? "Only critical ones grow the notch over the game or film"
                           : "The notch grows for critical ones, warnings and people you can reply to; the rest wait"
                     Segmented {
@@ -545,7 +545,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifToastInstantOpen"
                     label: "Toast opens on first click"
-                    detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (center and island peek stay explicit)"
+                    detail: Settings.notifToastInstantOpen ? "Tap a toast to open or run its default action" : "Tap to preview, then Open (centre and island peek stay explicit)"
                     Toggle {
                         on: Settings.notifToastInstantOpen
                         onToggled: Settings.set("notifToastInstantOpen", !Settings.notifToastInstantOpen)
@@ -563,7 +563,7 @@ FocusScope {
                 SettingsRow {
                     key: "notifKeepSeenHours"
                     label: "Keep seen notifications"
-                    detail: "How long dismissed-but-unread rows stay in the center"
+                    detail: "How long dismissed-but-unread rows stay in the centre"
                     Segmented {
                         options: [{ id: "6", label: "6 h" }, { id: "24", label: "1 day" }, { id: "72", label: "3 days" }, { id: "0", label: "Never" }]
                         current: String(Settings.notifKeepSeenHours)
@@ -574,7 +574,7 @@ FocusScope {
             Label {
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: "A notification you click, answer or open from the center leaves the list, and so does one the app withdraws (you read it there)."
+                text: "A notification you click, answer or open from the centre leaves the list, and so does one the app withdraws (you read it there)."
                 size: Theme.tSub
                 color: Theme.textTertiary
             }
@@ -1091,16 +1091,49 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "screensaverLongMins"
+                    label: "Then go dark"
+                    detail: Settings.screensaverLongMins <= 0 ? "The screensaver stays as it is until you come back"
+                        : Idle.saverLong.action === "screens" ? "Your screens turn off first, " + Idle.saverLongText + " in"
+                        : Idle.saverLong.action === "none" ? "Not needed here: the screen locks first"
+                        : "A dim clock on black after " + Idle.saverLongText + " on the screensaver, easier on the panel"
+                    Segmented {
+                        options: [{ id: "30", label: "30 min" }, { id: "60", label: "1 h" }, { id: "120", label: "2 h" }, { id: "0", label: "Never" }]
+                        current: String(Settings.screensaverLongMins)
+                        onPicked: id => Settings.set("screensaverLongMins", Number(id))
+                    }
+                }
+                SettingsRow {
                     key: "screensaverStyle"
                     label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals"
                         : Settings.screensaverStyle === "borealis" ? "Northern lights in your theme's colour over a night sky"
                         : Settings.screensaverStyle === "night" ? "A dark film on the screen you were using; black on the others"
-                        : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
+                        : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen"
+                        : Settings.screensaverStyle === "flow" ? "A slow drift of your accent colour on near-black, drawn at 15 frames a second"
+                        : Settings.screensaverStyle === "photos" ? "Your theme's wallpapers, or a folder of pictures, one at a time"
+                        : "Your wallpaper, still, with the time"
                     Segmented {
-                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
+                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }, { id: "photos", label: "Photos" }, { id: "flow", label: "Flow" }]
                         current: Settings.screensaverStyle
                         onPicked: id => Settings.set("screensaverStyle", id)
                     }
+                }
+                SettingsRow {
+                    key: "screensaverPhotoMins"
+                    visible: Settings.screensaverStyle === "photos"
+                    label: "Change photo"; detail: "Each one fades into the next, slowly"
+                    Segmented {
+                        options: [1, 5, 15, 30].map(n => ({ id: String(n), label: n + " min" }))
+                        current: String(Settings.screensaverPhotoMins)
+                        onPicked: id => Settings.set("screensaverPhotoMins", Number(id))
+                    }
+                }
+                SettingsRow {
+                    key: "screensaverFolder"
+                    visible: Settings.screensaverStyle === "photos"
+                    label: "Photos from"
+                    detail: (Settings.screensaverFolder || "Your theme's wallpapers") + "  ·  kuwai set screensaverFolder \"~/Pictures\""
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Theme wallpapers"; visible: Settings.screensaverFolder !== ""; onClicked: Settings.set("screensaverFolder", "") }
                 }
                 SettingsRow {
                     key: "screensaverClip"
@@ -1111,6 +1144,11 @@ FocusScope {
                         current: Settings.screensaverClip
                         onPicked: id => Settings.set("screensaverClip", id)
                     }
+                }
+                SettingsRow {
+                    key: "screensaverPulse"
+                    label: "Music pulse"; detail: "While music plays, a quiet ring breathes beside the track title; no cover art"
+                    Toggle { on: Settings.screensaverPulse; onToggled: Settings.set("screensaverPulse", !Settings.screensaverPulse) }
                 }
                 SettingsRow {
                     label: "Preview"; detail: "Any input ends it"

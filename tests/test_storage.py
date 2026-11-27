@@ -1,4 +1,6 @@
 """kuwai-storage: what fills the disk that a tool rebuilds, cleared only the tool's own way."""
+import importlib.machinery
+import importlib.util
 import json
 import os
 import subprocess
@@ -20,6 +22,14 @@ def fill(d, mb):
     (d / "blob").write_bytes(os.urandom(mb << 20))
 
 
+def module():
+    loader = importlib.machinery.SourceFileLoader("storage_fixture", str(BIN))
+    spec = importlib.util.spec_from_loader("storage_fixture", loader)
+    m = importlib.util.module_from_spec(spec)
+    loader.exec_module(m)
+    return m
+
+
 def test_it_finds_caches_and_tags_what_comes_back(tmp_path):
     fill(tmp_path / ".cache/thumbnails/large", 2)
     fill(tmp_path / ".local/share/Trash/files", 2)
@@ -28,6 +38,16 @@ def test_it_finds_caches_and_tags_what_comes_back(tmp_path):
     assert got["thumbnails"]["clearable"] is True and got["thumbnails"]["tag"] == "comes back"
     assert got["trash"]["clearable"] is False and got["trash"]["tag"] == "check first"
     assert out["disk"]["total"] > out["disk"]["free"] > 0
+
+
+def test_clearing_a_normal_cache_tree_empties_it_and_keeps_the_root(tmp_path):
+    thumbs = tmp_path / ".cache/thumbnails"
+    fill(thumbs / "large" / "nested", 1)
+    (thumbs / "small").mkdir(parents=True)
+    (thumbs / "small" / "one").write_text("one")
+    out = run(tmp_path, "clear", "thumbnails")
+    assert out["ok"] is True and out["freed"] > 0
+    assert thumbs.is_dir() and not any(thumbs.iterdir())
 
 
 def test_clearing_thumbnails_never_follows_a_link_out(tmp_path):
@@ -40,6 +60,30 @@ def test_clearing_thumbnails_never_follows_a_link_out(tmp_path):
     assert out["ok"] is True and out["freed"] > 0
     assert (keep / "blob").exists(), "a link inside the cache is removed, not what it points at"
     assert thumbs.is_dir() and not any(thumbs.iterdir())
+
+
+def test_a_directory_swapped_for_a_link_mid_walk_is_never_followed(tmp_path, monkeypatch):
+    keep = tmp_path / "keep"
+    keep.mkdir()
+    (keep / "blob").write_text("keep me")
+    cache = tmp_path / "cache"
+    trap = cache / "trap"
+    trap.mkdir(parents=True)
+    real_scandir = os.scandir
+    swapped = []
+
+    def scanning(fd):
+        entries = list(real_scandir(fd))
+        if not swapped and any(e.name == "trap" for e in entries):
+            swapped.append(True)
+            trap.rmdir()
+            trap.symlink_to(keep)
+        return iter(entries)
+
+    monkeypatch.setattr(os, "scandir", scanning)
+    module().empty(str(cache))
+    assert (keep / "blob").read_text() == "keep me"
+    assert not cache.exists() or os.listdir(cache) == []
 
 
 def test_what_needs_a_look_is_never_cleared_from_here(tmp_path):

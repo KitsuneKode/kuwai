@@ -40,12 +40,12 @@ permissions with the main user shell (`shell/`):
      keys, bounded numbers, restricted alphabets, XKB symbol file check,
      monitor description as selector string only) and discards the whole file on
      any invalid line rather than executing user-writable Lua. It matches the
-     session's 10-bit depth/color and NVIDIA-first GPU ordering for a clean
+     session's 10-bit depth/colour and NVIDIA-first GPU ordering for a clean
      handoff.
    - `/etc/pam.d/greetd` uses the same PAM stack as SDDM so the login password
      unlocks GNOME Keyring and `gcr-ssh-agent`.
    - `greeter/keys` adjusts only the focused monitor (matching
-     `bin/kuwai-brightness`) and serializes slow (~0.3 s) DDC writes, dropping
+     `bin/kuwai-brightness`) and serialises slow (~0.3 s) DDC writes, dropping
      queued repeats so held keys never build backlog or drift monitors apart.
    - `greeter/session-start` and `greeter/start` fall back gracefully if
      journald is unavailable so missing logging never blocks login.

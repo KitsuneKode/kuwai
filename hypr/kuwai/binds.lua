@@ -27,7 +27,7 @@ bind("ALT + F4", "Close window", A.close)
 bind(S .. " + W", "Float / tile", A.float_toggle, { locked = true })
 bind(S .. " + F", "Fullscreen", dsp.window.fullscreen({ mode = "fullscreen" }), { locked = true })
 bind(S .. " + F11", "Fullscreen", dsp.window.fullscreen({ mode = "fullscreen" }), { locked = true })
-bind(S .. " + SHIFT + F", "Maximize (bar and gaps stay)", dsp.window.fullscreen({ mode = "maximized" }), { locked = true })
+bind(S .. " + SHIFT + F", "Maximise (bar and gaps stay)", dsp.window.fullscreen({ mode = "maximized" }), { locked = true })
 bind(S .. " + CTRL + F", "Pin on every workspace", A.pin_toggle, { locked = true })
 bind(S .. " + G", "Group (tabs)", dsp.group.toggle(), { locked = true })
 bind(S .. " + bracketleft", "Previous (tab / window / column)", W.next(false))
@@ -157,8 +157,8 @@ if K.feature("quake") then
 	bind(S .. " + SHIFT + grave", "Move window to the console", dsp.window.move({ workspace = "special:console" }))
 end
 if K.feature("minimize") then
-	bind(S .. " + O", "Minimize window", W.minimize)
-	bind(S .. " + SHIFT + O", "Bring back the last minimized", W.restore)
+	bind(S .. " + O", "Minimise window", W.minimize)
+	bind(S .. " + SHIFT + O", "Bring back the last minimised", W.restore)
 end
 
 group("Launch")

@@ -62,6 +62,42 @@ Singleton {
     property var queued: null
     property var shownBefore: ({})
     property string failure: ""
+    property var participants: []
+    property var readyScreens: ({})
+    property string nextReal: ""
+
+    function currentScreens() {
+        const out = [];
+        const list = Quickshell.screens || [];
+        for (let i = 0; i < list.length; i++) {
+            const n = list[i] && list[i].name ? String(list[i].name) : "";
+            if (n && out.indexOf(n) < 0) out.push(n);
+        }
+        return out;
+    }
+    function sameParticipants(expected, actual) {
+        if (!expected || !actual || expected.length !== actual.length) return false;
+        for (let i = 0; i < expected.length; i++)
+            if (actual.indexOf(expected[i]) < 0) return false;
+        return true;
+    }
+    function screensChanged() {
+        if (phase === "") return;
+        if (!sameParticipants(participants, currentScreens())) bail("monitors changed");
+    }
+    function markReady(name) {
+        if (phase !== "loading" || !name || participants.indexOf(name) < 0) return;
+        if (readyScreens[name]) return;
+        const nextMap = Object.assign({}, readyScreens);
+        nextMap[name] = true;
+        readyScreens = nextMap;
+        ready = Object.keys(readyScreens).length;
+        if (participants.length > 0 && participants.every(n => !!readyScreens[n])) cover();
+    }
+    Connections {
+        target: Quickshell
+        function onScreensChanged() { root.screensChanged(); }
+    }
 
     function play(path, start, live) {
         if (!path) return;
@@ -71,14 +107,19 @@ Singleton {
         }
         // Stream callbacks from a cancelled transition can still arrive.
         // Allow the next wallpaper through immediately while they drain.
-        if (liveProbe.running || query.running || check.running || mapLookup.running || Theme.reduceMotion) { start(); return; }
+        if (liveProbe.running || query.running || check.running || mapLookup.running || Theme.reduceMotion) { if (start) start(); return; }
+        const screens = currentScreens();
+        if (!screens.length) { if (start) start(); return; }
         verifyLater.stop();
         toLive = !!live;
-        shownBefore = ({}); failure = "";
+        participants = screens;
+        readyScreens = ({});
+        shownBefore = ({}); failure = ""; nextReal = "";
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false; swapped = false; needMap = false; fade = 0;
         startedAt = Date.now();
         mapPath = ""; seed = Math.random() * 100;
         phase = "loading";
+        if (Theme.holdRecolor) Theme.holdRecolor(true);
         liveThumb = ""; frozen = ({});
         liveProbe.running = true;
         mapLookup.command = [Paths.bin + "/kuwai-wallmap", "--cached", path];
@@ -90,14 +131,18 @@ Singleton {
         phase = "";
         liveHeld = false;
         startFn = null;
+        participants = [];
+        readyScreens = ({});
+        if (Theme.flushRecolor) Theme.flushRecolor();
         loadLimit.stop(); watchdog.stop(); settleLimit.stop();
         handOff.stop(); go.stop(); recheck.stop(); landed.stop(); after.stop();
         reveal.stop(); fadeIn.stop(); fadeOut.stop(); swap.running = false;
     }
     function bail(why) {
-        const start = startFn;
+        const path = next, start = startFn, live = toLive, wasSwapped = swapped;
         cancelTransition();
         lastRun = "fallback: " + why;
+        if (!start && !live && !wasSwapped && path) Quickshell.execDetached(["awww", "img", path, "--transition-type", "none"]);
         if (start) start();
         verify();
         drain();
@@ -110,12 +155,7 @@ Singleton {
 
     // What awww shows now, per screen (": DP-3: 2560x1440, … image: /path").
     function parse(text) {
-        const m = {};
-        for (const l of String(text).split("\n")) {
-            const x = l.match(/^:?\s*([^:\s]+):.*image:\s*(.+)$/);
-            if (x) m[x[1]] = x[2].trim();
-        }
-        return m;
+        return Outcome.parseShown(text);
     }
     property string liveThumb: ""
     Process {
@@ -138,12 +178,13 @@ Singleton {
     }
     Process {
         id: query
-        command: ["awww", "query"]
+        command: ["sh", "-c", 'out=$(awww query 2>/dev/null) || exit 1; printf "%s\\n" "$out" | while IFS= read -r l; do printf "%s\\n" "$l"; case "$l" in *"image: "*) o=${l#:}; o=${o#"${o%%[![:space:]]*}"}; o=${o%%:*}; p=${l#*image:}; p=${p#"${p%%[![:space:]]*}"}; r=$(realpath -e -- "$p" 2>/dev/null); [ -n "$r" ] && printf "kuwai-real %s %s\\n" "$o" "$r";; esac; done; printf "kuwai-wanted %s\\n" "$(realpath -e -- "$1" 2>/dev/null)"', "sh", root.next]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (root.phase !== "loading") return;
                 const m = root.parse(text);
                 if (!Object.keys(m).length) { if (root.phase === "loading") root.bail("awww shows nothing"); return; }
+                root.nextReal = Outcome.parseWanted(text) || Outcome.normalizePath(root.next);
                 root.shownBefore = root.parse(text);
                 for (const k in root.frozen) m[k] = root.frozen[k];
                 root.before = m;
@@ -168,7 +209,6 @@ Singleton {
         return ["shards", "contour", "glass"][turn % 3];
     }
 
-    onReadyChanged: if (phase === "loading" && ready >= Quickshell.screens.length) cover()
     Timer { id: loadLimit; interval: 1500; onTriggered: if (root.phase === "loading") root.bail("decode took too long") }
 
     function cover() {
@@ -184,13 +224,11 @@ Singleton {
         id: handOff
         interval: 16
         onTriggered: {
-            if (root.toLive) {
-                root.liveHeld = true;
-                if (root.startFn) root.startFn();
-                root.startFn = null;
-            } else if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
+            if (root.toLive) root.liveHeld = true;
+            else if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
             swap.command = ["awww", "img", root.next, "--transition-type", "none"];
             swap.running = true;
+            if (root.startFn) { const s = root.startFn; root.startFn = null; s(); }
             go.restart();
         }
     }
@@ -209,16 +247,19 @@ Singleton {
         id: swap
         onExited: code => { if (code === 0) landed.restart(); }
     }
+    function enterSettling() {
+        if (phase !== "revealing") return;
+        phase = "settling";
+        if (Theme.flushRecolor) Theme.flushRecolor();
+        settleLimit.restart();
+        if (swapped) leave();
+        else if (!swap.running) check.running = true;
+    }
     NumberAnimation {
         id: reveal
         target: root; property: "t"; from: 0; to: 1
         easing.type: Easing.BezierSpline
-        onFinished: {
-            root.phase = "settling";
-            settleLimit.restart();
-            if (root.swapped) root.leave();
-            else if (!swap.running) check.running = true;
-        }
+        onFinished: root.enterSettling()
     }
     function liveOff() {
         root.play(Paths.stateHome + "/kuwai/wallpaper", () => Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]));
@@ -257,6 +298,7 @@ Singleton {
     function leave() {
         if (phase !== "settling") return;
         settleLimit.stop();
+        if (Theme.flushRecolor) Theme.flushRecolor();
         phase = "leaving";
         if (startFn) startFn();
         startFn = null;
@@ -266,12 +308,14 @@ Singleton {
     // At t = 1 the layer is the new picture; it may go once awww is too.
     Process {
         id: check
-        command: ["awww", "query"]
+        command: ["sh", "-c", 'awww query 2>/dev/null | while IFS= read -r l; do printf "%s\\n" "$l"; case "$l" in *"image: "*) o=${l#:}; o=${o#"${o%%[![:space:]]*}"}; o=${o%%:*}; p=${l#*image:}; p=${p#"${p%%[![:space:]]*}"}; r=$(realpath -e -- "$p" 2>/dev/null); [ -n "$r" ] && printf "kuwai-real %s %s\\n" "$o" "$r";; esac; done; printf "kuwai-wanted %s\\n" "$(realpath -e -- "$1" 2>/dev/null)"', "sh", root.next]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (root.phase !== "settling") return;
-                const now = root.parse(text), want = root.next;
-                const done = Object.keys(now).length > 0 && Object.keys(now).every(k => now[k] === want || now[k].endsWith("/" + want.split("/").pop()));
+                const now = root.parse(text);
+                const want = Outcome.parseWanted(text) || root.nextReal || Outcome.normalizePath(root.next);
+                const targets = root.participants.length ? root.participants : Object.keys(now);
+                const done = targets.length > 0 && targets.every(k => now[k] && now[k] === want);
                 if (done) { root.swapped = true; root.leave(); }
                 else recheck.restart();
             }
@@ -301,9 +345,15 @@ Singleton {
     }
     function unreadable(path) {
         Qt.callLater(() => {
-            if (root.phase !== "loading" || root.next !== path) return;
+            if (root.phase === "" || root.next !== path) return;
             root.failure = "unreadable";
             root.bail("can't read the new picture");
+        });
+    }
+    function decodeFailed(path) {
+        Qt.callLater(() => {
+            if (root.phase === "") return;
+            root.bail("can't read the current picture");
         });
     }
     function verify() {
@@ -313,7 +363,7 @@ Singleton {
     }
     function verified(text) {
         if (root.phase !== "") return;
-        const wanted = (String(text).match(/^kuwai-wanted (.*)$/m) || ["", ""])[1].trim();
+        const wanted = Outcome.parseWanted(text);
         if (!Outcome.unchanged(verifier.before, parse(text), wanted)) return;
         if (++verifier.tries < 4) { verifyLater.restart(); return; }
         lastRun += " · unchanged";
@@ -326,7 +376,7 @@ Singleton {
         property var before: ({})
         property string why: ""
         property int tries: 0
-        command: ["sh", "-c", 'awww query 2>/dev/null; printf "kuwai-wanted %s\\n" "$(realpath -e -- "$1" 2>/dev/null)"', "sh", path]
+        command: ["sh", "-c", 'awww query 2>/dev/null | while IFS= read -r l; do printf "%s\\n" "$l"; case "$l" in *"image: "*) o=${l#:}; o=${o#"${o%%[![:space:]]*}"}; o=${o%%:*}; p=${l#*image:}; p=${p#"${p%%[![:space:]]*}"}; r=$(realpath -e -- "$p" 2>/dev/null); [ -n "$r" ] && printf "kuwai-real %s %s\\n" "$o" "$r";; esac; done; printf "kuwai-wanted %s\\n" "$(realpath -e -- "$1" 2>/dev/null)"', "sh", path]
         stdout: StdioCollector { onStreamFinished: root.verified(text) }
     }
     Timer { id: watchdog; interval: 8000; onTriggered: if (root.phase !== "") { if (root.startFn) root.bail("stuck before the hand-off"); else root.force("stuck"); } }
@@ -351,6 +401,7 @@ Singleton {
                 id: w
                 required property var modelData
                 screen: modelData
+                readonly property bool participating: root.participants.indexOf(modelData.name) >= 0
                 readonly property real dpr: modelData.devicePixelRatio || 1
                 readonly property string oldPath: root.before[modelData.name] || root.next
                 anchors { top: true; bottom: true; left: true; right: true }
@@ -362,7 +413,7 @@ Singleton {
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 // Nothing on screen until both pictures are decoded (the cover
                 // must be the old picture from its first frame).
-                visible: root.phase !== "loading"
+                visible: root.phase !== "loading" && participating
                 property bool counted: false
                 function crop(img) {
                     const iw = img.implicitWidth, ih = img.implicitHeight;
@@ -375,27 +426,30 @@ Singleton {
                 readonly property vector4d cropA: crop(a)
                 readonly property vector4d cropB: crop(b)
                 function check() {
-                    if (counted || a.status !== Image.Ready || b.status !== Image.Ready) return;
+                    if (!participating || counted || a.status !== Image.Ready || b.status !== Image.Ready) return;
                     counted = true;
-                    root.ready += 1;
+                    root.markReady(modelData.name);
                 }
                 // awww crops to fill, centred: the same here, at device pixels.
                 Image {
                     id: a
                     anchors.fill: parent
                     visible: false
-                    source: w.oldPath ? "file://" + w.oldPath : ""
+                    source: w.participating && w.oldPath ? "file://" + w.oldPath : ""
                     sourceSize: Qt.size(Math.round(w.width * w.dpr), Math.round(w.height * w.dpr))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     cache: false
-                    onStatusChanged: w.check()
+                    onStatusChanged: {
+                        if (status === Image.Error) { root.decodeFailed(w.oldPath); return; }
+                        w.check();
+                    }
                 }
                 Image {
                     id: b
                     anchors.fill: parent
                     visible: false
-                    source: root.next ? "file://" + root.next : ""
+                    source: w.participating && root.next ? "file://" + root.next : ""
                     sourceSize: Qt.size(Math.round(w.width * w.dpr), Math.round(w.height * w.dpr))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true

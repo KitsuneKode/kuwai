@@ -17,7 +17,7 @@ Background activity floats beside the notch in separate capsules (Settings → B
 - **Agents** (working count) and **Approval** (orange capsule when an agent waits for permission or an answer).
 - **Usage limits** (orange ring with the soonest reset time when an account hits a cap).
 - **System news** (updates available, high CPU/temperature/memory warning, or idle projects when `sweep` is installed).
-- **Minimized windows** (`Super+O`).
+- **Minimised windows** (`Super+O`).
 
 **Agents, Usage, System, and Cleanup** share one header strip inside the island. Switch between them by clicking the strip or pressing **`Alt+1`** through **`Alt+4`**.
 

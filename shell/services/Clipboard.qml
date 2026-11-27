@@ -3,7 +3,7 @@ pragma Singleton
 // Clipboard history for the Super+V panel (modules/clipboard).
 //
 // History is cliphist's: kuwai-clipboard.service's two wl-paste watchers
-// store every copy, text and images (no HyDE needed). Kuwai adds what cliphist doesn't keep: when each
+// store every copy, text and images (no HyDE needed). kuwai adds what cliphist doesn't keep: when each
 // entry was copied (a wl-paste watcher of our own stamps new ones), and
 // pins, saved as files of their own so they outlive the 750-entry cap.
 // bin/kuwai-clip does the decoding, pasting and opening.

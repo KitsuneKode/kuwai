@@ -62,7 +62,7 @@ changed for the test (a wallpaper: play the original back).
   (grim the capsule row at 2×).
 - **Island rest/glance/full:** centre click opens full; capsules bud from the edge, icon arrives after;
   state change swaps content without a blank frame or a full-strength first frame.
-- **Sections:** Agents/Usage/System/Cleanup strip lit on the current one; ⌥1–4 switch in place.
+- **Sections:** Agents/Usage/System/Cleanup strip lit on the current one; Alt+1–4 switch in place.
 - **Cleanup:** big number = report's unusedTokens; nothing clipped at the island's ceiling.
 - **System:** LinkedBar parts sum ≤ used memory; legend and dots light together.
 - **Media:** titles cleaned (`bun test tests/shell/media-text.test.mjs`); a film's frame only for the

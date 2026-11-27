@@ -52,7 +52,7 @@ FocusScope {
     Component.onCompleted: { Sweep.check(true, panel.freshS); if (!Island.previewing) Sweep.markViewed(); }
     Timer { interval: panel.dwellMs; running: Island.previewing && panel.visible; onTriggered: Sweep.markViewed() }
 
-    readonly property var tones: [Theme.green, Theme.cyan, Theme.orange, Theme.indigo]
+    readonly property var tones: [Theme.green, Theme.cyan, Theme.mint, Theme.indigo]
     readonly property bool idleSplit: Sweep.idleKinds.length > 0 && Sweep.idleBytes > 0
     readonly property var segs: idleSplit ? Model.segments(Sweep.idleKinds, Sweep.idleBytes, tones, 4)
         : Model.segments(Sweep.kinds, Sweep.reclaimable, tones, 4)
@@ -269,7 +269,7 @@ FocusScope {
 
         KeyHints {
             visible: Island.via === "key" && Sweep.alive
-            hints: [["↑↓", "Project"], ["←→", "Part"], ["↩", "Review in Sweep"], ["esc", "Back"]]
+            hints: [["↑↓", "Project"], ["←→", "Part"], ["↵", "Review in Sweep"], ["esc", "Back"]]
         }
 
         Column {

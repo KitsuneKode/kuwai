@@ -40,11 +40,18 @@ FocusScope {
     property string view: Updates.running || (Updates.ownedRun && Updates.result) ? "run" : "list"
     property string pkg: ""                       // the package under review
     property bool showAllRepo: false
+    readonly property string checkTrouble: Updates.checkError || (Updates.data && typeof Updates.data.repoError === "string" ? Updates.data.repoError : "")
+    readonly property bool checkFailed: Updates.checkError !== "" || !!(Updates.data && Updates.data.repoError)
+    readonly property string phase: checkFailed && Updates.total <= 0 ? "error" : Updates.total < 0 ? "loading" : Updates.total === 0 ? "empty" : "content"
     property bool showLog: false
     property int fileIx: 0
     property string menuOf: ""                    // a package whose menu is open (the rehearsal stages it)
 
     function openReview(name) { pkg = name; fileIx = 0; Updates.review(name); go("review"); }
+    function openAurRow(row) {
+        if (Updates.aurReadOnly) { if (row.page !== "") Apps.open(row.page); return; }
+        openReview(row.modelData.name);
+    }
     property bool installing: false
     function openInstall(name) { installing = true; openReview(name); }
     function takeAsk() { if (Updates.installAsk) { const n = Updates.installAsk; Updates.installAsk = ""; openInstall(n); } }
@@ -220,14 +227,17 @@ FocusScope {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - refresh.width - Theme.s3
                     spacing: 2
-                    Label { text: Updates.total === 0 ? "Up to date" : "Software Update"; size: Theme.tTitle3; weight: Theme.wSemibold }
+                    Label { text: up.phase === "empty" ? "Up to date" : "Software Update"; size: Theme.tTitle3; weight: Theme.wSemibold }
                     Label {
+                        visible: text !== ""
                         text: Updates.checking ? "Checking…"
+                            : up.phase === "error" ? ""
                             : Updates.total < 0 ? "Not checked yet"
+                            : up.checkFailed ? (up.checkTrouble && up.checkTrouble !== "Couldn't read the update check" ? up.checkTrouble : "The latest check didn't finish") + " · this is the one before"
                             : ([Updates.repoLive.length + " Arch", Updates.aurLive.length + " AUR", Updates.flatpak.length ? Updates.flatpak.length + " Flatpak" : "",
                                 Updates.heldCount ? Updates.heldCount + " held" : ""].filter(x => x).join(" · ") + " · checked " + Updates.ago(Updates.checkedAt))
-                        width: parent.width; elide: Text.ElideRight
-                        size: Theme.tSub; color: Theme.textTertiary
+                        width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        size: Theme.tSub; color: !Updates.checking && Updates.total >= 0 && up.checkFailed ? Theme.orange : Theme.textTertiary
                     }
                 }
                 Button {
@@ -235,7 +245,7 @@ FocusScope {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     kind: "quiet"
                     glyph: "\u{f0450}"
-                    label: Updates.checking ? "Checking for updates" : "Check again (R)"
+                    label: Updates.checking ? "Checking for updates" : up.checkFailed ? "Retry the check (R)" : "Check again (R)"
                     busy: Updates.checking
                     onClicked: Updates.check()
                 }
@@ -281,12 +291,10 @@ FocusScope {
                 detail: "Restart when it's done, so the new kernel and drivers load together."
             }
             Notice {
-                visible: Updates.checkError !== "" || !!(Updates.data && Updates.data.repoError)
+                visible: up.phase === "error"
                 glyph: "\u{f0026}"; tone: Theme.red
-                readonly property bool hadOne: Updates.total >= 0
-                readonly property string why: Updates.checkError || (Updates.data && typeof Updates.data.repoError === "string" ? Updates.data.repoError : "")
-                title: hadOne ? "The latest check didn't finish" : "The check didn't finish"
-                detail: why && why !== "Couldn't read the update check" ? why : hadOne ? "This is what the one before found" : ""
+                title: "The check didn't finish"
+                detail: up.checkTrouble && up.checkTrouble !== "Couldn't read the update check" ? up.checkTrouble : ""
                 action: "Retry"
                 onActed: Updates.check()
             }
@@ -294,7 +302,7 @@ FocusScope {
             // Skeleton while the first check runs; not once it has failed (the
             // rows stayed under "The check didn't finish", promising a list).
             Repeater {
-                model: Updates.total < 0 && Updates.checkError === "" ? 3 : 0
+                model: up.phase === "loading" ? 3 : 0
                 Skeleton { width: listCol.width; height: 48; radius: 14 }
             }
 
@@ -380,7 +388,7 @@ FocusScope {
                                 spacing: 1
                                 Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: Theme.tBody; weight: Theme.wMedium; color: repoRow.held ? Theme.textSecondary : Theme.textPrimary }
                                 Version { visible: !repoRow.held; from: modelData.old; to: modelData.new }
-                                Label { visible: repoRow.held; text: "Held at " + modelData.old; size: Theme.tFootnote; color: Theme.orange }
+                                Label { visible: repoRow.held; text: "Held at " + modelData.old; size: Theme.tFootnote; color: Theme.textSecondary }
                             }
                             Label { anchors.right: parent.right; text: modelData.repo; size: Theme.tCaption; color: Theme.textTertiary; visible: modelData.repo !== "" && modelData.repo !== "extra" }
                         }
@@ -419,7 +427,7 @@ FocusScope {
                         width: parent.width - 32 - (bumps.visible ? bumps.width + Theme.s3 : 0)
                         spacing: 1
                         Label { text: "AUR · " + Updates.aur.length + (Updates.aur.length === 1 ? " package" : " packages"); size: Theme.tCallout; weight: Theme.wSemibold }
-                        Label { width: parent.width; elide: Text.ElideRight; text: "Built as you, from exactly the change you approve"; size: Theme.tFootnote; color: Theme.textTertiary }
+                        Label { width: parent.width; elide: Text.ElideRight; text: Updates.aurReadOnly ? "Read-only here · update from a terminal with an AUR helper" : "Built as you, from exactly the change you approve"; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                     // Approve the plain version bumps in one go (each one was read).
                     Button {
@@ -452,7 +460,7 @@ FocusScope {
                         MouseArea {
                             id: rowArea
                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: up.openReview(aurRow.modelData.name)
+                            onClicked: up.openAurRow(aurRow)
                             onContainsMouseChanged: {
                                 if (containsMouse) aurCard.hoverRow = aurWash;
                                 else if (aurCard.hoverRow === aurWash) aurCard.hoverRow = null;
@@ -462,14 +470,14 @@ FocusScope {
                         activeFocusOnTab: true
                         Keys.onPressed: e => {
                             if (aurMenu.handleKey(e)) return;
-                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { up.openReview(aurRow.modelData.name); e.accepted = true; }
+                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { up.openAurRow(aurRow); e.accepted = true; }
                             else if (e.key === Qt.Key_Space && Updates.selectable(aurRow.modelData.name)) { Updates.setExcluded(aurRow.modelData.name, Updates.selected(aurRow.modelData.name)); e.accepted = true; }
                         }
                         FocusRing { anchors.fill: aurWash; cornerRadius: Theme.r1 }
                         Accessible.role: Accessible.ListItem
                         Accessible.name: aurRow.modelData.name + ", " + stateChip.text
-                        Accessible.description: "Review the changes. More in its menu."
-                        Accessible.onPressAction: up.openReview(aurRow.modelData.name)
+                        Accessible.description: Updates.aurReadOnly ? "Read-only. Open its AUR page. More in its menu." : "Review the changes. More in its menu."
+                        Accessible.onPressAction: up.openAurRow(aurRow)
                         Component.onCompleted: if (up.menuOf === modelData.name) Qt.callLater(() => aurMenu.popup(aurRow.width * 0.55, aurRow.height / 2))
                         ContextMenu {
                             id: aurMenu
@@ -477,7 +485,7 @@ FocusScope {
                             bounds: up
                             title: aurRow.modelData.name
                             ContextMenuLabel { text: aurRow.modelData.name + "  " + aurRow.modelData.new }
-                            ContextMenuItem { text: "Review changes"; glyph: "\u{f0208}"; shortcut: "↵"; onTriggered: up.openReview(aurRow.modelData.name) }
+                            ContextMenuItem { text: "Review changes"; glyph: "\u{f0208}"; shortcut: "↵"; visible: !Updates.aurReadOnly; onTriggered: up.openAurRow(aurRow) }
                             ContextMenuCheckboxItem {
                                 text: "Include in this update"
                                 shortcut: "Space"
@@ -499,6 +507,7 @@ FocusScope {
                             }
                             ContextMenuCheckboxItem {
                                 text: "Trust its future updates"
+                                visible: !Updates.aurReadOnly
                                 checked: Updates.trusted.indexOf(aurRow.modelData.name) >= 0
                                 onToggled: on => Updates.setTrusted(aurRow.modelData.name, on)
                             }
@@ -529,6 +538,7 @@ FocusScope {
                             readonly property var look: {
                                 const s = aurRow.st, r = aurRow.rv;
                                 if (Updates.isHeld(aurRow.modelData.name)) return ["Held at " + aurRow.modelData.old, Theme.textSecondary, ""];
+                                if (Updates.aurReadOnly) return ["Read-only", Theme.textSecondary, ""];
                                 if (s === "trusted") return ["Trusted", Theme.accent, "\u{f0565}"];
                                 if (s === "approved") return [Updates.autoApproved.indexOf(aurRow.modelData.name) >= 0 ? "Version bump · auto" : "Approved", Theme.green, "\u{f012c}"];
                                 if (s === "loading" || !r) return ["Reading…", Theme.textSecondary, ""];   // tertiary read 3.7:1 on a row
@@ -642,6 +652,7 @@ FocusScope {
             elide: Text.ElideRight
             text: Updates.waitingReview > 0
                 ? Updates.waitingReview + " AUR " + (Updates.waitingReview === 1 ? "package waits" : "packages wait") + " for your review"
+                : Updates.aurReadOnly && Updates.chosenCount === 0 ? ""
                 : "Sleep and shutdown wait until it's done"
             size: Theme.tFootnote; color: Theme.textTertiary
         }

@@ -102,7 +102,7 @@ def test_undo_of_an_install_from_before_receipts_records_what_root_kept_first(gr
     assert not (etc / "greetd/config.toml").exists()
     assert (etc / "systemd/system/getty@tty1.service.d/override.conf").read_text() == "autologin\n"
     assert "enable sddm.service" in log.read_text()
-    assert (keep / "receipt").stat().st_mode & 0o777 == 0o600
+    assert not keep.parent.exists()
 
 
 @pytest.mark.parametrize("damage", ["missing-keep-writable", "missing-dest-writable", "missing-kept-writable",

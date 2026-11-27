@@ -529,7 +529,7 @@ function W.restore()
 		end
 	end
 	if not target then
-		K.notify("Nothing minimized", 1200)
+		K.notify("Nothing minimised", 1200)
 		return
 	end
 	local ws = hl.get_active_workspace()

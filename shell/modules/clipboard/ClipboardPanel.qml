@@ -385,17 +385,17 @@ Scope {
         const where = Clipboard.targetName();
         const a = [
             { id: "paste", label: where ? "Paste to " + where : "Paste", glyph: "\u{f0192}", keys: ["↵"], section: "Entry" },
-            { id: "copy", label: "Copy to clipboard", glyph: "\u{f018f}", keys: ["⇧", "↵"], section: "Entry" },
-            { id: "open", label: Clipboard.openLabel(e), glyph: "\u{f03cc}", keys: ["⌃", "↵"], section: "Entry" },
+            { id: "copy", label: "Copy to clipboard", glyph: "\u{f018f}", keys: ["Shift", "↵"], section: "Entry" },
+            { id: "open", label: Clipboard.openLabel(e), glyph: "\u{f03cc}", keys: ["Ctrl", "↵"], section: "Entry" },
             { id: "quicklook", label: "Quick Look", glyph: "\u{f0208}", keys: ["Space"], section: "Entry" },
-            { id: "read", label: "Read it large", glyph: "\u{f0293}", keys: ["⇧", "Space"], section: "Entry" },
-            { id: "pin", label: Clipboard.isPinned(e) ? "Unpin" : "Pin", glyph: "\u{f0403}", keys: ["⌃", "P"], section: "Entry" }
+            { id: "read", label: "Read it large", glyph: "\u{f0293}", keys: ["Shift", "Space"], section: "Entry" },
+            { id: "pin", label: Clipboard.isPinned(e) ? "Unpin" : "Pin", glyph: "\u{f0403}", keys: ["Ctrl", "P"], section: "Entry" }
         ];
-        if (txt) a.push({ id: "edit", label: "Edit, then paste", glyph: "\u{f03eb}", keys: ["⌃", "E"], section: "Entry" });
-        if (txt) a.push({ id: "nvim", label: "Edit in Neovim (the edit is copied)", glyph: "\u{f06e5}", keys: ["⌃", "⇧", "E"], section: "Entry" });
+        if (txt) a.push({ id: "edit", label: "Edit, then paste", glyph: "\u{f03eb}", keys: ["Ctrl", "E"], section: "Entry" });
+        if (txt) a.push({ id: "nvim", label: "Edit in Neovim (the edit is copied)", glyph: "\u{f06e5}", keys: ["Ctrl", "Shift", "E"], section: "Entry" });
         if (img) {
-            a.push({ id: "ocr", label: "Copy text from image", glyph: "\u{f05e7}", keys: ["⌃", "O"], section: "Image" });
-            a.push({ id: "save", label: "Save to Screenshots…", glyph: "\u{f0193}", keys: ["⌃", "S"], section: "Image" });
+            a.push({ id: "ocr", label: "Copy text from image", glyph: "\u{f05e7}", keys: ["Ctrl", "O"], section: "Image" });
+            a.push({ id: "save", label: "Save to Screenshots…", glyph: "\u{f0193}", keys: ["Ctrl", "S"], section: "Image" });
         }
         if (txt) {
             a.push({ id: "trim", label: "Paste trimmed, one line", glyph: "\u{f0a73}", section: "Paste as" });
@@ -406,10 +406,10 @@ Scope {
             else a.push({ id: "urlenc", label: "Paste URL encoded", glyph: "\u{f0339}", section: "Paste as" });
             if (isB64(t)) a.push({ id: "b64", label: "Paste Base64 decoded", glyph: "\u{f0bb4}", section: "Paste as" });
         }
-        if (e.secret) a.push({ id: "reveal", label: revealed ? "Hide secret" : "Show secret", glyph: "\u{f0208}", keys: ["⌃", "H"], section: "Entry" });
-        a.push({ id: "delete", label: "Delete entry", glyph: "\u{f0a7a}", keys: ["⇧", "⌦"], danger: true, section: "Manage" });
+        if (e.secret) a.push({ id: "reveal", label: revealed ? "Hide secret" : "Show secret", glyph: "\u{f0208}", keys: ["Ctrl", "H"], section: "Entry" });
+        a.push({ id: "delete", label: "Delete entry", glyph: "\u{f0a7a}", keys: ["Shift", "Del"], danger: true, section: "Manage" });
         if (Clipboard.items.some(x => x.secret)) a.push({ id: "secrets", label: "Forget everything that looks secret", glyph: "\u{f0306}", danger: true, section: "Manage" });
-        a.push({ id: "wipe", label: "Clear history (pins stay)", glyph: "\u{f0a7a}", keys: ["⌃", "⇧", "⌫"], danger: true, section: "Manage" });
+        a.push({ id: "wipe", label: "Clear history (pins stay)", glyph: "\u{f0a7a}", keys: ["Ctrl", "Shift", "⌫"], danger: true, section: "Manage" });
         return a;
     }
     // Quick Look's edit, kept (⌃S): copied as the newest entry (the original
@@ -478,41 +478,41 @@ Scope {
     readonly property var keySections: [
         { title: "Paste and copy", items: [
             { k: ["↵"], t: "Paste into the window you came from" },
-            { k: ["⇧", "↵"], t: "Copy, don't paste" },
-            { k: ["⌥", "1–9"], t: "Paste the nth card (hold ⌥ to see)" },
-            { k: ["⌃", "E"], t: "Edit, then paste" },
-            { k: ["⌃", "⇧", "E"], t: "Edit in Neovim; the edit is copied" } ] },
+            { k: ["Shift", "↵"], t: "Copy, don't paste" },
+            { k: ["Alt", "1–9"], t: "Paste the nth card (hold Alt to see)" },
+            { k: ["Ctrl", "E"], t: "Edit, then paste" },
+            { k: ["Ctrl", "Shift", "E"], t: "Edit in Neovim; the edit is copied" } ] },
         { title: "Look", items: [
             { k: ["Space"], t: "Quick Look" },
-            { k: ["⇧", "Space"], t: "Read it large" },
-            { k: ["⌃", "R"], t: "Rendered or raw (Markdown, code)" },
-            { k: ["⌃", "H"], t: "Show or hide a secret" },
-            { k: ["⌃", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
+            { k: ["Shift", "Space"], t: "Read it large" },
+            { k: ["Ctrl", "R"], t: "Rendered or raw (Markdown, code)" },
+            { k: ["Ctrl", "H"], t: "Show or hide a secret" },
+            { k: ["Ctrl", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
         { title: "Move", items: [
             { k: ["↑", "↓"], t: "Previous or next card, always (← → too while the search is empty)" },
-            { k: ["←", "→"], t: "While you search: move in the text (⌃ by word, ⇧ selects, Home / End its ends)" },
-            { k: ["⇧", "← →"], t: "Search empty: mark several (⌃-click one, ⇧-click a run, ⌃A all)" },
+            { k: ["←", "→"], t: "While you search: move in the text (Ctrl by word, Shift selects, Home / End its ends)" },
+            { k: ["Shift", "← →"], t: "Search empty: mark several (Ctrl-click one, Shift-click a run, Ctrl+A all)" },
             { k: ["PgUp", "PgDn"], t: "Five at a time" },
-            { k: ["⌃", "Home"], t: "First or last (⌃End)" },
-            { k: ["⇥"], t: "Next filter (⇧⇥ back)" },
+            { k: ["Ctrl", "Home"], t: "First or last (Ctrl+End)" },
+            { k: ["Tab"], t: "Next filter (Shift+Tab back)" },
             { k: ["⌫"], t: "Clear the filter (empty search)" } ] },
         { title: "Keep and tidy", items: [
-            { k: ["⌃", "P"], t: "Pin or unpin" },
-            { k: ["⇧", "⌦"], t: "Delete the card (or ⌃X)" },
-            { k: ["⌃", "Z"], t: "Bring back what you just deleted" },
-            { k: ["⌃", "⇧", "⌫"], t: "Clear history, twice (pins stay; no undo)" } ] },
+            { k: ["Ctrl", "P"], t: "Pin or unpin" },
+            { k: ["Shift", "Del"], t: "Delete the card (or Ctrl+X)" },
+            { k: ["Ctrl", "Z"], t: "Bring back what you just deleted" },
+            { k: ["Ctrl", "Shift", "⌫"], t: "Clear history, twice (pins stay; no undo)" } ] },
         { title: "Images", items: [
-            { k: ["⌃", "O"], t: "Copy the text in it (OCR)" },
-            { k: ["⌃", "S"], t: "Save to Screenshots, named" } ] },
+            { k: ["Ctrl", "O"], t: "Copy the text in it (OCR)" },
+            { k: ["Ctrl", "S"], t: "Save to Screenshots, named" } ] },
         { title: "When", items: [
-            { k: ["⌃", "D"], t: "Calendar: a day, ⇧-click a range" },
+            { k: ["Ctrl", "D"], t: "Calendar: a day, Shift-click a range" },
             { k: ["@today"], t: "Also @yesterday, @7d, @month" } ] },
         { title: "Search", items: [
             { k: ["'word"], t: "Exact match" },
             { k: ["^word"], t: "Starts with" },
             { k: ["word$"], t: "Ends with" },
             { k: ["!word"], t: "Leave out" },
-            { k: ["⌃", "K"], t: "Every action for the card" },
+            { k: ["Ctrl", "K"], t: "Every action for the card" },
             { k: ["Esc"], t: "Back out, one step at a time" },
             { k: ["Alt", "←"], t: "Back to where you were last time" } ] }
     ]
@@ -529,7 +529,7 @@ Scope {
 
     // Clear history asks first (mode "confirmWipe"): a second ⌃⇧⌫ within the
     // window clears it; any other key, Esc or the window ending calls it off.
-    readonly property string wipeAsk: "Press ⌃⇧⌫ again to clear all history · it can't be undone"
+    readonly property string wipeAsk: "Press Ctrl+Shift+Backspace again to clear all history · it can't be undone"
     Timer { id: wipeWindow; interval: 3000; onTriggered: root.leave("confirmWipe") }
 
     // A short line of feedback over the footer; `ms` keeps it up longer.
@@ -543,7 +543,7 @@ Scope {
 
     // Deleting is held for Theme.undoMs (Clipboard.hold): ⌃Z brings the
     // latest delete back where it was, a multi-selection all together.
-    function deleted(n) { if (n > 0) say((n > 1 ? "Deleted " + n : "Deleted") + " · ⌃Z to undo", Theme.undoMs, "undo"); }
+    function deleted(n) { if (n > 0) say((n > 1 ? "Deleted " + n : "Deleted") + " · Ctrl+Z to undo", Theme.undoMs, "undo"); }
     function undoDelete() {
         const keys = Clipboard.undo();
         if (!keys) return false;
@@ -707,7 +707,7 @@ Scope {
             reading = false;
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         } else {
-            if (selKey) lastKey = selKey;          // ⌥← brings you back here next time
+            if (selKey) lastKey = selKey;          // Alt+← brings you back here next time
             setMode("browse");                     // (held deletes are done for real now: Clipboard.commitHeld)
             if (Theme.reduceMotion) { pill.settle(); melt.settle(); }
         }
@@ -1072,9 +1072,9 @@ Scope {
                     color: Theme.textPrimary
                     selectionColor: Qt.alpha(Theme.blue, 0.5)
                     font.family: Theme.fontText
-                    font.pixelSize: 18
-                    font.variableAxes: ({ "opsz": Theme.opszFor(18), "wght": Theme.wRegular })
-                    font.letterSpacing: Theme.tracking(18, false)
+                    font.pixelSize: Theme.sp(Theme.tTitle3)
+                    font.variableAxes: ({ "opsz": Theme.opszFor(Theme.tTitle3), "wght": Theme.wRegular })
+                    font.letterSpacing: Theme.tracking(Theme.tTitle3, false)
                     renderType: Text.NativeRendering
                     cursorDelegate: SpringCaret {}
                     clip: true
@@ -1108,7 +1108,7 @@ Scope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: root.tip(dateBtn, containsMouse && root.mode !== "date", "When it was copied", ["⌃", "D"])
+                        onContainsMouseChanged: root.tip(dateBtn, containsMouse && root.mode !== "date", "When it was copied", ["Ctrl", "D"])
                         onClicked: { root.tip(dateBtn, false); root.toggleMode("date"); root.focusSearch(); }
                     }
                     Accessible.role: Accessible.ButtonDropDown
@@ -1159,7 +1159,7 @@ Scope {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onContainsMouseChanged: root.tip(typeBtn, containsMouse && root.mode !== "filter", "Filter by type", ["⇥"])
+                        onContainsMouseChanged: root.tip(typeBtn, containsMouse && root.mode !== "filter", "Filter by type", ["Tab"])
                         onClicked: { root.tip(typeBtn, false); root.toggleMode("filter"); root.focusSearch(); }
                     }
                     Accessible.role: Accessible.ButtonDropDown
@@ -1300,7 +1300,7 @@ Scope {
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "⌃P pins the selected card." : emptyNote.off ? "Turn it on to keep what you copy here, on this computer only." : "Copy something and it lands here."
+                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "Ctrl+P pins the selected card." : emptyNote.off ? "Turn it on to keep what you copy here, on this computer only." : "Copy something and it lands here."
                     size: Theme.tSub
                     color: Theme.textTertiary
                 }
@@ -1325,7 +1325,7 @@ Scope {
                     textFormat: Text.StyledText
                     text: !root.entry ? ""
                         : root.entry.kind === "image" ? "Image"
-                        : root.entry.secret && !root.revealed ? "Looks like a secret · ⌃H to show"
+                        : root.entry.secret && !root.revealed ? "Looks like a secret · Ctrl+H to show"
                         : Clipboard.marked(root.entry.preview.replace(/\s+/g, " ").slice(0, 200), root.current && root.current.m ? root.current.m.pos : [], Theme.yellow)
                     size: Theme.tCallout
                     weight: Theme.wMedium
@@ -1439,7 +1439,7 @@ Scope {
                         act: "copy"
                         spacing: 6
                         Label { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; size: Theme.tSub; color: Theme.textTertiary }
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⇧" }
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "Shift" }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                     }
                 }
@@ -1463,7 +1463,7 @@ Scope {
                         anchors.centerIn: parent
                         spacing: 6
                         Label { anchors.verticalCenter: parent.verticalCenter; text: "Actions"; size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary }
-                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "⌃" }
+                        KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "Ctrl" }
                         KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "K" }
                     }
                     MouseArea {

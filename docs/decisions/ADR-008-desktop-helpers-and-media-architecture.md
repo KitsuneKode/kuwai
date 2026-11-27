@@ -54,7 +54,7 @@ solve concrete desktop failure modes:
      fullscreen), redirect `grimblast` stderr to a temp file instead of a pipe
      (so background `wl-copy` cannot hang capture), and omit Satty's bare
      `--early-exit` so copying keeps the editor open.
-   - In `kuwai-rec`, stop GPU Screen Recorder with `SIGINT` (cleanly finalizes
+   - In `kuwai-rec`, stop GPU Screen Recorder with `SIGINT` (cleanly finalises
      the container) and emit a thumbnail frame for the island toast.
 
 3. **Feeds, notifications, and Cider (`bin/kuwai-feeds`, `bin/kuwai-notify`, `bin/kuwai-player`)**:

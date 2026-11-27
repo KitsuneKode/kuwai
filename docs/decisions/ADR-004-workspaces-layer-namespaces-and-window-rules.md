@@ -9,7 +9,7 @@ Accepted
 ## Context
 Hyprland numbers workspaces in one global integer space, evaluates layer/window
 rules top-to-bottom, and dispatches Lua callbacks synchronously on the
-compositor event loop. Several real failures shaped how kuwai organizes
+compositor event loop. Several real failures shaped how kuwai organises
 workspaces, layers, window actions, and input:
 
 - Assigning `default_name = "1"` on every monitor caused Quickshell (which
@@ -26,9 +26,9 @@ workspaces, layers, window actions, and input:
   frames.
 - `ignore_alpha = 0.3` on the island and toast layers blurred soft shadows and
   fading cards into visible square/pale halos.
-- Apps requesting maximize on startup (Chromium/Electron) trapped tiled
+- Apps requesting maximise on startup (Chromium/Electron) trapped tiled
   windows in fullscreen mode 1 where they refused moves and resizes.
-- Window actions targeting "the active window" after un-maximizing or floating
+- Window actions targeting "the active window" after un-maximising or floating
   raced with focus-follows-mouse as the layout reflowed.
 - Binding Escape inside `voxtype_suppress` dropped `wtype`'s first typed
   character (`hyprwm/Hyprland#3165`).
@@ -77,7 +77,7 @@ workspaces, layers, window actions, and input:
      watchers.
    - Engage `no_screen_share` window rules and mute notifications only after a
      capture session runs >2.5 s (distinguishing real screen shares from
-     screenshots), honoring `kuwai.capture_hold` + grace period for the shell's
+     screenshots), honouring `kuwai.capture_hold` + grace period for the shell's
      own live previews and `kuwai.privacy_resync()` across shell restarts.
    - Suppress unsolicited `maximize` events globally; disable shadows on tiled
      windows (`flat-tiles`); apply `opaque` plus `1 override 1 override 1 override`
@@ -105,5 +105,5 @@ workspaces, layers, window actions, and input:
 ## Consequences
 - Any new non-blurred overlay layer must use the `kuwai.<name>` (dot) namespace
   convention; any blurred glass layer uses `kuwai-<name>` (hyphen).
-- Per-monitor workspace behavior remains consistent across hotplugs, reloads,
+- Per-monitor workspace behaviour remains consistent across hotplugs, reloads,
   and Quickshell restarts.

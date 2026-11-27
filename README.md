@@ -4,7 +4,7 @@
 
 ## A look around
 
-Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live at 60 fps on a 2560×1440 laptop screen at 133 % scale, with no pointer and nothing personal on it:
+Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live at 60 fps on a 2560×1440 laptop screen at 133 % scale, with no pointer and nothing personal on it, over kuwai Night's public-domain and CC night skies (NPS, ESO):
 
 <table>
 <tr>
@@ -42,7 +42,7 @@ In motion (recorded at 133 %, shown smaller, so every clip stays sharp on any sc
 <td align="center"><img src="docs/media/clips/themes.webp" alt="Themes: each theme's wallpapers with their colours" width="880"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper drawn in by its own lines, from the island" width="880"></td>
+<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper arriving through a ring, from the island" width="880"></td>
 </tr>
 <tr>
 <td align="center"><img src="docs/media/clips/sound.webp" alt="Sound: every app and device, the microphone as it hears you" width="510"></td>
@@ -83,15 +83,15 @@ kuwai update install-helper                          # root-owned pacman helper 
 
 Developing kuwai: `./install.sh` in a clone installs that clone for you, and the root scripts accept `--trust-clone`, which says plainly that it trusts every file in the clone.
 
-kuwai registers its own **Kuwai** login session with Hyprland config in `~/.config/kuwai/hypr/` (`hyprland.lua`, `monitors.lua`, `user.lua`), leaving `~/.config/hypr` and your plain Hyprland session untouched. Everything replaced on first install is recorded in `~/.local/state/kuwai/original/` and restored by `./install.sh --uninstall` (plus `sudo /usr/local/lib/kuwai/current/system/session --undo` and `kuwai auth unpin` for the two root-installed pieces).
+kuwai registers its own **kuwai** login session with Hyprland config in `~/.config/kuwai/hypr/` (`hyprland.lua`, `monitors.lua`, `user.lua`), leaving `~/.config/hypr` and your plain Hyprland session untouched. Everything replaced on first install is recorded in `~/.local/state/kuwai/original/` and restored by `./install.sh --uninstall` (plus `sudo /usr/local/lib/kuwai/current/system/session --undo` and `kuwai auth unpin` for the two root-installed pieces).
 
 The AUR `PKGBUILD` in `packaging/aur/kuwai/` builds from the signed tag (makepkg checks its signature) and installs that tag's `kuwai-setup`. Full details on channels, migrations, backups, and uninstall are in [docs/manual/install.md](docs/manual/install.md).
 
 ## What you get
 
-- **The island** ([docs/manual/island.md](docs/manual/island.md)): Top-edge notch holding workspaces, clock, status, privacy dots (mic, camera, screen share/recording), media, and timers. Background work floats beside it in capsules (agents, waiting approvals, usage limits, system news, minimized windows). Click or pull down to grow a panel.
+- **The island** ([docs/manual/island.md](docs/manual/island.md)): Top-edge notch holding workspaces, clock, status, privacy dots (mic, camera, screen share/recording), media, and timers. Background work floats beside it in capsules (agents, waiting approvals, usage limits, system news, minimised windows). Click or pull down to grow a panel.
   ![Capsule states: working, needs you, hit a limit, error](docs/media/island/capsule-states.png)
-- **Notifications** ([docs/manual/notifications.md](docs/manual/notifications.md)): Built-in `org.freedesktop.Notifications` server with stacked toasts, notch peeks, and a Notification Center (`Super+N`) grouped by app with search and undo clear. Chat bodies stay hidden on passive surfaces and the lock screen; screen sharing hides non-critical bodies everywhere. Optional GitHub (`gh`) and Gmail (IMAP IDLE, keyring app password) feeds are off until enabled.
+- **Notifications** ([docs/manual/notifications.md](docs/manual/notifications.md)): Built-in `org.freedesktop.Notifications` server with stacked toasts, notch peeks, and a Notification Centre (`Super+N`) grouped by app with search and undo clear. Chat bodies stay hidden on passive surfaces and the lock screen; screen sharing hides non-critical bodies everywhere. Optional GitHub (`gh`) and Gmail (IMAP IDLE, keyring app password) feeds are off until enabled.
 - **Controls, Sound, and Displays** ([docs/manual/display.md](docs/manual/display.md), [docs/manual/audio.md](docs/manual/audio.md)): `Super+Ctrl+Space` opens Controls (Wi-Fi, Bluetooth, DND, Night Shift, Caffeine, microphone, Reduce Motion, brightness, Display presets, and a per-app PipeWire sound mixer). HDR status reads the live signal on the wire (`bin/kuwai-hdr`).
 - **Launcher**: `Super+A` searches apps, open windows, files (`fd`), settings, and actions. Inline prefixes: `=` calculator (math, units, currencies), `!` processes and listening ports (`! 3000`), `+` Arch and AUR packages, `:` emoji, `;` Nerd Font glyphs, plus `timer 10m`, `pomodoro`, `remind me …`, `alarm 7:30`, and `note …`.
 - **Clipboard**: Opt-in shelf (`Super+V`, pins on `Super+Shift+V`) backed by `cliphist` with fuzzy search, Quick Look (`Space`), inline editing, OCR (`Ctrl+O`), rendered Markdown/code/Mermaid, secret masking, and undo delete (`Ctrl+Z`).
@@ -113,7 +113,7 @@ Press `Super+/` (or hold `Super`) to open the live shortcuts sheet, or rebind an
 | Keys | Action |
 |---|---|
 | `Super+A` | Launcher (apps, windows, files, `=` calc, `!` procs/ports, `+` packages) |
-| `Super+N` | Notifications center |
+| `Super+N` | Notifications centre |
 | `Super+Ctrl+Space` | Controls (Wi-Fi, Bluetooth, Sound, DND, Display) |
 | `Super+V` / `Super+Shift+V` | Clipboard / Clipboard pins |
 | `Super+Shift+N` / `Super+Ctrl+A` | Agents panel / Jump to waiting agent |

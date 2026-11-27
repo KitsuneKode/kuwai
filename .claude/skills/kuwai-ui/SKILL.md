@@ -132,7 +132,7 @@ The shell's budget is 0 % CPU at rest (`bin/kuwai-check`). What broke it before:
 
 The resting notch is under a fullscreen window (Hyprland draws it over the top layer). Only what
 `Settings.notifFullscreen` allows (important: critical, warnings, people you can reply to) grows the
-notch onto the overlay for that moment; the rest waits in the center with the missed dot. Never
+notch onto the overlay for that moment; the rest waits in the centre with the missed dot. Never
 reserve space during fullscreen (the film would reflow).
 
 ## 9. Verify before saying done

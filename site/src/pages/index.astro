@@ -8,7 +8,7 @@ const features = [
   {
     id: "island",
     title: "The island",
-    summary: "One status surface at the top edge of each screen. At rest it shows workspaces, the clock, status, and live activity such as a timer, recording, dictation, or music. Background work floats beside it in separate capsules for agents, usage limits, system news, and minimized windows. Hovering opens a glance row; clicking or pulling down grows the panel.",
+    summary: "One status surface at the top edge of each screen. At rest it shows workspaces, the clock, status, and live activity such as a timer, recording, dictation, or music. Background work floats beside it in separate capsules for agents, usage limits, system news, and minimised windows. Hovering opens a glance row; clicking or pulling down grows the panel.",
     details: [
       "Privacy dots appear beside status when the microphone (orange), camera (green), or screen sharing/recording (purple) is active, naming the app on hover.",
       "Alarms, due reminders, finished timers, and connecting audio devices grow out of the notch as cards you can answer from the keyboard (Super+Ctrl+Enter).",
@@ -40,7 +40,7 @@ const features = [
   {
     id: "notifications",
     title: "Notifications",
-    summary: "kuwai runs its own org.freedesktop.Notifications server with a stacked toast list, notch peeks for important or replyable alerts, and a Notification Center (Super+N) grouped by app with search and undo clear.",
+    summary: "kuwai runs its own org.freedesktop.Notifications server with a stacked toast list, notch peeks for important or replyable alerts, and a Notification Centre (Super+N) grouped by app with search and undo clear.",
     details: [
       "Chat message bodies are hidden on passive surfaces and on the lock screen by default; while sharing your screen, non-critical bodies stay hidden everywhere.",
       "Do Not Disturb (Super+Alt+N) and screen-share mute suppress normal alerts while letting critical alerts through.",
@@ -120,7 +120,7 @@ const features = [
     media: [
       {
         src: "/media/login/login.webp",
-        alt: "kuwai greetd login screen with centered clock, user avatar, and hold-to-power row",
+        alt: "kuwai greetd login screen with centred clock, user avatar, and hold-to-power row",
         caption: "Login screen on greetd (optional: greeter/install, from root's checked copy)."
       },
       {
@@ -225,7 +225,7 @@ const rootSurface = [
   {
     component: "system/session",
     when: "Once during install, from root's checked copy of a signed release (undo: system/session --undo)",
-    why: "Installs /usr/local/bin/kuwai-session and /usr/share/wayland-sessions/kuwai.desktop so Kuwai appears as its own login session."
+    why: "Installs /usr/local/bin/kuwai-session and /usr/share/wayland-sessions/kuwai.desktop so kuwai appears as its own login session."
   },
   {
     component: "kuwai auth pin",

@@ -1217,6 +1217,7 @@ Scope {
                             // A click switches in place (Clove's tab strip):
                             // hover would switch under a pointer passing by.
                             Row {
+                                id: secRow
                                 visible: win.sectioned
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 y: 10
@@ -1243,24 +1244,32 @@ Scope {
                                         }
                                         MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.switchTo(sec.modelData.id) }
                                         Accessible.onPressAction: Island.switchTo(sec.modelData.id)
-                                        Tip { text: sec.modelData.label + "  ⌥" + (sec.index + 1); shown: secArea.containsMouse; below: true }
+                                        Tip { text: sec.modelData.label + "  Alt+" + (sec.index + 1); shown: secArea.containsMouse; below: true }
                                     }
                                 }
                             }
                             Row {
+                                id: headRow
+                                readonly property real room: Math.max(0, (secRow.visible ? secRow.x - Theme.s3 : backStrip.width - Theme.s4) - x)
                                 visible: !Island.canBack && win.sectioned
                                 x: Theme.s4; y: 10
                                 height: 24
                                 spacing: 6
                                 Label {
+                                    id: headTitle
                                     anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.min(implicitWidth, headRow.room)
+                                    elide: Text.ElideRight
                                     text: Island.titleOf(win.shownPanel)
                                     size: Theme.tBody; weight: Theme.wSemibold
                                     color: Theme.textSecondary
                                 }
                                 Label {
                                     readonly property string meta: panelLoader.item && panelLoader.item.headerMeta !== undefined ? panelLoader.item.headerMeta : ""
-                                    visible: meta !== ""
+                                    readonly property real room: headRow.room - headTitle.width - headRow.spacing
+                                    visible: meta !== "" && room >= Theme.s5 * 2
+                                    width: Math.min(implicitWidth, room)
+                                    elide: Text.ElideRight
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "·  " + meta
                                     size: Theme.tFootnote; weight: Theme.wMedium

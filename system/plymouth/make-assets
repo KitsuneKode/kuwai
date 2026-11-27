@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""Draws the boot theme's three pictures into system/plymouth/kuwai/.
+
+  system/plymouth/make-assets [--accent '#rrggbb'] [--out DIR]
+
+ring.png: a faint full ring and, on it, an arc of the accent that fades in
+along its length (the turning is the splash script rotating this picture).
+pill.png and dot.png: the lock screen's password pill (270 x 42, a white wash
+of 0.14 and a 1 px edge of 0.15) and one of its five dots. The default accent
+is the login screen's (Theme.loginAccent). Needs Pillow; run as yourself, not
+with sudo: the install step only copies what is here.
+"""
+import argparse
+import math
+import os
+import re
+import sys
+
+from PIL import Image, ImageDraw
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SUPER = 4
+RING = 256
+STROKE = 4
+SWEEP = 120
+
+
+def rgb(text):
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", text):
+        raise argparse.ArgumentTypeError("an accent is #rrggbb")
+    return tuple(int(text[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def canvas(w, h, colour):
+    return Image.new("RGBA", (w * SUPER, h * SUPER), colour + (0,))
+
+
+def finish(img, w, h, path):
+    img.resize((w, h), Image.LANCZOS).save(path, optimize=True)
+
+
+def ring(accent, out):
+    s = RING * SUPER
+    img = canvas(RING, RING, accent)
+    d = ImageDraw.Draw(img)
+    pad = STROKE * SUPER
+    box = (pad, pad, s - pad - 1, s - pad - 1)
+    d.ellipse(box, outline=accent + (int(255 * 0.16),), width=STROKE * SUPER)
+    steps = SWEEP * 2
+    for i in range(steps):
+        a0 = -90 - SWEEP + SWEEP * i / steps
+        a1 = -90 - SWEEP + SWEEP * (i + 1.6) / steps
+        alpha = int(255 * (i / (steps - 1)) ** 1.6)
+        d.arc(box, a0, a1, fill=accent + (alpha,), width=STROKE * SUPER)
+    head = -90
+    r = (s - 2 * pad) / 2
+    cx = cy = s / 2
+    hx, hy = cx + r * math.cos(math.radians(head)), cy + r * math.sin(math.radians(head))
+    cap = STROKE * SUPER / 2
+    d.ellipse((hx - cap, hy - cap, hx + cap, hy + cap), fill=accent + (255,))
+    finish(img, RING, RING, os.path.join(out, "ring.png"))
+
+
+def pill(out):
+    w, h = 270, 42
+    img = canvas(w, h, (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    full = (0, 0, w * SUPER - 1, h * SUPER - 1)
+    d.rounded_rectangle(full, radius=h * SUPER // 2, fill=(255, 255, 255, int(255 * 0.15)))
+    d.rounded_rectangle(full, radius=h * SUPER // 2, outline=(255, 255, 255, int(255 * 0.15)), width=SUPER)
+    d.rounded_rectangle((SUPER, SUPER, w * SUPER - 1 - SUPER, h * SUPER - 1 - SUPER), radius=h * SUPER // 2 - SUPER, fill=(255, 255, 255, int(255 * 0.14)))
+    finish(img, w, h, os.path.join(out, "pill.png"))
+
+
+def dot(out):
+    n = 8
+    img = canvas(n, n, (255, 255, 255))
+    ImageDraw.Draw(img).ellipse((0, 0, n * SUPER - 1, n * SUPER - 1), fill=(255, 255, 255, 255))
+    finish(img, n, n, os.path.join(out, "dot.png"))
+
+
+def main(argv):
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--accent", type=rgb, default=rgb("#fc2e64"))
+    p.add_argument("--out", default=os.path.join(HERE, "kuwai"))
+    args = p.parse_args(argv)
+    os.makedirs(args.out, exist_ok=True)
+    ring(args.accent, args.out)
+    pill(args.out)
+    dot(args.out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

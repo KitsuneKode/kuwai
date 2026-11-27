@@ -1,6 +1,6 @@
 # Maintainer: KitsuneKode
 #
-# Kuwai: a Hyprland desktop shell (Quickshell). pacman owns everything it needs;
+# kuwai: a Hyprland desktop shell (Quickshell). pacman owns everything it needs;
 # the desktop itself lives in each person's home. makepkg checks the release
 # tag's signature against validpgpkeys; kuwai-setup, from that tag, fetches the
 # release again for each person, checks it against release-signers/ before

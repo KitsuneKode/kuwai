@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { saverAfter, saverAllowed, afterText, fadeLead } from '../../shell/services/idleLadder.mjs';
+import { saverAfter, saverAllowed, afterText, fadeLead, longIdle } from '../../shell/services/idleLadder.mjs';
 
 const read = p => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 
@@ -55,4 +55,37 @@ test('a fresh install shows the still wallpaper before the lock; a chosen look i
   expect(key('screensaverWhen').default).toBe('always');
   expect(key('screensaverStyle').default).toBe('still');
   expect(read('shell/modules/screensaver/Screensaver.qml')).toMatch(/Settings\.screensaverStyle \|\| "still"/);
+});
+
+test('after an hour on the saver it goes to a clock on black, when nothing else ends it first', () => {
+  expect(longIdle(60, 180, 0, 0, false)).toEqual({ at: 3600, action: 'clock' });
+  expect(longIdle(30, 600, 0, 0, false)).toEqual({ at: 1800, action: 'clock' });
+  expect(longIdle(60, 600, 300, 0, true)).toEqual({ at: 3600, action: 'clock' });
+  expect(longIdle(60, 600, 300, 330, true)).toEqual({ at: 3600, action: 'clock' });
+  expect(longIdle(0, 180, 0, 0, false)).toEqual({ at: 0, action: 'none' });
+  expect(longIdle(undefined, 180, 0, 0, false).action).toBe('none');
+  expect(longIdle(-5, 180, 0, 0, false).action).toBe('none');
+});
+
+test('the screens turning off or the lock coming first leave the saver no long step', () => {
+  expect(longIdle(60, 180, 0, 600, false)).toEqual({ at: 420, action: 'screens' });
+  expect(longIdle(60, 180, 300, 330, false)).toEqual({ at: 120, action: 'none' });
+  expect(longIdle(60, 180, 300, 0, false)).toEqual({ at: 120, action: 'none' });
+  expect(longIdle(60, 180, 0, 3600 + 180, false)).toEqual({ at: 3600, action: 'screens' });
+  expect(longIdle(60, 180, 0, 3600 + 181, false)).toEqual({ at: 3600, action: 'clock' });
+  expect(longIdle(60, 180, 7200, 7200, false).action).toBe('clock');
+  expect(longIdle(60, 180, 3600 + 180, 0, false).action).toBe('none');
+});
+
+test('the long step follows the ladder and the saver goes dark without leaving anything running', () => {
+  const idle = read('shell/services/Idle.qml');
+  expect(idle).toMatch(/Ladder\.longIdle\(Settings\.screensaverLongMins, saverAfter, lockAfter, offAfter, held \|\| !enabled\)/);
+  const saver = read('shell/modules/screensaver/Screensaver.qml');
+  expect(saver).toMatch(/running: root\.showing && Idle\.saverLongAfter > 0 && !root\.longBlack/);
+  expect(saver).toMatch(/wantedFilm: showing && darkened && !longDark \? film : ""/);
+  expect(saver).toMatch(/active: !stage\.filmHere && !stage\.stillHere[^\n]*!root\.longDark/);
+  expect(saver).toMatch(/else longBlack = false/);
+  const schema = JSON.parse(read('shell/config/settings-schema.json'));
+  const e = schema.settings.find(k => k.key === 'screensaverLongMins');
+  expect([e.default, e.min, e.type, e.section]).toEqual([60, 0, 'integer', 'saver']);
 });

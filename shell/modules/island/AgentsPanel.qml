@@ -95,24 +95,54 @@ FocusScope {
     property int stopArmed: 0
     property string stopStart: ""
     property string stopNote: ""
+    property int forcePid: 0
+    property string forceStart: ""
     Timer { id: stopDisarm; interval: Theme.undoMs; onTriggered: ap.stopArmed = 0 }
     function age(s) { return s < 3600 ? Math.max(1, Math.round(s / 60)) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; }
+    function forceFor(r) { return !!r && forcePid === r.pid && forceStart === String(r.start); }
+    function serverSubline(r) {
+        return [r.local === false ? "on this network" : "", r.project, r.agent ? "from " + r.agent : "", r.age !== undefined ? age(r.age) : ""].filter(x => x).join(" · ");
+    }
     function stopServer(r) {
+        if (forceFor(r)) {
+            forcePid = 0;
+            forceStart = "";
+            stopProc.who = ":" + r.port;
+            stopProc.pid = r.pid;
+            stopProc.start = String(r.start);
+            stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", stopProc.start, "--force"];
+            stopProc.running = true;
+            return;
+        }
         if (stopArmed !== r.pid) { stopArmed = r.pid; stopStart = String(r.start); stopDisarm.restart(); return; }
         stopArmed = 0;
         stopDisarm.stop();
         stopProc.who = ":" + r.port;
+        stopProc.pid = r.pid;
+        stopProc.start = stopStart;
         stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", stopStart];
         stopProc.running = true;
     }
     Process {
         id: stopProc
         property string who: ""
+        property int pid: 0
+        property string start: ""
         stdout: StdioCollector {
             onStreamFinished: {
                 let r = {};
                 try { r = JSON.parse(text); } catch (e) {}
-                ap.stopNote = !r.ok ? (r.why ? "Couldn't stop " + stopProc.who + ": " + r.why : "Couldn't stop " + stopProc.who) : r.gone === false ? stopProc.who + ": " + r.why : "";
+                if (!r.ok) {
+                    ap.stopNote = r.why ? "Couldn't stop " + stopProc.who + ": " + r.why : "Couldn't stop " + stopProc.who;
+                    if (ap.forcePid === stopProc.pid) { ap.forcePid = 0; ap.forceStart = ""; }
+                } else if (r.gone === false) {
+                    ap.forcePid = stopProc.pid;
+                    ap.forceStart = stopProc.start;
+                    ap.stopNote = stopProc.who + " didn't stop · Force stop ends it";
+                } else {
+                    ap.stopNote = "";
+                    if (ap.forcePid === stopProc.pid) { ap.forcePid = 0; ap.forceStart = ""; }
+                }
                 if (!portsProc.running) portsProc.running = true;
             }
         }
@@ -139,6 +169,7 @@ FocusScope {
 
     // ── One list: kittymux panes, then T3 threads, by how much they need you ─
     readonly property var sections: [...new Set(rows.map(r => r.section))]
+    readonly property string phase: rows.length > 0 ? "content" : Kittymux.available && !Kittymux.loaded ? "loading" : "empty"
     readonly property var rows: {
         const out = [];
         for (const x of Agents.sessions) {
@@ -308,8 +339,19 @@ FocusScope {
         }
 
         // ── Empty: say so, and how to start one ─────────────────────────
+        Skeleton {
+            visible: ap.phase === "loading"
+            width: parent.width; height: Theme.sp(64); radius: Theme.r3
+        }
+        Label {
+            visible: ap.phase === "loading"
+            width: parent.width
+            text: "Looking for your agents…"
+            size: Theme.tFootnote; color: Theme.textTertiary
+        }
+
         Ui.EmptyState {
-            visible: ap.rows.length === 0
+            visible: ap.phase === "empty"
             topPadding: 8; bottomPadding: 8
             glyph: "\u{f06a9}"
             title: "No agents running"
@@ -321,11 +363,12 @@ FocusScope {
 
         ListView {
             id: list
-            visible: ap.rows.length > 0
+            visible: ap.phase === "content"
             width: parent.width
             readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0)
                 + (keyHints.visible ? keyHints.height : 0) + (health.visible ? health.height + col.spacing : 0)
                 + (budgetNote.visible ? budgetNote.height + col.spacing : 0)
+                + (stopNoteLine.visible ? stopNoteLine.implicitHeight + col.spacing : 0)
                 + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
             readonly property real room: Theme.panelMaxH - (ap.inStrip ? Theme.sp(34) : 0) - col.y - 18
             height: Math.min(contentHeight, Math.max(Theme.sp(96), room - others))
@@ -689,7 +732,7 @@ FocusScope {
                             Label {
                                 width: parent.width
                                 elide: Text.ElideRight
-                                text: [modelData.project, modelData.agent ? "from " + modelData.agent : "", modelData.age !== undefined ? ap.age(modelData.age) : ""].filter(x => x).join(" · ")
+                                text: ap.serverSubline(modelData)
                                 size: Theme.tFootnote; color: Theme.textTertiary
                             }
                         }
@@ -697,11 +740,12 @@ FocusScope {
                             id: portStop
                             anchors { right: portOpen.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
                             height: Theme.sp(28); size: Theme.tFootnote
-                            kind: "quiet"
+                            kind: ap.forceFor(modelData) ? "danger" : "quiet"
                             visible: !!modelData.start
-                            text: ap.stopArmed === modelData.pid ? "Stop it?" : "Stop"
+                            enabled: !stopProc.running || stopProc.pid !== modelData.pid
+                            text: ap.forceFor(modelData) ? "Force stop" : stopProc.running && stopProc.pid === modelData.pid ? "Stopping…" : ap.stopArmed === modelData.pid ? "Stop it?" : "Stop"
                             onClicked: ap.stopServer(modelData)
-                            Accessible.name: "Stop the server on port " + modelData.port
+                            Accessible.name: (ap.forceFor(modelData) ? "Force stop" : "Stop") + " the server on port " + modelData.port
                         }
                         Button {
                             id: portOpen
@@ -716,6 +760,7 @@ FocusScope {
             ScrollHint { flickable: portsCol; inside: true }
         }
         Label {
+            id: stopNoteLine
             visible: ap.stopNote !== "" && portsCard.visible
             width: parent.width
             wrapMode: Text.Wrap
@@ -728,7 +773,7 @@ FocusScope {
         KeyHints {
             id: keyHints
             visible: Island.via === "key"
-            hints: [["↑↓", "Choose"], ["↩", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
+            hints: [["↑↓", "Choose"], ["↵", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
         Label {
@@ -769,11 +814,12 @@ FocusScope {
             width: parent.width
             spacing: 8
             Button {
-                width: (parent.width - 8) / 2
+                width: ap.phase === "content" ? (parent.width - 8) / 2 : parent.width
                 text: "Usage"
                 onClicked: Island.open("usage", Island.screen, "pointer")
             }
             Button {
+                visible: ap.phase === "content"
                 width: (parent.width - 8) / 2
                 enabled: (Kittymux.attention || []).length > 0
                 text: (Kittymux.attention || []).length ? "Mark all read (" + Kittymux.attention.length + ")" : "All read"

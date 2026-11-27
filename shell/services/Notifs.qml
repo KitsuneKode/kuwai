@@ -1,4 +1,4 @@
-// Kuwai's notification server (org.freedesktop.Notifications). Replaces
+// kuwai's notification server (org.freedesktop.Notifications). Replaces
 // dunst while kuwai runs; bin/kuwai-shell hands the bus name over, and if
 // this process dies D-Bus activation brings dunst back as the fallback.
 //
@@ -116,7 +116,7 @@ Singleton {
         : dnd ? "Do Not Disturb · notifications held"
         : dndMute ? "Held while sharing"
         : inbox === 0 ? "Notifications"
-        : (inbox > 9 ? "9+ in center" : inbox === 1 ? "1 in center" : inbox + " in center")
+        : (inbox > 9 ? "9+ in centre" : inbox === 1 ? "1 in centre" : inbox + " in centre")
 
     readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/kuwai"
     property bool loaded: false
@@ -563,7 +563,7 @@ Singleton {
     // the same, but only while it lives (30s); this works from history.
     function jumpTo(item) {
         const [pid, w] = item.jump.split(":");
-        const p = jumper.createObject(root, { command: [Quickshell.env("HOME") + "/.local/bin/kittymux", "act", JSON.stringify({ op: "jump", pid: Number(pid), w: w })] });
+        const p = jumper.createObject(root, { command: [Kittymux.muxBin(), "act", JSON.stringify({ op: "jump", pid: Number(pid), w: w })] });
         p.running = true;
         if (item.notification) item.notification.dismiss();     // its helper exits without acting
     }

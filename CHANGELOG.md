@@ -11,7 +11,7 @@ is listed here.
 - A new install opens Welcome: the four keys that reach nearly everything, and
   clipboard history and GitHub/Gmail notifications to turn on if you want them.
   After an update, the notch says so; a click shows what's new.
-- Kuwai is an AUR package (`kuwai`): pacman installs everything it needs, and
+- kuwai is an AUR package (`kuwai`): pacman installs everything it needs, and
   `kuwai-setup` sets it up in your home.
 
 ### The notch
@@ -26,13 +26,28 @@ is listed here.
 - Every menu has the same rows, type and surface (the tray's menus too).
 - Notifications opens with a Today row (the date, what's next, the weather);
   Controls has a Sound module (the output's volume; right-click mutes).
-- Switching island panels and center tabs crossfades instead of cutting.
+- Switching island panels and centre tabs crossfades instead of cutting.
 - Text is one notch larger on a real scale (11 · 12 · 13 · 14 · 15 · 16 · 19
   · 22 · 26) and panels are 20 px wider; one colour means "on"; capsules
   keep a coloured edge only when something needs you.
 - Capsules on the right can be swiped up to hide them until what they say
   changes (it never worked: the screen's edge stopped the pointer short).
 - The Agents panel no longer repeats usage; it lives in the Usage section.
+
+### Polish before the announcement
+- Keys are named as a PC keyboard prints them (Super, Ctrl, Alt, Shift, Esc, Tab)
+  on every cap, hint and footer; the ⌘ ⌥ ⌃ ⇧ glyphs are gone. Welcome's words are
+  plainer and its key column grows with Text size.
+- One spelling (UK: centre, colour, minimise) and one casing (kuwai) in the
+  shell, the docs and the site.
+- Usage, Updates, Agents and Cleanup each show one state at a time (loading,
+  empty, error or content, never stacked); a failed refresh over a list says so on
+  the list's own header or footer with Retry beside it. Orange means "needs you"
+  and nothing else (charts and held packages no longer use it).
+- Lock and login share one set of tokens for the clock, its line, the hint and
+  the password cell; the farewell's moon and door are drawn, like its other marks.
+- Clipboard, Lock, Login, Assistant, the volume and brightness HUD and the toasts
+  are staged in the rehearsal, in their main states, at every Text size.
 
 ### Install and updates
 - Rollback undoes migrations. A migration names what it changes in
@@ -57,7 +72,7 @@ is listed here.
 ### Motion
 - Unlocking gives you the desktop at 400 ms instead of 760: the lock lifts
   with the shackle, not after it, and the release is computed from the tokens.
-- Super+V, Super+N and Super+/ each have one entrance: the shelf, the center
+- Super+V, Super+N and Super+/ each have one entrance: the shelf, the centre
   and the key palette no longer stagger their rows after the panel arrives.
 - Closing the island is quicker than opening it, and the clock and capsules
   come back together instead of one after another.
@@ -78,7 +93,7 @@ is listed here.
 - "Only when you open Software Update" means no checks run by themselves.
 
 ### Security
-- Kuwai installs only signed releases: `kuwai setup` fetches one release tag
+- kuwai installs only signed releases: `kuwai setup` fetches one release tag
   and checks its signature (a key in `release-signers/`) and every file
   against the digest the tag carries before anything in it runs;
   `kuwai update-self` checks a release the same way, and refuses a tag that
@@ -119,7 +134,7 @@ is listed here.
 
 ## 0.1.0 — 2026-11-25
 
-The first release. Kuwai is a desktop for Arch Linux: its own Hyprland session
+The first release. kuwai is a desktop for Arch Linux: its own Hyprland session
 (Lua config, Hyprland 0.57 or newer) and its own Quickshell shell, built
 around one status surface at the top of the screen, the island.
 
@@ -131,7 +146,7 @@ listed is part of 0.1.0.
 - `install.sh` with `--dry-run`, `--deps` (packages from `packages/core.txt`,
   `optional.txt`, `fonts.txt`; `--yes` for no prompts), `--doctor` and
   `--uninstall`, which puts back everything it replaced, user services included.
-- Kuwai is its own login session. Its Hyprland config lives in
+- kuwai is its own login session. Its Hyprland config lives in
   `~/.config/kuwai/hypr/`, so the plain Hyprland session and `~/.config/hypr`
   stay yours. An install that used `~/.config/hypr` moves across with
   `./install.sh --separate-session`.
@@ -160,9 +175,9 @@ listed is part of 0.1.0.
 - Capsules float beside it, each with its own state colour: your agents
   (kitty panes and T3 Code threads, one mark per agent), an agent waiting on
   you (its own orange capsule), usage limits (which only say when you can
-  carry on), system news and minimized windows (Super+O).
+  carry on), system news and minimised windows (Super+O).
 - Agents, Usage, System and Cleanup are sections of one panel, switched from a
-  header strip or with ⌥1–4. Every panel works from the keyboard.
+  header strip or with Alt+1–4. Every panel works from the keyboard.
 - Agents: calm cards with a status pill, grouped by where they run. A working
   agent shows its last three steps and its context fill. Answer Allow or Deny
   (Claude Code, Codex, T3 approvals) from the notch, through the agent's own
@@ -180,11 +195,11 @@ listed is part of 0.1.0.
 - Idle projects (with [sweep](https://github.com/KitsuneKode/sweep)): old
   projects holding space worth getting back.
 
-### Notifications and the center
-- Kuwai runs its own notification server, with a Sonner-style toast stack.
+### Notifications and the centre
+- kuwai runs its own notification server, with a Sonner-style toast stack.
   Important notifications peek out of the notch, and apps can offer their own
   buttons there.
-- One notification center (Super+N), with Notifications, Sound (a per-app
+- One notification centre (Super+N), with Notifications, Sound (a per-app
   mixer and outputs) and Controls (Wi‑Fi, Bluetooth, DND, Night Shift,
   Caffeine, mic, Reduce Motion, battery, brightness).
 - Swipe a notification away and undo a clear. Stale news leaves on its own.
@@ -192,7 +207,7 @@ listed is part of 0.1.0.
 - One rule decides who may interrupt. An agent asking you reaches you
   everywhere. Under Focus, DND or screen sharing nothing grows the notch.
 - GitHub and Gmail feeds (`kuwai feeds`). Bot reviews and failures toast; the
-  rest waits in the center.
+  rest waits in the centre.
 
 ### Launcher, clipboard and assistant
 - Launcher: apps, a dock of what you use most, a real calculator (units,

@@ -40,7 +40,7 @@ patch one key. Writes use a unique0600 temporary file, fsync and atomic rename.
 A comparison before rename detects intervening external edits. Editors that do
 not take the lock can still race the final compare/rename: POSIX rename does not
 provide compare-and-swap. Keep manual editing and GUI changes separate, or use
-the shared helper. The GUI serializes its patches, displays pending state and
+the shared helper. The GUI serialises its patches, displays pending state and
 rolls back optimistic values if saving fails. It reloads external changes and
 never writes an entire cached document over them.
 

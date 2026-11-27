@@ -23,3 +23,9 @@ def test_the_home_keeps_the_greeter_group():
 
 def test_the_install_checks_the_greeter_can_read_the_name():
     assert 'runuser -u greeter -- test -r "$DEST/home/.kuwai-user"' in SRC
+
+
+def test_undo_takes_root_s_copy_of_the_login_screen_with_it():
+    undo = SRC[SRC.index("if [ $MODE = undo ]"):SRC.index("was=$(basename")]
+    assert undo.rstrip().endswith("exit 0\nfi") and 'rm -rf -- "$DEST"\n    exit 0' in undo
+    assert undo.index('done <"$RECEIPT"') < undo.index('rm -rf -- "$DEST"'), "the saved originals are read first"

@@ -84,6 +84,12 @@ Scope {
 
     readonly property bool obscured: root.locked || Saver.locked || Saver.screensOff || Saver.showing
     readonly property bool batteryOk: !UPower.onBattery || Settings.liveOnBattery
+    Timer {
+        interval: Theme.panelPollMs * 2
+        repeat: true
+        running: root.video !== "" && !root.locked && !Saver.locked && !Saver.showing
+        onTriggered: Saver.probeDpms()
+    }
 
     // mpv plays when mpvpaper (with socat and jq) is there; asked once at start.
     property bool viaMpv: false
@@ -152,16 +158,19 @@ Scope {
                 return W > 0 && H > 0 ? Math.min(1, root.unionArea(rects) / (W * H)) : 0;
             }
             readonly property bool covered: fullscreen || coverage >= 0.85
-            readonly property bool shouldPlay: root.video !== "" && !covered && !root.obscured && root.batteryOk
+            readonly property bool dpmsOff: Saver.isOutputOff(slot.modelData.name) || !!(mon && mon.lastIpcObject && (mon.lastIpcObject.dpmsStatus === false || mon.lastIpcObject.disabled))
+            readonly property bool slotObscured: root.obscured || dpmsOff
+            readonly property bool shouldPlay: root.video !== "" && !covered && !slotObscured && root.batteryOk
             property bool released: !shouldPlay
             onShouldPlayChanged: if (shouldPlay) released = false
+            onSlotObscuredChanged: if (slotObscured) released = true
             Timer {
                 id: coverRelease
                 interval: 10000
-                running: root.video !== "" && !root.obscured && !slot.shouldPlay && !slot.released
+                running: root.video !== "" && !slot.slotObscured && !slot.shouldPlay && !slot.released
                 onTriggered: slot.released = true
             }
-            readonly property string want: root.video === "" || root.obscured || (slot.released && !shouldPlay) ? "stop" : shouldPlay && !WallFx.liveHeld ? "play" : "pause"
+            readonly property string want: root.video === "" || slot.slotObscured || (slot.released && !shouldPlay) ? "stop" : shouldPlay && !WallFx.liveHeld ? "play" : "pause"
 
             // Window geometry (lastIpcObject) is a snapshot: refresh it a
             // moment after windows open, close or move.
@@ -178,6 +187,15 @@ Scope {
 
             // ── mpv plays it: the latest decision, one command at a time ──
             property string sent: ""                 // "play FILE", "pause FILE", "stop": what mpv was last told
+            property string frozenPath: ""
+            readonly property bool showStill: root.video !== "" && !slot.slotObscured && frozenPath !== "" && (root.viaMpv || (slot.released && !slot.shouldPlay)) && (slot.want === "pause" || (slot.want === "stop" && slot.released) || (slot.want === "play" && root.viaMpv && slot.sent !== "play " + root.video))
+            function parseFrozen(text) {
+                if (ctl.video !== root.video || root.video === "") return;
+                for (const l of String(text || "").split("\n")) {
+                    const m = l.match(/^(\S+) (\/.+)$/);
+                    if (m && m[1] === slot.modelData.name) slot.frozenPath = m[2];
+                }
+            }
             function drive() {
                 if (!root.viaMpv) return;
                 const next = slot.want === "stop" ? "stop" : slot.want + " " + root.video;
@@ -188,15 +206,20 @@ Scope {
                             : slot.want === "play" ? [bin, "out-play", name, root.video]
                             : [bin, "out-play", name, root.video, "paused"];
                 ctl.wanted = next;
+                ctl.video = root.video;
                 ctl.running = true;
             }
             onWantChanged: drive()
             Connections { target: WallFx; function onPhaseChanged() { if (WallFx.phase === "") { slot.sent = ""; slot.drive(); } } }
-            Connections { target: root; function onVideoChanged() { slot.drive(); } function onViaMpvChanged() { slot.drive(); } }
+            Connections { target: root; function onVideoChanged() { slot.frozenPath = ""; slot.drive(); } function onViaMpvChanged() { slot.drive(); } }
             Process {
                 id: ctl
                 property string wanted: ""
+                property string video: ""
                 property bool again: false
+                stdout: StdioCollector {
+                    onStreamFinished: slot.parseFrozen(text)
+                }
                 onExited: (code, status) => {
                     slot.sent = code === 0 ? wanted : "";
                     if (again) { again = false; slot.drive(); }
@@ -207,7 +230,7 @@ Scope {
                 Quickshell.execDetached([Paths.bin + "/kuwai-livewall", "out-stop", slot.modelData.name])
 
         LazyLoader {
-            active: !root.viaMpv && root.video !== "" && !root.obscured
+            active: !root.viaMpv && root.video !== "" && !slot.slotObscured && !(slot.released && !slot.shouldPlay)
 
             PanelWindow {
                 id: bg
@@ -223,8 +246,16 @@ Scope {
                 mask: Region {}
                 color: "transparent"
 
-                readonly property bool shouldPlay: slot.shouldPlay
+                readonly property bool shouldPlay: slot.want === "play"
 
+                Image {
+                    anchors.fill: parent
+                    visible: slot.frozenPath !== ""
+                    source: slot.frozenPath !== "" ? "file://" + slot.frozenPath : ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: false
+                }
                 VideoOutput {
                     id: out
                     anchors.fill: parent
@@ -249,6 +280,27 @@ Scope {
                 onShouldPlayChanged: apply()
                 Connections { target: player; function onSourceChanged() { bg.apply(); } }
                 Component.onCompleted: apply()
+            }
+        }
+        LazyLoader {
+            id: stillLoader
+            active: slot.showStill
+            PanelWindow {
+                screen: slot.modelData
+                anchors { top: true; bottom: true; left: true; right: true }
+                exclusionMode: ExclusionMode.Ignore
+                WlrLayershell.layer: WlrLayer.Background
+                WlrLayershell.namespace: "kuwai.wallpaper"
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+                mask: Region {}
+                color: "transparent"
+                Image {
+                    anchors.fill: parent
+                    source: slot.frozenPath !== "" ? "file://" + slot.frozenPath : ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: false
+                }
             }
         }
         }

@@ -271,9 +271,9 @@ Item {
             Repeater {
                 model: content.center.tab === "notifications"
                     ? (Notifs.undoSurface === "center"
-                        ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["⌫"], t: "Dismiss" }, { k: ["⌃", "Z"], t: "Undo" }]
-                        : [{ k: ["↑", "↓"], t: "Select" }, { k: ["↩"], t: "Open" }, { k: ["r"], t: "Reply" }, { k: ["⌫"], t: "Dismiss" }])
-                    : [{ k: ["⌥", content.center.notch ? "1–2" : "1–3"], t: "Tabs" }, { k: ["⎋"], t: "Close" }]
+                        ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↵"], t: "Open" }, { k: ["⌫"], t: "Dismiss" }, { k: ["Ctrl", "Z"], t: "Undo" }]
+                        : [{ k: ["↑", "↓"], t: "Select" }, { k: ["↵"], t: "Open" }, { k: ["r"], t: "Reply" }, { k: ["⌫"], t: "Dismiss" }])
+                    : [{ k: ["Alt", content.center.notch ? "1–2" : "1–3"], t: "Tabs" }, { k: ["Esc"], t: "Close" }]
                 Row {
                     id: hint
                     required property var modelData

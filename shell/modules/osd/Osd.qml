@@ -651,8 +651,10 @@ Scope {
         // The island's own width on this screen: the HUD starts as the island.
         readonly property real islandW: Island.restWidths[shownScreen ? shownScreen.name : ""] || 220
         margins.top: inIsland ? 0 : Theme.barGap
-        implicitWidth: 316 + 32          // fixed: the card morphs inside, the surface never resizes
-        implicitHeight: 74 + 36
+        readonly property real cardW: Theme.sp(316)
+        readonly property real cardH: Math.max(74, osdCol.implicitHeight + 36)
+        implicitWidth: cardW + 32          // fixed: the card morphs inside, the surface never resizes
+        implicitHeight: cardH + 36
         // On the island it sits where the island is, not under its reserved strip.
         exclusionMode: inIsland ? ExclusionMode.Ignore : ExclusionMode.Normal
         color: "transparent"
@@ -705,8 +707,8 @@ Scope {
             id: card
             property real reveal: 0
             // In the island it grows out of the pill (≈ its rest size) instead of dropping in.
-            width: hud.inIsland ? hud.islandW + (316 - hud.islandW) * reveal : 316
-            height: hud.inIsland ? 34 + (74 - 34) * reveal : 74
+            width: hud.inIsland ? hud.islandW + (hud.cardW - hud.islandW) * reveal : hud.cardW
+            height: hud.inIsland ? 34 + (hud.cardH - 34) * reveal : hud.cardH
             radius: hud.inIsland ? 14 + (30 - 14) * reveal : height / 2.9
             tint: hud.notch ? "transparent" : hud.inIsland ? Qt.rgba(0, 0, 0, 0.9) : Theme.glassTint
             rimColor: hud.notch ? "transparent" : spec.rim
@@ -782,7 +784,7 @@ Scope {
             Rectangle {
                 id: platter
                 opacity: card.inner
-                width: 44; height: 44; radius: Theme.r4
+                width: Theme.sp(44); height: width; radius: Theme.r4
                 anchors.left: parent.left
                 anchors.leftMargin: 15
                 anchors.verticalCenter: parent.verticalCenter
@@ -823,12 +825,13 @@ Scope {
                     visible: !artPic.visible
                     text: root.glyph
                     font.family: Theme.fontGlyph
-                    font.pixelSize: Theme.glyphL
+                    font.pixelSize: Theme.sp(Theme.glyphL)
                     color: root.muted ? Theme.textDim : Theme.textPrimary
                 }
             }
 
             Column {
+                id: osdCol
                 opacity: card.inner
                 anchors.left: platter.right
                 anchors.leftMargin: 13
@@ -841,21 +844,14 @@ Scope {
                     width: parent.width
                     height: titleText.implicitHeight
 
-                    Text {
-                        textFormat: Text.PlainText
+                    Label {
                         id: titleText
                         anchors.left: parent.left
                         anchors.right: accessoryRow.left
                         anchors.rightMargin: 8
                         text: root.title
                         elide: Text.ElideRight
-                        font.family: Theme.fontText
-                        font.weight: Theme.wMedium
-                        font.pixelSize: 14
-                        font.variableAxes: ({ "opsz": Theme.opszFor(14), "wght": Theme.wMedium })
-                        font.letterSpacing: Theme.tracking(14, false)
-                        renderType: Text.NativeRendering
-                        color: Theme.textPrimary
+                        size: Theme.tBody; weight: Theme.wMedium
                     }
 
                     // On hover: a chevron says the card opens into its page.
@@ -865,7 +861,7 @@ Scope {
                         anchors.verticalCenter: titleText.verticalCenter
                         text: "\u{f0142}"
                         font.family: Theme.fontGlyph
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.sp(14)
                         color: Theme.textSecondary
                         opacity: cardHover.hovered ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -882,7 +878,7 @@ Scope {
                             visible: root.linkGlyph !== ""
                             text: root.linkGlyph
                             font.family: Theme.fontGlyph
-                            font.pixelSize: 14
+                            font.pixelSize: Theme.sp(14)
                             color: Theme.textSecondary
                         }
                         Text {
@@ -890,36 +886,24 @@ Scope {
                             visible: root.accessoryGlyph !== ""
                             text: root.accessoryGlyph
                             font.family: Theme.fontGlyph
-                            font.pixelSize: 14
+                            font.pixelSize: Theme.sp(14)
                             color: Theme.textSecondary
                         }
-                        Text {
-                            textFormat: Text.PlainText
+                        Label {
                             visible: root.accessory !== ""
                             text: root.accessory
-                            // Numerals in SF Pro Rounded, as Control Center sets them (Inter: open digits)
-                            font.family: Theme.fontRounded
-                            font.weight: Theme.wMedium
-                            font.pixelSize: 13
-                            font.letterSpacing: Theme.tracking(13, true)
-                            renderType: Text.NativeRendering
-                            font.features: Theme.numeralFeatures(true, true)
+                            size: Theme.tSub; weight: Theme.wMedium; rounded: true; tabular: true
                             color: Theme.textSecondary
                         }
                     }
                 }
 
-                Text {
-                    textFormat: Text.PlainText
+                Label {
                     visible: !root.showTrack
                     width: parent.width
                     text: root.subtitle
                     elide: Text.ElideRight
-                    font.family: Theme.fontText
-                    font.pixelSize: 13
-                    font.variableAxes: ({ "opsz": Theme.opszFor(13), "wght": Theme.wRegular })
-                    font.letterSpacing: Theme.tracking(13, false)
-                    renderType: Text.NativeRendering
+                    size: Theme.tSub
                     color: Theme.textSecondary
                 }
 
@@ -966,23 +950,16 @@ Scope {
                         }
                     }
 
-                    Text {
-                        textFormat: Text.PlainText
+                    Label {
                         id: valueLabel
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        // Reserve room for "100" so the track length never jitters.
                         width: Math.max(widest.advanceWidth, current.advanceWidth)
                         horizontalAlignment: Text.AlignRight
                         TextMetrics { id: widest; font: valueLabel.font; text: "100" }
                         TextMetrics { id: current; font: valueLabel.font; text: valueLabel.text }
                         text: root.valueText
-                        font.family: Theme.fontRounded
-                        font.weight: Theme.wMedium
-                        font.pixelSize: 13
-                        font.letterSpacing: Theme.tracking(13, true)
-                        renderType: Text.NativeRendering
-                        font.features: Theme.numeralFeatures(true, true)
+                        size: Theme.tSub; weight: Theme.wMedium; rounded: true; tabular: true
                         color: Theme.textSecondary
                     }
                 }

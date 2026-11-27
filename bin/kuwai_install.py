@@ -265,7 +265,9 @@ def wanted_links(name):
 
 def set_unit(name, on, bus):
     if bus:
-        args = ["enable", name] if on else ["disable", "--now", name]
+        if not on:
+            subprocess.run(["systemctl", "--user", "stop", name], capture_output=True)
+        args = ["enable", name] if on else ["disable", name]
         r = subprocess.run(["systemctl", "--user", *args], capture_output=True, text=True)
         if r.returncode == 0:
             return True

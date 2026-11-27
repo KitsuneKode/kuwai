@@ -36,7 +36,7 @@ jobs:
             bash -n "$f" || fail=1
           done
           exit $fail
-      - name: Python tests (as an ordinary user, the way Kuwai runs)
+      - name: Python tests (as an ordinary user, the way kuwai runs)
         run: |
           useradd -m tester
           chown -R tester: "$GITHUB_WORKSPACE"

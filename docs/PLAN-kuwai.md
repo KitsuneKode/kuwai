@@ -94,16 +94,16 @@ Blocks the release:
       first monitor gets workspaces 1–10, two identical monitors don't collide.
 
 Before announcing (P1/P2):
-- [ ] Key caps say Super/Ctrl/Alt on PC keyboards (Fable); Welcome copy and 2×.
-- [ ] One spelling (UK or US) and one brand casing; CHANGELOG has one 0.2.0.
-- [ ] Usage/Updates/Agents/Cleanup: one state each (Fable 13–15); orange only
+- [x] Key caps say Super/Ctrl/Alt on PC keyboards (Fable); Welcome copy and 2×.
+- [x] One spelling (UK or US) and one brand casing; CHANGELOG has one 0.2.0.
+- [x] Usage/Updates/Agents/Cleanup: one state each (Fable 13–15); orange only
       for "needs you"; lock and login share one token set (Fable 12); farewell
       marks all drawn as Shapes (Fable 11).
-- [ ] AUR updates with yay or no helper (Neon); kittymux path from PATH.
-- [ ] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
+- [x] AUR updates with yay or no helper (Neon); kittymux path from PATH.
+- [x] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
       text (Grok P2); Agents Stop can force and says "on this network".
 - [x] Voxtype: clear stale cancelled takes at daemon start (Astra P2).
-- [ ] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups.
+- [x] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups (the clipboard shelf is staged at 100 % and 120 % only: its geometry is fixed pixels).
 
 ## VISUALS + HEX PASS (2026-11-27, evening) — six reviews
 
@@ -130,12 +130,14 @@ Next, by severity then value:
       on the lock, title only under the privacy rule (Grok 4); dismissing a
       hidden or code notification needs an unlock (Grok 5).
 - [ ] One ClockFace for lock, login and saver (Sonnet 3); login ClockGround zone.
-- [ ] Saver as a real idle step: saver → fade → lock, default Still with the
+- [x] Saver as a real idle step: saver → fade → lock, default Still with the
       current wallpaper (Sonnet 4); long-idle ladder: after an hour, clock on
       black or DPMS (Composer 1); photo shuffle (Composer 2); one throttled GLSL
-      style (Composer 3); a quiet media pulse (Composer 5).
+      style (Composer 3); a quiet media pulse (Composer 5). Done 2026-11-27:
+      screensaverLongMins (60), Photos, Flow, screensaverPulse (off); owner to
+      watch the real screens.
 - [ ] Live wallpaper: Qt fallback obeys the 10 s release (Sol 4); per-connector
-      mpvpaper ops serialized, success only when playing (Sol 5); DPMS state from
+      mpvpaper ops serialised, success only when playing (Sol 5); DPMS state from
       the compositor (Sol 6); a still frame under a paused live wallpaper (Neon).
 - [ ] Wallpapers: replace or mark the 11 unlicensed theme sets (Neon; Sonnet's
       per-theme picks); wallcheck --default gate in tests; 'Get more' packs with
@@ -147,7 +149,7 @@ Next, by severity then value:
       ordered delivery; per-entry audio + 'Re-clean' in Studio; 'my clipboard' /
       'rewrite this' / 'stop dictation' phrases; usage rollup with real WPM.
 - [ ] Earlier: Activity tab; Docker/journald in Caches. (API keys → keyring: done, kuwai secrets.)
-- [ ] Boot: a minimal Plymouth theme (black, one accent ring) (Sonnet 8).
+- [x] Boot: a minimal Plymouth theme (black, one accent ring) (Sonnet 8). system/plymouth/, docs/manual/boot.md; owner runs the install and sees it at boot.
 
 ## INSPIRATION PASS (2026-11-27) — Clove and pocket-dots, with Neon 4 and Sol 6.2
 
@@ -206,7 +208,7 @@ P1 security:
 P1 runtime and install:
 - [x] idle dim / pre-lock fade stick when an inhibitor engages (Gemini 4).
 - [x] screen-share privacy resets on a config reload mid-share (Gemini 3).
-- [x] a panel/Center open on an unplugged monitor strands state (Gemini 5).
+- [x] a panel/Centre open on an unplugged monitor strands state (Gemini 5).
 - [x] Dim forgets a missing monitor's level (Sol 3); OTP history misses (Sol 4); T3 answer dies with the panel (Sol 5);
       volume keys without a player wake the saver, forced latch after fullscreen (Sol 9, Gemini 19); calendar TZID (Sol 10);
       Limits "partly out" (Sol 11); FluidHighlight brightens on loss (Sol 12); keys.tsv lost edit (Sol 8).
@@ -507,7 +509,7 @@ Open, in order:
 ## STATUS (2026-11-06 late) — ratings and what gates 9.5
 
 Notch rest 9.3 · hover 9.0 · Usage 9.3 · Bluetooth 9.0 · bell list 8.8 ·
-center 8.8 · screensaver 9.0 · updates 9.0 · clipboard 8.5 · lock/login 6.5 ·
+centre 8.8 · screensaver 9.0 · updates 9.0 · clipboard 8.5 · lock/login 6.5 ·
 CPU 9.2 (idle ~3 %) · memory 8.8 (290–380 MB plateau, no per-open leak:
 60 opens of a panel ended lower) · reliability 8.5 (3 load outages today,
 gates now: offscreen load test + anchor-line names) · consistency 8.0
@@ -520,7 +522,7 @@ Gating 9.5, in order:
 3. Tokens to zero: sizes (62) and the remaining durations (111) by meaning.
 4. Clipboard onto the island's row/header style; one Row/Header component
    shared by NotifsPanel, T3Panel, BluetoothPanel, UsagePanel.
-5. Notifications: toast → its row in the center as one motion (bursts
+5. Notifications: toast → its row in the centre as one motion (bursts
    already fold into one toast with a count).
 6. Verify by eye: hover pill reveal, GPU/Temp page turn, back-soon mark,
    "Claude is back" moment, dim restore (test running in background).
@@ -537,13 +539,13 @@ every screen, Bluetooth menu keepOpen + island panel "bluetooth", LiquidRim.
 Open:
 - [ ] Audits running: Grok 4.7 (state reconciliation), Gemini 3.8 Flash
       (multi-monitor), Composer 2.5 (clipboard, links, markdown). Fix what verifies.
-- [ ] Notification center adopts the island look (LiquidRim, row style of NotifsPanel).
+- [ ] Notification centre adopts the island look (LiquidRim, row style of NotifsPanel).
 - [ ] Usage limits in the notch: review the delegate's worktree branch, merge.
 - [ ] Login/lock: user runs the GRUB line (docs/manual), then a seamless greeter→shell handoff.
 - [ ] **Design consistency (token migration):** every raw size/duration/hex
       onto Theme tokens (bin/kuwai-tokens ratchet: sizes 62, durations 131,
       hex 70 → 0); one row style (NotifsPanel/T3Panel/BluetoothPanel: 46 px,
-      Theme.r2, 0.07 hover) used by the center, launcher, clipboard; one
+      Theme.r2, 0.07 hover) used by the centre, launcher, clipboard; one
       header style (tTitle3 semibold + right meta in tFootnote tertiary); one
       empty state (glyph + tSub line); one button set (PillButton, RestMark).
       Migrate file by file, lowest-traffic first, screenshot before/after.
@@ -581,7 +583,7 @@ Status (2026-11-05, late):
    `rice promote` restarts it (fresh process). Root cause still unknown (dev
    only); find it with a nested/headless compositor when one is installed.
    Promote also lints changed QML (qmllint) and refuses code that won't load.
-2. Lazy panels: done (Center warms on open, cools after 3 min; Overview
+2. Lazy panels: done (Centre warms on open, cools after 3 min; Overview
    LazyLoader; Assistant built on open; Clipboard mapped on purpose).
 3. States: Updates skeleton, Wi-Fi (off/scanning/none found+Rescan/no match),
    launcher and clipboard empty states, bell quick list empty state. Left:
@@ -591,7 +593,7 @@ Status (2026-11-05, late):
    hex 70. Keep migrating module by module; run `kuwai-tokens --update` after.
 5. Popovers: bell on components/Popover; status menus on TrayMenu;
    AgentStack keeps its own popup on purpose (marks fly into rows).
-6. Super+N: already island = quick switch, Center = deep list (+ passwords).
+6. Super+N: already island = quick switch, Centre = deep list (+ passwords).
 7. Login gap: needs the user's GRUB line (see below); then seamless handoff.
 8. Clipboard: copies vanished when the copying window closed (drop-down
    kitty is its own process); wl-clip-persist starts at login once installed.
@@ -690,7 +692,7 @@ Status (2026-11-05, late):
   installed to ~/.local/lib/voxtype-fork, old binary in ~/backups; drop-in
   ~/.config/systemd/user/voxtype.service.d/kuwai-osd-host.conf). Falls back to voxtype's own
   Quickshell if this shell is gone >5 s. Saves ~400 MB.
-- Center opens on the clicked screen / Hyprland's focused one; tray menus dismiss (leave 650 ms,
+- Centre opens on the clicked screen / Hyprland's focused one; tray menus dismiss (leave 650 ms,
   idle 6 s, outside click); TrayMenu also takes plain action lists (one menu everywhere).
 - Clipboard: grows from / folds into the island shape (no label-pill flash), sized surface.
 - Updates quick routes: chip right-click (review · update everything now [confirm, AUR
@@ -705,7 +707,7 @@ Status (2026-11-05, late):
   island/panels progressively. Keep Nerd Font for brand/app glyphs.
 - RaisedButton everywhere a primary action exists (Settings, Power, Clipboard actions); PillButton
   → secondary raise.
-- Steal list (clones in Claude scratchpad refs/): DMS process list + control center polish,
+- Steal list (clones in Claude scratchpad refs/): DMS process list + control centre polish,
   dock, notepad; Caelestia dashboard (media + perf + weather), lock with media; end-4 AI sidebar
   (cheap LLM: Groq/OpenRouter free) and overview live previews; Omarchy menu tree + snapshot.
 - Workspaces: drag-to-pill is not possible (layer surfaces get no window DnD); keep
@@ -737,7 +739,7 @@ Status (2026-11-05, late):
   Material Symbols variable is the alternative (needs pacman).
 - Apple roundness: a Squircle component (continuous corners, like NotchShape) for cards,
   panels, toasts; capsules stay capsules.
-- Glass: one material pass (GlassCard + Elevation) across island surfaces, toasts, center.
+- Glass: one material pass (GlassCard + Elevation) across island surfaces, toasts, centre.
 - Notifications: full UX pass (grouping, actions, inline reply, image previews, swipe).
 - Weekly AUR digest (optional cheap LLM: Groq/OpenRouter free) reading upstream release notes
   for non-established packages; Omarchy's package repo as a future source of vetted builds.
@@ -766,7 +768,7 @@ Primitives to consolidate (no duplication):
 - Nerd-glyph Text → components/Icon (Phosphor) everywhere
 - inline spring tiers (Capsules, LockView) → Theme tokens
 - 5 services each declare a `runner` Process component → one services/Run (exec + callback)
-- kuwai state file read in Island and IslandStatus → one services/Kuwai (mode, model, features)
+- kuwai state file read in Island and IslandStatus → one services/kuwai (mode, model, features)
 - TrayMenu (popup) + ActionMenu (in-panel) share one item model already; keep both surfaces
 - ~/Scripts dependencies (brightness.sh/py) → move into the repo for distribution
 
@@ -791,13 +793,13 @@ Primitives to consolidate (no duplication):
 4. Settings panel: features (kuwai feature list), modes, weather location/toggle, GPU choice,
    night-light schedule, switcher options, tooltips everywhere; consistent with island.
 5. Review pass with the skills: motion (/review-animations, /emil-design-eng, /apple-design),
-   /break-ui worst-case data on launcher, palette, switcher, notifications center, clipboard;
+   /break-ui worst-case data on launcher, palette, switcher, notifications centre, clipboard;
    /better-colors on palette/gradients/accent; /ask-sonner on toast stack.
    Animation verdicts so far — keep: island morph (critically damped now), launcher/palette
    materialize + first-paint cascade, clipboard/HUD grow from island, toast stack, switcher ring.
    Removed: wobble, motion blur, borderangle loop. Improve: special-workspace slide (match
-   island spring), notification-center open/close, Mission Control zoom-out-from-workspace.
-6. Notification center: review missing/wrong bits (null-guarded CenterRow done), liquid glass.
+   island spring), notification-centre open/close, Mission Control zoom-out-from-workspace.
+6. Notification centre: review missing/wrong bits (null-guarded CenterRow done), liquid glass.
 7. HUD (volume/brightness): grows from island; flick up / right-click dismiss (done) — verify feel.
 8. Tooltips as popups (done in components/Tip.qml) — verify visually; tray right-click (needs
    QApplication pragma, done) — verify.

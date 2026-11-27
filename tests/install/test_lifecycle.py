@@ -70,6 +70,12 @@ if a[0] == 'enable' and a[1] == os.environ.get('TEST_FAIL_ENABLE'):
 if a[0] == 'is-enabled':
     print(s.get(a[1], 'disabled'))
     sys.exit(0 if s.get(a[1]) == 'enabled' else 1)
+if os.environ.get('TEST_NOT_LOADED') and a[0] == 'stop':
+    sys.exit(5)
+if os.environ.get('TEST_NOT_LOADED') and a[0] == 'disable' and '--now' in sys.argv:
+    s[a[1]] = 'disabled'
+    with open(p, 'w') as f: json.dump(s, f)
+    sys.exit(5)
 if a[0] in ('enable', 'disable'):
     s[a[1]] = 'enabled' if a[0] == 'enable' else 'disabled'
     with open(p, 'w') as f: json.dump(s, f)
@@ -353,7 +359,7 @@ def test_a_hyprland_lua_kuwai_did_not_write_is_never_touched(install_env):
     assert (i.cfg / 'hypr/monitors.lua').read_text() == '-- omarchy monitors\n'
     assert i.entry.read_text() == '-- installed entry\n'
     assert (i.cfg / 'kuwai/hypr/monitors.lua').exists() and (i.cfg / 'kuwai/hypr/user.lua').exists()
-    assert 'not Kuwai' in out
+    assert 'not kuwai' in out
     i.run('--uninstall')
     assert own.read_text() == '-- omarchy\n'
     assert not i.entry.exists()
@@ -419,7 +425,7 @@ def test_the_login_entry_is_offered_without_a_terminal(install_env):
     assert "root's checked copy of a signed release" in out and 'kuwai setup' in out
     assert 'sudo ' + str(i.repo / 'system/session') + ' --trust-clone' in out
     subprocess.run([str(i.repo / 'system/session'), '--trust-clone'], env=i.env, check=True, capture_output=True)
-    assert '"Kuwai" is on the login screen' in i.run()
+    assert '"kuwai" is on the login screen' in i.run()
 
 
 def test_uninstall_never_touches_units_kuwai_did_not_record(install_env):
@@ -478,6 +484,17 @@ def test_a_failed_unit_restore_keeps_the_record_to_retry(install_env):
     assert not i.entry.exists()
 
 
+def test_uninstall_disables_units_that_were_never_started(install_env):
+    """systemd removes the link, then can't stop a unit it never loaded (exit 5): that is not a failed restore."""
+    i = install_env
+    i.run()
+    i.env['TEST_NOT_LOADED'] = '1'
+    r = subprocess.run(['bash', str(i.repo / 'install.sh'), '--uninstall'], env=i.env, text=True, capture_output=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert 'again' not in r.stdout
+    assert not i.entry.exists()
+
+
 def test_a_planted_link_never_redirects_a_new_config(install_env, tmp_path):
     i = install_env
     target = tmp_path / 'outside' / 'victim'
@@ -502,7 +519,7 @@ def test_a_fresh_install_without_hyde_gets_a_wallpaper_once(install_env):
     (tools / 'file').write_text('#!/bin/sh\necho image/jpeg\n')
     state = install_env.home / '.local/state/kuwai'
     out = install_env.run()
-    assert "Kuwai Night's wallpaper (01-night)" in out
+    assert "kuwai Night's wallpaper (01-night)" in out
     assert (state / 'wallpaper').resolve() == (state / 'wallpapers/01-night.jpg').resolve()
     assert (state / 'wallpapers/CREDITS.txt').exists()
     again = install_env.run()
@@ -538,5 +555,5 @@ def test_an_unpinned_or_wrong_digest_default_wallpaper_is_not_used(install_env):
 
     (themes / 'wallpapers.tsv').write_text('01-night\thttps://example.invalid/night.jpg\tsha256:' + '0' * 64 + '\n')
     out2 = install_env.run()
-    assert "isn't the file Kuwai Night lists" in out2
+    assert "isn't the file kuwai Night lists" in out2
     assert not (install_env.home / '.local/state/kuwai/wallpaper').exists()

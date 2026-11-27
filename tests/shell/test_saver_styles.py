@@ -39,6 +39,37 @@ class SaverStyles(unittest.TestCase):
         self.assertRegex(SAVER, r"if \(showing\) \{[^}]*filmFresh\(\)")
         self.assertIn("didn't start", SAVER, "the failure is logged, so 'it didn't change' has a reason to find")
 
+    def test_flow_is_one_shader_drawn_fifteen_times_a_second_and_only_while_showing(self):
+        qml = (SHELL / "modules/screensaver/FlowScene.qml").read_text()
+        frag = (SHELL / "shaders/flow.frag").read_text()
+        self.assertTrue((SHELL / "shaders/flow.frag.qsb").stat().st_size > 0)
+        self.assertEqual(len(re.findall(r"ShaderEffect \{", qml)), 1)
+        self.assertRegex(qml, r"interval: Theme\.saverFrameMs; repeat: true\s+running: scene\.moving")
+        self.assertRegex(qml, r"readonly property bool moving: running && !Theme\.reduceMotion")
+        for animation in ("NumberAnimation", "FrameAnimation", "SpringAnimation"):
+            self.assertNotIn(animation, qml, "its only beat is the Timer")
+        for uniform in re.findall(r"^\s*property (?:color|vector2d|real) (\w+):", qml, re.M):
+            self.assertRegex(frag, rf"\b{uniform}\b", uniform)
+        theme = (SHELL / "config/Theme.qml").read_text()
+        self.assertRegex(theme, r"saverFrameMs: 66\b")
+        self.assertRegex(SAVER, r"active: stage\.flowHere && !root\.longDark")
+        self.assertRegex(SAVER, r"FlowScene \{ running: root\.showing && !root\.longBlack \}")
+        for rate in re.findall(r"t \* (0\.\d+)", frag):
+            self.assertEqual(round(float(rate) / 0.005, 6) % 1, 0, f"{rate} must repeat within the period")
+
+    def test_the_music_pulse_is_quiet_plain_and_off_unless_asked_for(self):
+        qml = (SHELL / "modules/screensaver/MediaPulse.qml").read_text()
+        self.assertIn("textFormat: Text.PlainText", qml)
+        self.assertNotRegex(qml, r"\bImage\b|artColor|trackArtUrl|safeArt", "no cover art, nothing flashing")
+        self.assertRegex(qml, r"readonly property bool moving: active && !Theme\.reduceMotion")
+        self.assertRegex(qml, r"interval: Theme\.saverFrameMs; repeat: true\s+running: pulse\.moving")
+        self.assertNotIn("NumberAnimation", qml)
+        self.assertRegex(SAVER, r"MediaPulse \{\s+visible: Settings\.screensaverPulse && Media\.playing")
+        self.assertRegex(SAVER, r"visible: Media\.playing && !!Media\.active && !root\.longDark && !Settings\.screensaverPulse")
+        schema = json.loads((SHELL / "config/settings-schema.json").read_text())
+        entry = next(e for e in schema["settings"] if e["key"] == "screensaverPulse")
+        self.assertEqual((entry["type"], entry["default"], entry["section"]), ("boolean", False, "saver"))
+
     def test_theme_tokens_it_uses_exist(self):
         theme = (SHELL / "config/Theme.qml").read_text()
         scene = (SHELL / "modules/screensaver/BorealisScene.qml").read_text()
@@ -52,7 +83,7 @@ def test_every_picker_tab_names_where_tab_goes_and_no_empty_picture():
     # asked for file:/// (a folder) for an item with no picture.
     qml = (ROOT / "shell/modules/island/ThemePanel.qml").read_text()
     modes = re.findall(r'"(\w+)"', re.search(r"readonly property var modes: \[(.*?)\]", qml)[1])
-    nxt = dict(re.findall(r'(\w+): "(\w+)"', re.search(r'\["⇥", \(\{(.*?)\}\)', qml)[1]))
+    nxt = dict(re.findall(r'(\w+): "(\w+)"', re.search(r'\["Tab", \(\{(.*?)\}\)', qml)[1]))
     assert set(nxt) == set(modes)
     for i, m in enumerate(modes):   # the label is the tab after it, in order
         label = {"themes": "Themes", "wallpapers": "Wallpapers", "live": "Live", "saver": "Screensaver"}[modes[(i + 1) % len(modes)]]

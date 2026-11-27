@@ -51,7 +51,7 @@ How it updates (no terminal, no stored passwords, no sudo rules):
   · Tests (checkdepends) run when their dependencies come from Arch's repos; when one is only in
     the AUR, the build skips the tests (`--nocheck`) instead of the whole package.
   · A package that needs another AUR package to build or run, or a PGP key, is left for the
-    terminal (paru) and says so; nothing is half-done silently.
+    terminal (an AUR helper) and says so; nothing is half-done silently.
 """
 import fcntl
 import hashlib
@@ -174,6 +174,62 @@ def parse_updates(text, repo):
         if m:
             out.append({"name": m[1], "old": m[2], "new": m[3], "repo": repo})
     return out
+
+
+def aur_helper():
+    for helper in ("paru", "yay"):
+        if shutil.which(helper):
+            return helper
+    return ""
+
+
+def foreign_versions():
+    try:
+        r = sh(["pacman", "-Qm"], timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if r.returncode != 0:
+        return {}
+    out = {}
+    for line in r.stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and NAME_OK.match(parts[0]):
+            out[parts[0]] = parts[1]
+    return out
+
+
+def version_newer(new, old):
+    if not new or not old:
+        return False
+    try:
+        r = sh(["vercmp", new, old], timeout=5)
+        return int(r.stdout.strip()) > 0
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return new != old
+
+
+def helperless_updates():
+    installed = foreign_versions()
+    names = sorted(installed)
+    info = {}
+    for i in range(0, len(names), 80):
+        info.update(aur_info(names[i:i + 80]))
+    out = []
+    for name in names:
+        new = (info.get(name) or {}).get("version") or ""
+        if version_newer(new, installed[name]):
+            out.append({"name": name, "old": installed[name], "new": new, "repo": "aur", "readOnly": True})
+    return out
+
+
+def aur_updates():
+    helper = aur_helper()
+    if helper:
+        try:
+            return parse_updates(sh([helper, "-Qua"]).stdout, "aur"), helper, False
+        except OSError:
+            return [], helper, False
+    return helperless_updates(), "", True
 
 
 def repo_of(names):
@@ -310,12 +366,10 @@ def check(flatpak_on=True):
     for p in repo:
         p["repo"] = repos.get(p["name"], "")
         p["held"] = p["name"] in holds
-    aur = []
-    if shutil.which("paru"):
-        aur = parse_updates(sh(["paru", "-Qua"]).stdout, "aur")
+    aur, aur_helper_name, aur_read_only = aur_updates()
     trusted = set(load(TRUSTED, []))
     approved = load(APPROVED, {})
-    community = aur_info([p["name"] for p in aur])
+    community = {} if aur_read_only else aur_info([p["name"] for p in aur])
     for p in aur:
         p["held"] = p["name"] in holds
         p["trusted"] = p["name"] in trusted
@@ -342,6 +396,8 @@ def check(flatpak_on=True):
         "repo": repo,
         "repoExtra": extra,
         "aur": aur,
+        "aurHelper": aur_helper_name,
+        "aurReadOnly": aur_read_only,
         "repoError": repo_run.returncode not in (0, 2) and (repo_run.stderr.strip() or "checkupdates failed"),
         "lastUpgrade": since,
         "news": news(since),
@@ -407,6 +463,7 @@ def aur_info(names):
         pop = p.get("Popularity") or 0
         first = p.get("FirstSubmitted") or now
         info = {
+            "version": p.get("Version") or "",
             "votes": votes, "popularity": round(pop, 2), "maintainer": p.get("Maintainer"),
             "firstSubmitted": first, "lastModified": p.get("LastModified"), "outOfDate": p.get("OutOfDate"),
             "packageBase": p.get("PackageBase") or p.get("Name"),
@@ -1492,7 +1549,7 @@ def run_locked(args):
             result["skipped"].append({"pkg": pkg, "why": f"recipe preparation failed: {ex}"})
             continue
         if aur_only:
-            result["skipped"].append({"pkg": pkg, "why": "needs AUR packages first (" + ", ".join(aur_only) + "): update it in the terminal with paru"})
+            result["skipped"].append({"pkg": pkg, "why": "needs AUR packages first (" + ", ".join(aur_only) + "): update it in the terminal with an AUR helper"})
             continue
         extra_repo_deps += in_repo
         outputs = [pkg]
