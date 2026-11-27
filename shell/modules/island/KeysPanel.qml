@@ -39,7 +39,7 @@ FocusScope {
     // ── Data ─────────────────────────────────────────────────────────────
     readonly property var keyNames: ({
         SUPER: "Super", CTRL: "Ctrl", CONTROL: "Ctrl", ALT: "Alt", SHIFT: "Shift",
-        RETURN: "↩", ESCAPE: "esc", DELETE: "Del", BACKSPACE: "⌫", TAB: "⇥", SPACE: "Space",
+        RETURN: "↵", ESCAPE: "esc", DELETE: "Del", BACKSPACE: "⌫", TAB: "Tab", SPACE: "Space",
         LEFT: "←", RIGHT: "→", UP: "↑", DOWN: "↓", GRAVE: "`", SLASH: "/", BACKSLASH: "\\",
         COMMA: ",", PERIOD: ".", EQUAL: "=", MINUS: "−", BRACKETLEFT: "[", BRACKETRIGHT: "]",
         PRINT: "PrtSc", MOUSE_DOWN: "Scroll ↓", MOUSE_UP: "Scroll ↑", "MOUSE:274": "Middle click",
@@ -330,7 +330,7 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 16
         Repeater {
-            model: pal.runnable ? [["↑↓", "Choose"], ["↩", "Run"], ["esc", "Close"]] : [["↑↓", "Choose"], ["esc", "Close"]]
+            model: pal.runnable ? [["↑↓", "Choose"], ["↵", "Run"], ["esc", "Close"]] : [["↑↓", "Choose"], ["esc", "Close"]]
             Row {
                 required property var modelData
                 spacing: 6

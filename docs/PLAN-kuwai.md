@@ -91,9 +91,9 @@ Blocks the release:
       first monitor gets workspaces 1–10, two identical monitors don't collide.
 
 Before announcing (P1/P2):
-- [ ] Key caps say Super/Ctrl/Alt on PC keyboards (Fable); Welcome copy and 2×.
-- [ ] One spelling (UK or US) and one brand casing; CHANGELOG has one 0.2.0.
-- [ ] Usage/Updates/Agents/Cleanup: one state each (Fable 13–15); orange only
+- [x] Key caps say Super/Ctrl/Alt on PC keyboards (Fable); Welcome copy and 2×.
+- [x] One spelling (UK or US) and one brand casing; CHANGELOG has one 0.2.0.
+- [x] Usage/Updates/Agents/Cleanup: one state each (Fable 13–15); orange only
       for "needs you"; lock and login share one token set (Fable 12); farewell
       marks all drawn as Shapes (Fable 11).
 - [ ] AUR updates with yay or no helper (Neon); kittymux path from PATH.

@@ -728,7 +728,7 @@ FocusScope {
         KeyHints {
             id: keyHints
             visible: Island.via === "key"
-            hints: [["↑↓", "Choose"], ["↩", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
+            hints: [["↑↓", "Choose"], ["↵", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
         Label {

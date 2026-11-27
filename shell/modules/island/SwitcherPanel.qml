@@ -157,7 +157,7 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 12 }
         spacing: 14
         Repeater {
-            model: (sw.count > 0 ? [["⇥", "Next"], ["↩", "Switch"], ["Q", "Close"]] : []).concat([["W", Switcher.workspaceOnly ? "All workspaces" : "This workspace"], ["esc", "Cancel"]])
+            model: (sw.count > 0 ? [["Tab", "Next"], ["↵", "Switch"], ["Q", "Close"]] : []).concat([["W", Switcher.workspaceOnly ? "All workspaces" : "This workspace"], ["esc", "Cancel"]])
             Row {
                 required property var modelData
                 spacing: 6
@@ -187,7 +187,7 @@ FocusScope {
         }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: Switcher.workspaceOnly ? "W shows every workspace's" : "Open an app from the launcher, ⌘A"
+            text: Switcher.workspaceOnly ? "W shows every workspace's" : "Open an app from the launcher, Super+A"
             size: Theme.tSub; color: Theme.textSecondary
         }
     }

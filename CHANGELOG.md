@@ -150,7 +150,7 @@ listed is part of 0.1.0.
   you (its own orange capsule), usage limits (which only say when you can
   carry on), system news and minimized windows (Super+O).
 - Agents, Usage, System and Cleanup are sections of one panel, switched from a
-  header strip or with ⌥1–4. Every panel works from the keyboard.
+  header strip or with Alt+1–4. Every panel works from the keyboard.
 - Agents: calm cards with a status pill, grouped by where they run. A working
   agent shows its last three steps and its context fill. Answer Allow or Deny
   (Claude Code, Codex, T3 approvals) from the notch, through the agent's own

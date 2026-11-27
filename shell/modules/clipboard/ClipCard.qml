@@ -255,9 +255,9 @@ Item {
                 spacing: 3
                 Repeater {
                     model: [
-                        { a: "pin", g: "\u{f0403}", t: card.pinned ? "Unpin" : "Pin", k: ["⌃", "P"] },
-                        { a: "open", g: "\u{f03cc}", t: "Open with its app", k: ["⌃", "↵"] },
-                        { a: "delete", g: "\u{f0a7a}", t: "Delete", k: ["⇧", "⌦"] }
+                        { a: "pin", g: "\u{f0403}", t: card.pinned ? "Unpin" : "Pin", k: ["Ctrl", "P"] },
+                        { a: "open", g: "\u{f03cc}", t: "Open with its app", k: ["Ctrl", "↵"] },
+                        { a: "delete", g: "\u{f0a7a}", t: "Delete", k: ["Shift", "Del"] }
                     ]
                     Rectangle {
                         id: q
@@ -291,7 +291,7 @@ Item {
             KeyCap {
                 visible: card.panel.altHeld && card.rank >= 0 && card.rank < 9
                 anchors { right: parent.right; top: parent.top; margins: 8 }
-                text: "⌥" + (card.rank + 1)
+                text: "Alt+" + (card.rank + 1)
             }
             Text {
                 visible: card.pinned && !hover.hovered

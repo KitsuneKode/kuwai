@@ -63,7 +63,7 @@ Column {
             if (c && c.kind === "same") return "That's already its shortcut";
             if (c && c.kind === "kuwai") return "Now “" + c.text + "”: Replace leaves that one without a shortcut";
             if (c) return c.text ? "Taken by “" + c.text + "”, which can't be moved from here" : "Taken by a shortcut of your own";
-            return "↩ saves · esc cancels";
+            return "↵ saves · esc cancels";
         }
         const t = e.custom ? KeyBinds.takenBy(e) : null;
         return [e.sub, e.keys ? "" : "No shortcut",

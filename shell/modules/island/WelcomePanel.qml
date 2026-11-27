@@ -48,8 +48,8 @@ Item {
                 Label {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: wp.first ? "Four keys reach nearly everything. The notch grows into the rest: click it, or pull it down."
-                                   : "Kuwai updated itself. These are the highlights; the changelog has the rest."
+                    text: wp.first ? "Four shortcuts reach most things. For the rest, click the notch or pull it down."
+                                   : "kuwai has updated. Here is what changed; the changelog has the rest."
                     size: Theme.tSub; color: Theme.textSecondary
                 }
             }
@@ -70,7 +70,7 @@ Item {
                         }
                         Label {
                             id: what
-                            anchors { left: parent.left; leftMargin: Theme.sp(60); right: parent.right; verticalCenter: parent.verticalCenter }
+                            anchors { left: parent.left; leftMargin: Theme.sp(92); right: parent.right; verticalCenter: parent.verticalCenter }
                             wrapMode: Text.Wrap
                             text: modelData.what
                             size: Theme.tBody
@@ -80,7 +80,7 @@ Item {
                 Label {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: "⌘ is the Super key, the one with the Windows logo. Shortcuts written in words say Super."
+                    text: "Super is the key with the Windows logo."
                     size: Theme.tFootnote; color: Theme.textTertiary
                 }
             }

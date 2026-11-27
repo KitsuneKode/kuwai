@@ -144,11 +144,11 @@ The notch grown (above), grouped by app; each group folds into a
 stack (newest on top, two plates peeking out below). Opening focuses search.
 Words must all match (app, title, body, status) and matches highlight in
 yellow. Filters: All / Unread / Important. Keyboard: ↑↓ select (blue ring),
-↵ open, ⌦ or ⌫-on-empty dismiss, →← expand/fold, ⇥ filter, Esc clears then
+↵ open, Del or ⌫-on-empty dismiss, →← expand/fold, Tab filter, Esc clears then
 closes. Searching snaps results instantly (no choreography between keys).
 Closing marks everything seen: blue dots and the bell's count clear.
 Clearing (a row, an app's group, or all; the island's list too) can be
-undone: "Cleared N · Undo" takes Clear's place for `Theme.undoMs`, and ⌃Z
+undone: "Cleared N · Undo" takes Clear's place for `Theme.undoMs`, and Ctrl+Z
 there does the same. The items leave the list and the history file at once
 and come back where they stood, a toast only as its row; one-time codes are
 never kept for it (`services/notifUndo.mjs`).

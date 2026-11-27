@@ -52,7 +52,7 @@ def test_every_picker_tab_names_where_tab_goes_and_no_empty_picture():
     # asked for file:/// (a folder) for an item with no picture.
     qml = (ROOT / "shell/modules/island/ThemePanel.qml").read_text()
     modes = re.findall(r'"(\w+)"', re.search(r"readonly property var modes: \[(.*?)\]", qml)[1])
-    nxt = dict(re.findall(r'(\w+): "(\w+)"', re.search(r'\["⇥", \(\{(.*?)\}\)', qml)[1]))
+    nxt = dict(re.findall(r'(\w+): "(\w+)"', re.search(r'\["Tab", \(\{(.*?)\}\)', qml)[1]))
     assert set(nxt) == set(modes)
     for i, m in enumerate(modes):   # the label is the tab after it, in order
         label = {"themes": "Themes", "wallpapers": "Wallpapers", "live": "Live", "saver": "Screensaver"}[modes[(i + 1) % len(modes)]]

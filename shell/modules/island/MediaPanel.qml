@@ -334,7 +334,7 @@ FocusScope {
             id: keyHints
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
             visible: Island.via === "key"
-            hints: [["space", "Play"], ["←→", "Seek"], ["N P", "Next, back"], ["↩", "Go to it"], ["esc", "Back"]]
+            hints: [["space", "Play"], ["←→", "Seek"], ["N P", "Next, back"], ["↵", "Go to it"], ["esc", "Back"]]
         }
     }
 

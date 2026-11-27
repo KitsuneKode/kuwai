@@ -327,7 +327,7 @@ FocusScope {
         // main process, so ending it closes the app with every tab and helper.
         return procHits.map(p => ({
             kind: "proc", proc: p, name: p.group ? p.app : procLabel(p),
-            sub: (armedPid === p.pid ? (armedForce ? "⌃↵ again to force it to quit" : "↵ again to end it · ⌃↵ to force") + " · "
+            sub: (armedPid === p.pid ? (armedForce ? "Ctrl+↵ again to force it to quit" : "↵ again to end it · Ctrl+↵ to force") + " · "
                                      : "")
                  + (p.group ? "The whole app · " + p.group + " processes · " : "")
                  + (p.pid ? (p.cpu >= 1 ? Math.round(p.cpu) + "% CPU · " : "") + mb(p.memMB) + " · pid " + p.pid : (p.proto || "") + " " + (p.addr || ""))
@@ -838,7 +838,7 @@ FocusScope {
                         size: Theme.tSub
                         color: Theme.textSecondary
                     }
-                    KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↩" }
+                    KeyCap { anchors.verticalCenter: parent.verticalCenter; text: "↵" }
                 }
             }
             // The dock: tiles of icon + name; the chosen one lit like a row.
@@ -945,17 +945,17 @@ FocusScope {
                     visible: rowMenu.proc
                     text: rowMenu.armed && launcher.armedForce ? "Force quit — again to confirm" : "Force quit"
                     glyph: "\u{f0a7a}"
-                    shortcut: "⌃↵"
+                    shortcut: "Ctrl+↵"
                     variant: "destructive"
                     onTriggered: launcher.endProc(row.modelData, true)
                 }
-                ContextMenuItem { visible: rowMenu.file; text: "Open enclosing folder"; glyph: "\u{f024b}"; shortcut: "⌃↵"; onTriggered: launcher.fileFolder(row.modelData) }
+                ContextMenuItem { visible: rowMenu.file; text: "Open enclosing folder"; glyph: "\u{f024b}"; shortcut: "Ctrl+↵"; onTriggered: launcher.fileFolder(row.modelData) }
                 // The rehearsal stages a row's menu: menuAt (-2: the first result that has one).
                 Component.onCompleted: {
                     const at = launcher.menuAt === -2 ? launcher.results.findIndex(r => ["header", "tips", "dock"].indexOf(r.kind) < 0) : launcher.menuAt;
                     if (at >= 0 && at === row.index && rowMenu.enabled) Qt.callLater(() => rowMenu.popup(row.width * 0.55, row.height / 2));
                 }
-                ContextMenuItem { visible: rowMenu.file; text: "Copy path"; glyph: "\u{f018f}"; shortcut: "⌥↵"; onTriggered: launcher.copyPath(row.modelData) }
+                ContextMenuItem { visible: rowMenu.file; text: "Copy path"; glyph: "\u{f018f}"; shortcut: "Alt+↵"; onTriggered: launcher.copyPath(row.modelData) }
             }
             // A result as a screen reader reads it (the dock's tiles name themselves).
             Accessible.role: row.header || row.dock ? Accessible.Grouping : Accessible.ListItem
@@ -983,9 +983,9 @@ FocusScope {
         spacing: 16
         Repeater {
             model: launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file"
-                ? [["↩", "Open"], ["⌃↩", "Folder"], ["⌥↩", "Copy path"], ["esc", "Close"]]
-                : launcher.onDock ? [["←→", "App"], ["↩", "Open"], ["⌥1–8", "Open one"], ["esc", "Close"]]
-                : [["↑↓", "Choose"], ["↩", "Open"], ["esc", "Close"]]
+                ? [["↵", "Open"], ["Ctrl+↵", "Folder"], ["Alt+↵", "Copy path"], ["esc", "Close"]]
+                : launcher.onDock ? [["←→", "App"], ["↵", "Open"], ["Alt+1–8", "Open one"], ["esc", "Close"]]
+                : [["↑↓", "Choose"], ["↵", "Open"], ["esc", "Close"]]
             Row {
                 required property var modelData
                 spacing: 6
