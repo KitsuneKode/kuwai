@@ -51,6 +51,7 @@ Scope {
 
     readonly property string flag: Paths.lockFlag
     function lock() {
+        if (locked && !leaving) return;
         password = ""; error = ""; checking = false; held = ""; note = ""; challenge = "";
         release.stop(); leaving = false;
         welcomeLater.stop();

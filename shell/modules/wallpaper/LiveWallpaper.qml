@@ -191,6 +191,7 @@ Scope {
                 ctl.running = true;
             }
             onWantChanged: drive()
+            Connections { target: WallFx; function onPhaseChanged() { if (WallFx.phase === "") { slot.sent = ""; slot.drive(); } } }
             Connections { target: root; function onVideoChanged() { slot.drive(); } function onViaMpvChanged() { slot.drive(); } }
             Process {
                 id: ctl

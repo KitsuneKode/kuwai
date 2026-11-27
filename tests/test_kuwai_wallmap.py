@@ -56,3 +56,5 @@ def test_the_cut_out_runs_alone_in_its_own_capped_scope_and_only_with_room():
     assert '"systemd-run", "--user", "--scope"' in src and '"MemoryMax=" + CUTOUT_MEMORY' in src and '"MemorySwapMax=0"' in src
     assert "if available_kb() < CUTOUT_ROOM:" in src
     assert "o.enable_cpu_mem_arena = False" in src
+    assert '"RuntimeMaxSec=240"' in src and "pass_fds=[lock.fileno()]" in src, "the model holds the lock itself and ends on its own"
+    assert "os.replace(part, out)" in src, "a killed cut-out never leaves a half mask that blocks the picture"

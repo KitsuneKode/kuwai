@@ -122,6 +122,7 @@ Singleton {
                     const x = l.match(/^(\S+) (\/.+)$/);
                     if (x) m[x[1]] = x[2];
                 }
+                if (root.phase !== "loading") return;
                 root.frozen = m;
                 root.liveThumb = Object.keys(m).length ? "1" : "";
                 if (root.liveThumb) root.liveHeld = true;
@@ -277,10 +278,11 @@ Singleton {
         Quickshell.execDetached(["awww", "img", next, "--transition-type", "none"]);
         if (startFn) startFn();
         startFn = null;
+        liveHeld = false;
         lastRun = "forced: " + why;
         after.restart();
     }
-    Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.watchdog.stop(); root.drain(); } }
+    Timer { id: after; interval: 300; onTriggered: { root.phase = ""; root.liveHeld = false; watchdog.stop(); root.drain(); } }
     function finish(how) {
         lastRun = how + " (" + mode + ") " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
         const map = needMap ? next : "";

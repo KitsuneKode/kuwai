@@ -41,7 +41,7 @@ def test_scan_and_move_never_print_the_value(tmp_path):
     for out in (s, m):
         assert VALUE not in out.stdout + out.stderr
     text = rc.read_text().split("\n")
-    assert text[1] == 'export OPENAI_API_KEY="$(secret-tool lookup service kuwai-env key OPENAI_API_KEY)"'
+    assert text[1] == 'export OPENAI_API_KEY="$(secret-tool lookup service kuwai-env key OPENAI_API_KEY 2>/dev/null </dev/null)"'
     assert VALUE in text[2], "a key inside a command is left for you, with how to move it"
     assert "inside a command" in m.stdout
     assert (store / "OPENAI_API_KEY").read_text() == VALUE
@@ -65,3 +65,14 @@ def test_a_keyring_that_does_not_keep_it_changes_nothing(tmp_path):
     m = run(env, "move", "GH_TOKEN")
     assert m.returncode == 1 and rc.read_text() == before
     assert VALUE not in m.stdout + m.stderr
+
+
+def test_commented_and_fish_keys_are_reported_not_missed(tmp_path):
+    env, home, store = env_for(tmp_path)
+    (home / ".zshrc").write_text(f'# export OLD_TOKEN={VALUE}\n')
+    (home / ".config/fish").mkdir(parents=True)
+    (home / ".config/fish/config.fish").write_text(f'set -gx FISH_API_KEY {VALUE}\n')
+    out = run(env, "scan").stdout
+    assert "OLD_TOKEN" in out and "commented out" in out
+    assert "FISH_API_KEY" in out and "fish" in out
+    assert VALUE not in out

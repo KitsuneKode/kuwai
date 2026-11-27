@@ -215,6 +215,20 @@ fallback_stop() {
     rm -f "$FALLBACK_PIDF" "$WATCH_PIDF" "$SOCK_PREFIX.sock"
 }
 
+prune() {
+    [ -d "$LIVE_CACHE" ] || return 0
+    local keep="" f k
+    while IFS= read -r f; do
+        k=$(printf '%s|%s' "$f" "$(stat -c '%s|%Y' -- "$f" 2>/dev/null)" | sha1sum | cut -c1-20)
+        keep="$keep $k"
+    done < <(files)
+    for f in "$LIVE_CACHE"/*.mp4; do
+        [ -e "$f" ] || continue
+        k=$(basename "$f" .mp4)
+        case " $keep " in *" $k "*) ;; *) rm -f -- "$f" "$f.lock" ;; esac
+    done
+}
+
 freeze() {
     local s out shot
     for s in "$SOCK_DIR"/mpvpaper-*.sock; do
@@ -287,6 +301,7 @@ case "${1:-toggle}" in
     can-play) command -v mpvpaper >/dev/null && command -v socat >/dev/null && command -v jq >/dev/null ;;
     out-play)  out_play "${2:?screen}" "${3:?file}" "${4:-}" ;;
     freeze)    freeze ;;
+    prune)     prune ;;
     out-pause) out_cmd "${2:?screen}" "{ \"command\": [\"set_property\", \"pause\", ${3:-true}] }" ;;
     out-stop)  out_stop "${2:?screen}" ;;
     *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status|playable <file>}" ;;

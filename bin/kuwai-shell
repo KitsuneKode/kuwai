@@ -106,7 +106,21 @@ private_dirs() {
     done
 }
 
+prune_runs() {
+    local q="${RT:?}/quickshell" live=" " p d
+    [ -d "$q/by-id" ] || return 0
+    for p in "$q"/by-pid/*; do
+        [ -L "$p" ] || continue
+        if [ -d "/proc/${p##*/}" ]; then live="$live$(readlink -f "$p") "; else rm -f -- "$p"; fi
+    done
+    ls -1dt "$q"/by-id/*/ 2>/dev/null | tail -n +8 | while IFS= read -r d; do
+        d=${d%/}
+        case "$live" in *" $d "*) ;; *) rm -rf -- "${d:?}" ;; esac
+    done
+}
+
 prepare() {
+    prune_runs
     "$KUWAI/bin/kuwai-migrate"
     if ! systemctl --user -q is-active kuwai-auth.service plasma-polkit-agent.service 2>/dev/null; then
         systemctl --user reset-failed kuwai-auth.service 2>/dev/null

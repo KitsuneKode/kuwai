@@ -27,7 +27,10 @@ def run(cmd, **kw):
 
 
 def ipc(*args):
-    return run(["qs", "ipc", "-p", SHELL, "call", *args])
+    try:
+        return subprocess.run(["qs", "ipc", "-p", SHELL, "call", *args], capture_output=True, text=True, timeout=3)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", "")
 
 
 def say(text):
@@ -121,9 +124,17 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     step = 1 if argv[1] == "next" else -1
+    lock = None
     try:
         lock = open(RECENT + ".lock", "w")
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        for _ in range(60):
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                time.sleep(0.05)
+        else:
+            return 0
     except OSError:
         lock = None
     try:

@@ -330,6 +330,7 @@ Singleton {
     }
     Process {
         id: temp
+        Component.onCompleted: running = true
         command: ["hyprctl", "hyprsunset", "temperature"]
         stdout: StdioCollector {
             onStreamFinished: {

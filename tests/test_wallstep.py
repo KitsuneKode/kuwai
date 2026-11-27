@@ -83,3 +83,19 @@ def test_presses_at_the_same_moment_each_take_one_step(tmp_path):
         p.wait(timeout=30)
     plays = [l.split()[-1] for l in log.read_text().splitlines() if "wallfx play" in l]
     assert plays == ["/w/b.jpg", "/w/c.jpg", "/w/d.jpg"], plays
+
+
+def test_a_daemon_started_by_the_apply_never_keeps_the_lock(tmp_path):
+    import re, time
+    src = (ROOT / "bin/kuwai-themes").read_text()
+    script = re.search(r"script = '([^']+)'", src).group(1)
+    lib = tmp_path / "wallpaper.sh"
+    pidf = tmp_path / "daemon.pid"
+    lib.write_text(f"#!/bin/sh\nsetsid sleep 30 </dev/null >/dev/null 2>&1 &\necho $! > {pidf}\nexit 0\n")
+    lib.chmod(0o755)
+    lock = tmp_path / "kuwai-wallpaper.lock"
+    subprocess.run(["sh", "-c", script, "kuwai-themes", str(lock), str(lib), "one"], timeout=10)
+    start = time.time()
+    r = subprocess.run(["flock", "-w", "2", str(lock), "true"], timeout=10)
+    assert r.returncode == 0 and time.time() - start < 1.5, "a background daemon from HyDE held the wallpaper lock"
+    os.kill(int(pidf.read_text()), 15)

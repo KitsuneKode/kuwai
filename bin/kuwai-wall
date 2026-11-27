@@ -154,6 +154,20 @@ still() {
     [ -x "$look" ] && "$look" set-wallpaper --no-apply "$f" >/dev/null 2>&1 || true
 }
 
+prune_art() {
+    local d f b
+    rm -f -- "${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-posters/"*.png
+    for d in "${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-posters" "${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-thumbs"; do
+        [ -d "$d" ] || continue
+        for f in "$d"/*; do
+            [ -f "$f" ] || continue
+            b=$(basename "${f%.*}")
+            compgen -G "$LIB/$b.*" >/dev/null || rm -f -- "$f"
+        done
+    done
+    "$SCRIPT" prune
+}
+
 case "${1:-list}" in
     set)    still "${2:?usage: kuwai-wall set IMAGE}" ;;
     restore) [ -e "$STILL" ] || exit 0; still "$STILL" ;;
@@ -165,10 +179,11 @@ case "${1:-list}" in
     poster) f=${2:?usage: kuwai-wall poster NAME|FILE}; [ -f "$f" ] || f=$(find "$LIB" -maxdepth 1 -iname "*$f*" | sort -V | head -1)
             [ -f "$f" ] || { echo "kuwai-wall: no wallpaper matches $2" >&2; exit 1; }
             dir="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-posters"; mkdir -p "$dir"
-            b=$(basename "${f%.*}"); p="$dir/$b.png"
+            b=$(basename "${f%.*}"); p="$dir/$b.jpg"
             if [ ! -s "$p" ] || [ "$f" -nt "$p" ]; then
-                ffmpeg -nostdin -v error -y -i "$f" -frames:v 1 "$p.tmp.png" && mv -f -- "$p.tmp.png" "$p" || { rm -f -- "$p.tmp.png"; exit 1; }
+                ffmpeg -nostdin -v error -y -i "$f" -frames:v 1 -q:v 2 "$p.tmp.jpg" && mv -f -- "$p.tmp.jpg" "$p" || { rm -f -- "$p.tmp.jpg"; exit 1; }
             fi
+            prune_art >/dev/null 2>&1 &
             printf '%s\n' "$p" ;;
     play)   f=${2:?usage: kuwai-wall play NAME|FILE}; [ -f "$f" ] || f=$(find "$LIB" -maxdepth 1 -iname "*$f*" | sort -V | head -1)
             [ -f "$f" ] || { echo "kuwai-wall: no wallpaper matches $2" >&2; exit 1; }
