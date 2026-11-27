@@ -25,7 +25,7 @@ Singleton {
     readonly property string listPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config") + "/kuwai/calendars.txt"
     readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/kuwai/calendars"
 
-    property var events: []          // [{ start: ms, end: ms, title, location, allDay }], sorted
+    property var events: []          // [{ start: ms, end: ms, title, location, allDay, private }], sorted
     property bool configured: false
 
     // ── Sources ──────────────────────────────────────────────────────────
@@ -109,6 +109,7 @@ Singleton {
             else if (name === "RRULE") ev.rrule = value;
             else if (name === "EXDATE") for (const x of value.split(",")) { const t = parseTime(x); if (t) ev.exdates.push(t.ms); }
             else if (name === "STATUS") ev.cancelled = value.toUpperCase() === "CANCELLED";
+            else if (name === "CLASS") ev.private = value.toUpperCase() !== "PUBLIC";
         }
         out.sort((a, b) => a.start - b.start);
         return out;
@@ -118,7 +119,7 @@ Singleton {
             const dur = e.end ? Math.max(0, e.end.ms - e.start.ms) : (e.start.allDay ? 86400000 : 3600000);
             const push = s => {
                 if (s + dur < lo || s > hi || e.exdates.indexOf(s) >= 0) return;
-                into.push({ start: s, end: s + dur, title: e.title || "(No title)", location: e.location || "", allDay: e.start.allDay });
+                into.push({ start: s, end: s + dur, title: e.title || "(No title)", location: e.location || "", allDay: e.start.allDay, private: !!e.private });
             };
             if (!e.rrule) { push(e.start.ms); return; }
             const r = {};
@@ -155,6 +156,11 @@ Singleton {
     }
     function nextAfter(now, within) {
         return events.find(e => !e.allDay && e.start > now && e.start - now <= within) || null;
+    }
+    function nextToday(now, within) {
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        return events.find(e => !e.allDay && e.start > now && e.start - now <= within && e.start < midnight.getTime()) || null;
     }
     function timeOf(e) {
         if (e.allDay) return "All day";

@@ -13,9 +13,10 @@ import qs.services
 
 Item {
     id: media
-    readonly property var player: Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Playing) || Mpris.players.values.find(p => p.playbackState === MprisPlaybackState.Paused) || null
+    readonly property var player: Media.active && (Media.active.playbackState === MprisPlaybackState.Playing || Media.active.playbackState === MprisPlaybackState.Paused) ? Media.active : null
+    property real plate: 0
     visible: player !== null
-    width: 430; height: 76
+    width: Theme.sp(430); height: Math.max(76, words.implicitHeight + Theme.s5)
 
     PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
     PwNodePeakMonitor {
@@ -48,6 +49,12 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.r4
+        visible: media.plate > 0.005
+        color: Qt.alpha(Theme.glassBlack, media.plate)
+    }
+    Rectangle {
+        anchors.fill: parent
+        radius: Theme.r4
         color: Qt.rgba(1, 1, 1, over.hovered ? 0.2 : 0.14)
         border.width: 1
         border.color: Theme.edge(3)
@@ -61,6 +68,7 @@ Item {
         Image { anchors.fill: parent; source: { const u = media.player ? (media.player.trackArtUrl || "") : ""; return /^file:\/\//i.test(u) ? u : Media.art === u ? Media.safeArt : ""; } sourceSize: Qt.size(100, 100); fillMode: Image.PreserveAspectCrop; asynchronous: true }
     }
     Column {
+        id: words
         anchors { left: art.right; leftMargin: 14; right: trail.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
         spacing: 2
         Label { width: parent.width; elide: Text.ElideRight; text: media.player ? (Media.title(media.player) || "Unknown") : ""; size: Theme.tLockBody; weight: Theme.wSemibold }

@@ -48,6 +48,12 @@ with no scene data shows what it shows on a machine that has nothing yet.
 - `"@now-300s"`, `"@now+5400000ms"`, `"@now-60iso"` are moments relative to the run.
 - `seed` (top level) are files written into the private home before start;
   `running` are helpers whose stand-in stays up instead of exiting.
+- `screen: true` stages a whole screen instead of the island (the lock:
+  `"panel": "../lock/LockView"`, props `{"lock": "@lock", "preview": true}`,
+  a wallpaper through `["Hyde", "wallpaper", path]`). Its text is judged on
+  the real picture, so a light wallpaper is a real test of the lock's plate.
+  `hide` lists item types left out of the frame (the lock's clock digits,
+  which clock-ground measures on its own).
 
 A scene is not limited to an island panel. `panel` may name any component as
 `../lock/LockView`: a full-screen face takes `size` (`[1920, 1080]`) and, for

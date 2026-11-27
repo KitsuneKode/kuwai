@@ -19,8 +19,9 @@ import qs.services
 Column {
     id: stack
     signal tapped(var item)
+    property real plate: 0
     spacing: 8
-    width: 430
+    width: Theme.sp(430)
     readonly property real move: Theme.reduceMotion ? 0 : 1
 
     function notable(i) {
@@ -38,7 +39,13 @@ Column {
         }
         return out;
     }
-    readonly property var shownGroups: groups.slice(0, 3)
+    property real room: Infinity
+    function fits(total, room, each, gap, note) {
+        let n = Math.min(3, total);
+        while (n > 0 && n * each + (n - 1) * gap + (n < total ? gap + note : 0) > room) n--;
+        return n;
+    }
+    readonly property var shownGroups: groups.slice(0, fits(groups.length, room, Theme.sp(90), spacing, Theme.sp(18)))
     readonly property var byKey: { const m = {}; for (const g of groups) m[g.k] = g; return m; }
 
     // A code can sit in the title as well as the body ("123456 is your
@@ -55,9 +62,18 @@ Column {
         return i.title || i.app || "";
     }
     function preview(i) {
-        if (isCode(i)) return "Code hidden · unlock to see";
-        if (Notifs.lockHidden(i)) return "Message hidden · unlock to read";
+        if (isCode(i)) return "Code hidden · unlock to see or clear";
+        if (Notifs.lockHidden(i)) return "Message hidden · unlock to read or clear";
         return String(i.body || "").replace(/\s+/g, " ").trim();
+    }
+
+    function guarded(list) { return list.some(i => Notifs.lockHidden(i) || isCode(i)); }
+    function members(k) { return Notifs.items.filter(i => key(i) === k); }
+    function clear(k) {
+        const all = members(k);
+        if (guarded(all)) return false;
+        for (const i of all) Notifs.remove(i);
+        return true;
     }
 
     property real now: Date.now()
@@ -117,24 +133,41 @@ Column {
                 : item.statusTone === "critical" ? Theme.red : Qt.rgba(1, 1, 1, 0.7)
             readonly property string line: stack.preview(item)
             readonly property bool stacked: group.count > 1
+            readonly property bool guarded: stack.guarded(stack.members(k))
+            readonly property bool guardNote: guarded && !stack.isCode(item) && !Notifs.lockHidden(item)
             width: list.width
             height: face.height + (stacked ? 8 : 0)
 
             // More from the same conversation: a card peeking out below.
-            Rectangle {
+            Item {
                 visible: card.stacked
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
-                width: parent.width - 24; height: 30
-                radius: Theme.r3
-                color: Theme.wash(2)
-                border.width: 1
-                border.color: Theme.edge(1)
+                anchors { left: parent.left; right: parent.right; top: face.bottom; bottom: parent.bottom }
+                clip: true
+                Rectangle {
+                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
+                    width: parent.width - 24; height: 30
+                    radius: Theme.r3
+                    color: Qt.alpha(Theme.glassBlack, stack.plate)
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: Theme.wash(2)
+                        border.width: 1
+                        border.color: Theme.edge(1)
+                    }
+                }
             }
             Item {
                 id: face
                 width: parent.width
-                height: 64 + (lineLabel.visible ? 18 : 0) + (statusRow.visible ? 20 : 0)
+                height: Math.max(64, words.implicitHeight + 27)
 
+                Rectangle {
+                    anchors.fill: parent
+                    radius: faceBg.radius
+                    visible: stack.plate > 0.005
+                    color: Qt.alpha(Theme.glassBlack, stack.plate)
+                }
                 Rectangle {
                     id: faceBg
                     anchors.fill: parent
@@ -178,6 +211,7 @@ Column {
                     }
                 }
                 Column {
+                    id: words
                     anchors { left: iconBox.right; leftMargin: 12; right: parent.right; rightMargin: 16; top: parent.top; topMargin: 13 }
                     spacing: 2
                     Item {
@@ -239,6 +273,13 @@ Column {
                             color: card.statusColor
                         }
                     }
+                    Label {
+                        visible: card.guardNote
+                        topPadding: 2
+                        text: "Unlock to clear"
+                        size: Theme.tSub; weight: Theme.wMedium
+                        color: Qt.rgba(1, 1, 1, 0.62)
+                    }
                 }
                 HoverHandler { id: over; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: stack.tapped(card.item) }
@@ -248,8 +289,7 @@ Column {
                 Keys.onPressed: e => {
                     if (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { stack.tapped(card.item); e.accepted = true; }
                     else if (e.key === Qt.Key_Delete) {
-                        const k = card.k;
-                        for (const i of Notifs.items.filter(i => stack.key(i) === k)) Notifs.remove(i);
+                        stack.clear(card.k);
                         e.accepted = true;
                     }
                 }
@@ -257,7 +297,7 @@ Column {
                 // Only what the lock screen already shows (its heading and line, never more).
                 Accessible.role: Accessible.Button
                 Accessible.name: (card.item.app || "Notification") + ": " + stack.heading(card.item)
-                Accessible.description: card.line + (card.item.status ? ". " + card.item.status : "")
+                Accessible.description: card.line + (statusRow.visible ? ". " + card.item.status : "") + (card.guardNote ? ". Unlock to clear" : "")
                 Accessible.onPressAction: stack.tapped(card.item)
                 // Swipe it away, either way: the shell's one swipe (components/
                 // SwipeAway), as in the notch's list and the center. It follows the
@@ -270,18 +310,28 @@ Column {
                 SwipeAway {
                     id: swipe
                     span: card.width
-                    onLeaving: { const k = card.k; for (const i of Notifs.items.filter(i => stack.key(i) === k)) Notifs.remove(i); }
+                    held: card.guarded
+                    onLeaving: stack.clear(card.k)
                 }
                 transform: Translate { x: swipe.offset }
                 opacity: swipe.fade
             }
         }
     }
-    Label {
+    Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: stack.groups.length > stack.shownGroups.length
-        text: (stack.groups.length - stack.shownGroups.length) + " more"
-        size: Theme.tBody; weight: Theme.wMedium
-        color: Qt.rgba(1, 1, 1, 0.6)
+        width: more.width + Theme.s5; height: more.height + Theme.s2
+        radius: height / 2
+        color: Qt.alpha(Theme.glassBlack, stack.plate)
+        Rectangle { anchors.fill: parent; radius: parent.radius; color: Theme.platter }
+        Label {
+            id: more
+            anchors.centerIn: parent
+            text: stack.shownGroups.length ? (stack.groups.length - stack.shownGroups.length) + " more"
+                : stack.groups.length === 1 ? "1 notification" : stack.groups.length + " notifications"
+            size: Theme.tBody; weight: Theme.wMedium
+            color: Qt.rgba(1, 1, 1, 0.72)
+        }
     }
 }

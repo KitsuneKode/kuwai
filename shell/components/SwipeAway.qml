@@ -22,9 +22,11 @@ DragHandler {
     readonly property real offset: sx.value
     readonly property real fade: Math.max(0, 1 - Math.abs(sx.value) / Math.max(1, span))
     property bool gone: false
+    property bool held: false
     property int keepMs: Theme.swipeOutMs + 900
     signal leaving()
     signal kept()
+    signal refused()
 
     readonly property Timer keep: Timer {
         interval: h.keepMs
@@ -40,6 +42,7 @@ DragHandler {
     property real grab: 0
 
     function away(dir) {
+        if (held) { refused(); return; }
         if (gone) return;
         gone = true;
         sx.velocity = 0;
@@ -59,6 +62,12 @@ DragHandler {
             return;
         }
         if (gone) return;
+        if (held) {
+            sx.velocity = 0;
+            sx.target = 0;
+            if (Math.abs(sx.value) > 2) refused();
+            return;
+        }
         const x = sx.value, dir = x < 0 ? -1 : 1;
         const flick = fling.vx() * dir;          // px/ms, + is outward
         if (Math.abs(x) > 2 && flick > -Theme.swipeFlick
@@ -75,6 +84,6 @@ DragHandler {
     onTranslationChanged: {
         if (gone) return;
         fling.add(translation.x, 0);
-        sx.snap(grab + translation.x);
+        sx.snap(grab + (held ? Theme.swipeDamp(translation.x) : translation.x));
     }
 }

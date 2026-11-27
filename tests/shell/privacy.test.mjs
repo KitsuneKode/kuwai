@@ -38,7 +38,7 @@ describe("lock screen codes", () => {
   for (const i of codes)
     test("hides " + JSON.stringify(i.body || i.title), () => {
       expect(isCode(i)).toBe(true);
-      expect(preview(i)).toBe("Code hidden · unlock to see");
+      expect(preview(i)).toBe("Code hidden · unlock to see or clear");
     });
   test("a code in the title hides the title", () => expect(heading(codes[2])).toBe("Mail · code"));
   test("anything otpOf finds is a code on the lock too", () => {

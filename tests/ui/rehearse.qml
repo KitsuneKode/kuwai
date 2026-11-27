@@ -68,12 +68,26 @@ ShellRoot {
             return null;
         }
 
+        readonly property bool screen: at >= 0 && at < scenes.length && !!scenes[at].screen
+        QtObject {
+            id: fakeLock
+            property string password: ""
+            property bool checking: false
+            property string error: ""
+            property int failures: 0
+            property bool leaving: false
+            property string challenge: ""
+            property var openAfter: null
+            property bool fingerReady: false
+            property string note: ""
+            function submit() {}
+        }
         Item {
             id: island
             anchors.horizontalCenter: parent.horizontalCenter
-            width: stage.cur && stage.cur.size ? Math.min(stage.cur.size[0], stage.width - 40) : panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
-            height: stage.cur && stage.cur.size ? Math.min(stage.cur.size[1], stage.height - 40) : panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
-            Rectangle { anchors.fill: parent; radius: Theme.r4; color: Qt.rgba(0, 0, 0, 0.94) }
+            width: stage.screen ? 1066 : stage.cur && stage.cur.size ? Math.min(stage.cur.size[0], stage.width - 40) : panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
+            height: stage.screen ? 600 : stage.cur && stage.cur.size ? Math.min(stage.cur.size[1], stage.height - 40) : panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
+            Rectangle { visible: !stage.screen; anchors.fill: parent; radius: Theme.r4; color: Qt.rgba(0, 0, 0, 0.94) }
             Loader { id: panel; anchors.fill: parent; focus: true }
         }
 
@@ -148,7 +162,10 @@ ShellRoot {
             clipper.width = 0; clipper.height = 0;
             RehearsalWindows.store.list = [];
             ref = island;
-            for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
+            for (let i = undo.length - 1; i >= 0; i--) {
+                if (undo[i][0] === Settings) Settings.set(undo[i][1], undo[i][2]);
+                else undo[i][0][undo[i][1]] = undo[i][2];
+            }
             undo = [];
         }
         Item {
@@ -168,6 +185,11 @@ ShellRoot {
         function windowsOf() { return RehearsalWindows.store.list.filter(w => w && w.contentItem && w.visible); }
         function applySets(s, sets) {
             for (const one of sets) {
+                if (one[0] === "@setting") {
+                    undo.push([Settings, one[1], Settings.value(one[1])]);
+                    if (!Settings.set(one[1], one[2])) { fail("scene " + s.id + ": setting " + one[1] + " refused"); return false; }
+                    continue;
+                }
                 const svc = service(one[0]);
                 if (!svc) { fail("scene " + s.id + " names an unknown service: " + one[0]); return false; }
                 if (one[1] === "call") { svc[one[2]].apply(svc, one[3] || []); continue; }
@@ -186,9 +208,16 @@ ShellRoot {
             return true;
         }
         property bool lateDone: false
+        property bool hideDone: false
+        function hideKinds(item, kinds) {
+            if (kinds.indexOf(kind(item)) >= 0) { item.visible = false; return; }
+            const kids = item.children || [];
+            for (let i = 0; i < kids.length; i++) hideKinds(kids[i], kinds);
+        }
         function next() {
             restore();
             lateDone = false;
+            hideDone = false;
             panel.source = "";
             if (++at >= scenes.length) { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); return; }
             gap.restart();
@@ -204,7 +233,7 @@ ShellRoot {
             const props = {};
             for (const k in (s.props || {})) {
                 const v = s.props[k];
-                props[k] = typeof v === "string" && v.indexOf("@date:") === 0 ? new Date(v.slice(6)) : v === "@lock" ? fakeLock : v;
+                props[k] = v === "@lock" ? fakeLock : typeof v === "string" && v.indexOf("@date:") === 0 ? new Date(v.slice(6)) : v;
             }
             if (s.window) {
                 const comp = Qt.createComponent(stage.panelUrl(s));
@@ -243,6 +272,13 @@ ShellRoot {
                     it = holder; grab = clipper; stage.ref = clipper;
                 }
                 if (!it) { stage.fail("scene " + s.id + ": nothing loaded"); return; }
+                if (s.hide && !stage.hideDone) {
+                    stage.hideDone = true;
+                    stage.hideKinds(it, s.hide);
+                    settle.interval = 250;
+                    settle.restart();
+                    return;
+                }
                 if (s.late && !stage.lateDone) {
                     stage.lateDone = true;
                     if (!stage.applySets(s, s.late)) return;
@@ -251,7 +287,7 @@ ShellRoot {
                     return;
                 }
                 const out = { id: s.id, panel: s.panel, kind: s.kind || "typical", scale: Theme.textScale,
-                              w: grab.width, h: grab.height, wants: [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
+                              w: grab.width, h: grab.height, wants: stage.screen ? [grab.width, grab.height] : [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
                               texts: [], targets: [], scrolls: [], covers: [], waiting: 0 };
                 stage.walk(it, { clip: null, op: 1, scroll: false, path: [], layer: 0 }, out);
                 // In pieces: a log line has a length the logger may cut.

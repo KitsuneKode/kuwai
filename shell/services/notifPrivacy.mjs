@@ -29,6 +29,15 @@ export function hidden(item, ctx) {
     return mine && ctx.mode === "always";
 }
 
+export function eventTitle(event, ctx) {
+    if (!event || ctx.sharing || event.private) return "";
+    const title = String(event.title || "").replace(/\s+/g, " ").trim();
+    if (!title || title === "(No title)" || sensitiveText.test(title)) return "";
+    if (fromPrivateSender({ title: title }, ctx.privateSenders)) return "";
+    if (ctx.place === "desktop") return ctx.mode === "always" ? "" : title;
+    return ctx.mode === "never" ? title : "";
+}
+
 export function toggleSender(list, name) {
     const n = String(name || "").trim();
     if (!n) return String(list || "");
