@@ -13021,6 +13021,390 @@
    }
   },
   {
+   "id": "cleanup/caches-docker",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 511101108224,
+      "used": 384184824627,
+      "free": 126701535232
+     },
+     "docker": {
+      "state": "ok"
+     },
+     "items": [
+      {
+       "id": "docker",
+       "label": "Docker",
+       "bytes": 16995397600,
+       "tag": "check first",
+       "clearable": false,
+       "why": "What Docker could give back. Nothing goes until you say so, and volumes never from here",
+       "parts": [
+        {
+         "id": "docker-images",
+         "label": "Unused images",
+         "bytes": 13840000000,
+         "command": "docker image prune",
+         "runnable": true,
+         "note": "Untagged images nothing uses. docker image prune -a also removes tagged ones"
+        },
+        {
+         "id": "docker-builder",
+         "label": "Build cache",
+         "bytes": 2417000000,
+         "command": "docker builder prune",
+         "runnable": true,
+         "note": "Layers Docker kept to build faster; the next build makes them again"
+        },
+        {
+         "id": "docker-containers",
+         "label": "Stopped containers",
+         "bytes": 297600,
+         "command": "docker container prune",
+         "runnable": false,
+         "note": "Look at docker ps -a first, then run it yourself"
+        },
+        {
+         "id": "docker-volumes",
+         "label": "Unused volumes",
+         "bytes": 738100000,
+         "command": "docker volume prune",
+         "runnable": false,
+         "note": "Volumes hold data (databases, uploads). Check each one, then run it yourself"
+        }
+       ]
+      },
+      {
+       "id": "pacman",
+       "label": "Package downloads (pacman)",
+       "bytes": 10522669875,
+       "tag": "check first",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
+       "clearable": false
+      },
+      {
+       "id": "bun",
+       "label": "Bun downloads",
+       "bytes": 2899102924,
+       "tag": "comes back",
+       "why": "Bun fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "npm",
+       "label": "npm downloads",
+       "bytes": 1503238553,
+       "tag": "comes back",
+       "why": "npm fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 214748364,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
+      },
+      {
+       "id": "journal",
+       "label": "Journal",
+       "bytes": 218313523,
+       "tag": "check first",
+       "clearable": false,
+       "why": "The logs systemd keeps. Its size now, not what the command frees",
+       "parts": [
+        {
+         "id": "journal-user",
+         "label": "Your journal",
+         "bytes": 188953395,
+         "command": "journalctl --user --vacuum-time=2weeks",
+         "runnable": false,
+         "note": "Keeps the last two weeks"
+        },
+        {
+         "id": "journal-system",
+         "label": "System journal",
+         "bytes": 29360128,
+         "command": "sudo journalctl --vacuum-time=2weeks",
+         "runnable": false,
+         "note": "Needs your admin password: run it yourself. Keeps the last two weeks"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cleanup/caches-docker-down",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 511101108224,
+      "used": 384184824627,
+      "free": 126701535232
+     },
+     "docker": {
+      "state": "down"
+     },
+     "items": [
+      {
+       "id": "pacman",
+       "label": "Package downloads (pacman)",
+       "bytes": 10522669875,
+       "tag": "check first",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
+       "clearable": false
+      },
+      {
+       "id": "bun",
+       "label": "Bun downloads",
+       "bytes": 2899102924,
+       "tag": "comes back",
+       "why": "Bun fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 214748364,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cleanup/caches-docker-denied",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 511101108224,
+      "used": 384184824627,
+      "free": 126701535232
+     },
+     "docker": {
+      "state": "denied"
+     },
+     "items": [
+      {
+       "id": "bun",
+       "label": "Bun downloads",
+       "bytes": 2899102924,
+       "tag": "comes back",
+       "why": "Bun fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "npm",
+       "label": "npm downloads",
+       "bytes": 1503238553,
+       "tag": "comes back",
+       "why": "npm fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 214748364,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cleanup/caches-journal",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 511101108224,
+      "used": 384184824627,
+      "free": 126701535232
+     },
+     "docker": {
+      "state": "missing"
+     },
+     "items": [
+      {
+       "id": "journal",
+       "label": "Journal",
+       "bytes": 2042940620,
+       "tag": "check first",
+       "clearable": false,
+       "why": "The logs systemd keeps. Its size now, not what the command frees",
+       "parts": [
+        {
+         "id": "journal-user",
+         "label": "Your journal",
+         "bytes": 1610612736,
+         "command": "journalctl --user --vacuum-time=2weeks",
+         "runnable": false,
+         "note": "Keeps the last two weeks"
+        },
+        {
+         "id": "journal-system",
+         "label": "System journal",
+         "bytes": 432327884,
+         "command": "sudo journalctl --vacuum-time=2weeks",
+         "runnable": false,
+         "note": "Needs your admin password: run it yourself. Keeps the last two weeks"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "cleanup/caches-all-worst",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "worst",
+   "props": {
+    "view": "caches",
+    "storage": {
+     "at": 0,
+     "disk": {
+      "total": 2047625658368,
+      "used": 2029372047360,
+      "free": 18253611008
+     },
+     "docker": {
+      "state": "ok"
+     },
+     "items": [
+      {
+       "id": "docker",
+       "label": "Docker",
+       "bytes": 778462822400,
+       "tag": "check first",
+       "clearable": false,
+       "why": "What Docker could give back. Nothing goes until you say so, and volumes never from here",
+       "parts": [
+        {
+         "id": "docker-images",
+         "label": "Unused images",
+         "bytes": 442381631488,
+         "command": "docker image prune",
+         "runnable": true,
+         "note": "Untagged images nothing uses. docker image prune -a also removes tagged ones"
+        },
+        {
+         "id": "docker-builder",
+         "label": "Build cache",
+         "bytes": 103079215104,
+         "command": "docker builder prune",
+         "runnable": true,
+         "note": "Layers Docker kept to build faster; the next build makes them again"
+        },
+        {
+         "id": "docker-containers",
+         "label": "Stopped containers",
+         "bytes": 3221225472,
+         "command": "docker container prune",
+         "runnable": false,
+         "note": "Look at docker ps -a first, then run it yourself"
+        },
+        {
+         "id": "docker-volumes",
+         "label": "Unused volumes",
+         "bytes": 229780750336,
+         "command": "docker volume prune",
+         "runnable": false,
+         "note": "Volumes hold data (databases, uploads). Check each one, then run it yourself"
+        }
+       ]
+      },
+      {
+       "id": "pacman",
+       "label": "Package downloads (pacman)",
+       "bytes": 51754355916,
+       "tag": "check first",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
+       "clearable": false
+      },
+      {
+       "id": "journal",
+       "label": "Journal",
+       "bytes": 76450417868,
+       "tag": "check first",
+       "clearable": false,
+       "why": "The logs systemd keeps. Its size now, not what the command frees",
+       "parts": [
+        {
+         "id": "journal-user",
+         "label": "Your journal",
+         "bytes": 33500744908,
+         "command": "journalctl --user --vacuum-time=2weeks",
+         "runnable": false,
+         "note": "Keeps the last two weeks"
+        },
+        {
+         "id": "journal-system",
+         "label": "System journal",
+         "bytes": 42949672960,
+         "command": "sudo journalctl --vacuum-time=2weeks",
+         "runnable": false,
+         "note": "Needs your admin password: run it yourself. Keeps the last two weeks"
+        }
+       ]
+      },
+      {
+       "id": "bun",
+       "label": "Bun downloads",
+       "bytes": 24373939404,
+       "tag": "comes back",
+       "why": "Bun fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "npm",
+       "label": "npm downloads",
+       "bytes": 15461882265,
+       "tag": "comes back",
+       "why": "npm fetches them again on the next install",
+       "clearable": true
+      },
+      {
+       "id": "trash",
+       "label": "Trash",
+       "bytes": 12884901888,
+       "tag": "check first",
+       "why": "What you deleted: look before you empty it",
+       "clearable": false
+      }
+     ]
+    }
+   }
+  },
+  {
    "id": "agents/servers-busy",
    "name": "agents",
    "panel": "AgentsPanel",

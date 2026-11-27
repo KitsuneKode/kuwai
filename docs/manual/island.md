@@ -24,7 +24,7 @@ Background activity floats beside the notch in separate capsules (Settings → B
 - **Agents (`Super+Shift+N`, `Alt+1`)**: Lists kitty/kittymux panes, T3 Code threads, and desktop agents reporting through `bin/kuwai-agent-hook`, waiting items first. `Super+Ctrl+A` jumps straight to the waiting agent. Native `PermissionRequest` hooks (Claude Code/Codex via kittymux) and T3 operate tokens let you click Allow or Deny without typing keystrokes into a pane.
 - **Usage (`kuwai usage`, `Alt+2`)**: Per-account limit bars and reset countdowns plus local token spend (`bin/kuwai-spend`).
 - **System (`kuwai system`, `Alt+3`)**: CPU, proportional memory by app (browsers counted once), GPU state, and quick mode toggles.
-- **Cleanup (`Alt+4`)**: Unused agent skills (30/90/180 days) with token counts and Trash + **Put back**, recoverable tool caches (`bin/kuwai-storage`), and idle project builds when `sweep` is installed (`bin/kuwai-sweep`).
+- **Cleanup (`Alt+4`)**: Unused agent skills (30/90/180 days) with token counts and Trash + **Put back**, recoverable tool caches (`bin/kuwai-storage`; Docker and the systemd journal are listed "check first" with the commands that shrink them: only `docker image prune` and `docker builder prune` can be run from the panel, after a second click; volumes, stopped containers and the system journal are commands to copy), and idle project builds when `sweep` is installed (`bin/kuwai-sweep`).
 
 Custom capsules can also be published from scripts with `kuwai capsule set NAME --text "…"`.
 

@@ -10,9 +10,16 @@ rebuilds by itself can be cleared from here, and only with that tool's own
 command (pip, uv, npm, bun, pnpm, go, yarn) or, for thumbnails, by emptying
 the folder. The rest (pacman's package downloads, the AUR build cache, the
 Trash) are listed as "check first" with what to do, never touched.
+
+Docker (`docker system df`) and the systemd journal (`journalctl --disk-usage`)
+are read the same way: sizes only, with the command that shrinks each. The one
+thing run from here is `docker image prune` / `docker builder prune`; stopped
+containers, volumes (they hold data) and the journals are left to the user's
+own terminal.
 """
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -65,6 +72,136 @@ def size(path):
         return 0
 
 
+MIN_SHOWN = 1 << 20
+
+DOCKER_PARTS = [
+    {"type": "Images", "id": "docker-images", "label": "Unused images", "command": "docker image prune",
+     "run": ["docker", "image", "prune", "--force"],
+     "note": "Untagged images nothing uses. docker image prune -a also removes tagged ones"},
+    {"type": "Build Cache", "id": "docker-builder", "label": "Build cache", "command": "docker builder prune",
+     "run": ["docker", "builder", "prune", "--force"],
+     "note": "Layers Docker kept to build faster; the next build makes them again"},
+    {"type": "Containers", "id": "docker-containers", "label": "Stopped containers", "command": "docker container prune",
+     "note": "Look at docker ps -a first, then run it yourself"},
+    {"type": "Local Volumes", "id": "docker-volumes", "label": "Unused volumes", "command": "docker volume prune",
+     "note": "Volumes hold data (databases, uploads). Check each one, then run it yourself"},
+]
+
+JOURNAL_PARTS = [
+    {"id": "journal-user", "label": "Your journal", "scope": "--user", "command": "journalctl --user --vacuum-time=2weeks",
+     "note": "Keeps the last two weeks"},
+    {"id": "journal-system", "label": "System journal", "scope": "--system", "command": "sudo journalctl --vacuum-time=2weeks",
+     "note": "Needs your admin password: run it yourself. Keeps the last two weeks"},
+]
+
+UNITS = {"": 1, "b": 1, "k": 1e3, "kb": 1e3, "m": 1e6, "mb": 1e6, "g": 1e9, "gb": 1e9, "t": 1e12, "tb": 1e12,
+         "p": 1e15, "pb": 1e15, "e": 1e18, "eb": 1e18,
+         "kib": 1024, "mib": 1024 ** 2, "gib": 1024 ** 3, "tib": 1024 ** 4, "pib": 1024 ** 5, "eib": 1024 ** 6}
+BINARY = {"": 1, "b": 1, "k": 1024, "m": 1024 ** 2, "g": 1024 ** 3, "t": 1024 ** 4, "p": 1024 ** 5, "e": 1024 ** 6}
+AMOUNT = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*([A-Za-z]*)")
+JOURNAL_AMOUNT = re.compile(r"take up\s+(\d+(?:\.\d+)?)\s*([BKMGTPE]?)", re.I)
+CEILING = 1 << 62
+
+
+def amount(text, units):
+    m = AMOUNT.match(str(text or ""))
+    if not m:
+        return None
+    mult = units.get(m.group(2).lower())
+    if mult is None:
+        return None
+    return min(CEILING, int(float(m.group(1)) * mult))
+
+
+def docker_rows(text):
+    text = (text or "").strip()
+    try:
+        whole = json.loads(text)
+        rows = whole if isinstance(whole, list) else [whole]
+    except ValueError:
+        rows = []
+        for line in text.splitlines():
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                pass
+    return [r for r in rows if isinstance(r, dict)]
+
+
+def docker_state(stderr):
+    low = (stderr or "").lower()
+    if "permission denied" in low or "got permission" in low:
+        return "denied"
+    return "down"
+
+
+def docker_df():
+    if not shutil.which("docker"):
+        return {"state": "missing"}
+    try:
+        r = subprocess.run(["docker", "system", "df", "--format", "json"], capture_output=True, text=True,
+                           timeout=20, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return {"state": "down"}
+    if r.returncode != 0:
+        return {"state": docker_state(r.stderr)}
+    by = {}
+    for row in docker_rows(r.stdout):
+        kind = row.get("Type")
+        b = amount(str(row.get("Reclaimable", "")).split("(")[0], UNITS)
+        if kind and b is not None:
+            by[kind] = b
+    if not by:
+        return {"state": "down"}
+    return {"state": "ok", "bytes": by}
+
+
+def docker_item(df):
+    if df["state"] != "ok":
+        return None
+    parts = []
+    for p in DOCKER_PARTS:
+        b = df["bytes"].get(p["type"], 0)
+        if b <= 0:
+            continue
+        parts.append({"id": p["id"], "label": p["label"], "bytes": b, "command": p["command"],
+                      "runnable": "run" in p, "note": p["note"]})
+    total = sum(p["bytes"] for p in parts)
+    if total < MIN_SHOWN:
+        return None
+    return {"id": "docker", "label": "Docker", "bytes": total, "tag": CHECK, "clearable": False,
+            "why": "What Docker could give back. Nothing goes until you say so, and volumes never from here",
+            "parts": parts}
+
+
+def journal_size(scope):
+    if not shutil.which("journalctl"):
+        return 0
+    try:
+        r = subprocess.run(["journalctl", scope, "--disk-usage"], capture_output=True, text=True,
+                           timeout=20, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return 0
+    m = JOURNAL_AMOUNT.search(r.stdout) if r.returncode == 0 else None
+    if not m:
+        return 0
+    return min(CEILING, int(float(m.group(1)) * BINARY[m.group(2).lower()]))
+
+
+def journal_item():
+    parts = []
+    for p in JOURNAL_PARTS:
+        b = journal_size(p["scope"])
+        if b >= MIN_SHOWN:
+            parts.append({"id": p["id"], "label": p["label"], "bytes": b, "command": p["command"],
+                          "runnable": False, "note": p["note"]})
+    if not parts:
+        return None
+    return {"id": "journal", "label": "Journal", "bytes": sum(p["bytes"] for p in parts), "tag": CHECK,
+            "clearable": False, "why": "The logs systemd keeps. Its size now, not what the command frees",
+            "parts": parts}
+
+
 def disk():
     st = os.statvfs(HOME)
     total = st.f_blocks * st.f_frsize
@@ -82,8 +219,12 @@ def scan():
             continue
         items.append({"id": k["id"], "label": k["label"], "bytes": b, "tag": k["tag"], "why": k["why"],
                       "clearable": k["tag"] == BACK and "clear" in k})
+    df = docker_df()
+    for extra in (docker_item(df), journal_item()):
+        if extra:
+            items.append(extra)
     items.sort(key=lambda i: -i["bytes"])
-    return {"at": int(time.time()), "disk": disk(), "items": items}
+    return {"at": int(time.time()), "disk": disk(), "docker": {"state": df["state"]}, "items": items}
 
 
 def kept():
@@ -139,7 +280,32 @@ def empty(path):
         pass
 
 
+DOCKER_WORDS = {"down": "Docker isn't running", "denied": "Docker won't let this user in", "missing": "Docker isn't installed"}
+
+
+def clear_docker(part):
+    before = docker_df()
+    if before["state"] != "ok":
+        return {"ok": False, "why": DOCKER_WORDS[before["state"]]}
+    try:
+        r = subprocess.run(part["run"], capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return {"ok": False, "why": part["label"] + " couldn't be cleared"}
+    if r.returncode != 0:
+        return {"ok": False, "why": part["label"] + " couldn't be cleared"}
+    after = docker_df()
+    try:
+        os.unlink(KEPT)
+    except OSError:
+        pass
+    gone = before["bytes"].get(part["type"], 0) - after.get("bytes", {}).get(part["type"], 0)
+    return {"ok": True, "freed": max(0, gone)}
+
+
 def clear(kid):
+    d = next((p for p in DOCKER_PARTS if p["id"] == kid and "run" in p), None)
+    if d:
+        return clear_docker(d)
     k = next((k for k in KINDS if k["id"] == kid), None)
     if not k or k["tag"] != BACK or "clear" not in k:
         return {"ok": False, "why": "that one isn't cleared from here"}

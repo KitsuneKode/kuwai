@@ -204,7 +204,7 @@ Next, in order (both reviews agree):
 - [x] API keys in shell rc files → Secret Service: scan named files only (name,
       file:line, never the value), store via secret-tool on stdin, verify, then
       rewrite atomically; a per-tool launcher loads it. Never print or log a value.
-- [ ] Caches: Docker images and journald as "check first" with their commands.
+- [x] Caches: Docker images and journald as "check first" with their commands. Docker reads `docker system df`; only `docker image prune` and `docker builder prune` run from the panel (two-step confirm), volumes, containers and the journals are commands to copy. The owner runs a real prune themselves.
 - [ ] Wallpaper: a zero-model contour reveal (Sobel edges sketch in, then fill).
 - [ ] README clips: record from the rehearsal (Xvfb) or on the live session while
       the owner is away (they agreed to recording; not while they type).

@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.components.ui as Ui
 import qs.services
+import "../../services/cacheTools.mjs" as CacheTools
 
 Item {
     id: cv
@@ -17,11 +18,14 @@ Item {
     property bool failed: false
     property string armed: ""
     Timer { id: disarm; interval: Theme.undoMs; onTriggered: cv.armed = "" }
+    property string copied: ""
+    Timer { id: copiedFor; interval: Theme.copiedMs; onTriggered: cv.copied = "" }
     property string clearing: ""
     property string note: ""
     readonly property var items: report && report.items ? report.items : []
     readonly property var pal: [Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.mint, Theme.brown, Theme.pink, Theme.gray]
-    readonly property real backBytes: items.filter(i => i.clearable).reduce((n, i) => n + i.bytes, 0)
+    readonly property real backBytes: CacheTools.clearableBytes(items)
+    readonly property string unavailableLine: CacheTools.unavailable(report)
 
     function load(fresh) {
         loading = true;
@@ -38,6 +42,11 @@ Item {
         clearer.label = item.label;
         clearer.command = [Paths.bin + "/kuwai-storage", "clear", item.id];
         clearer.running = true;
+    }
+    function copy(part) {
+        Quickshell.execDetached(["sh", "-c", 'printf %s "$1" | wl-copy', "copy", part.command]);
+        copied = part.id;
+        copiedFor.restart();
     }
     Component.onCompleted: { if (seed) { report = seed; loading = false; } else load(false); }
 
@@ -130,45 +139,110 @@ Item {
             spacing: 2
             Repeater {
                 model: cv.items
-                Item {
+                Column {
                     id: row
                     required property var modelData
                     required property int index
+                    readonly property var parts: CacheTools.partRows(modelData)
                     width: parent.width
-                    height: Math.max(Theme.sp(48), text.implicitHeight + Theme.s3)
-                    Rectangle {
-                        width: 8; height: 8; radius: 4
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: cv.pal[row.index % cv.pal.length]
-                    }
-                    Column {
-                        id: text
-                        anchors { left: parent.left; leftMargin: 18; right: side.left; rightMargin: Theme.s3; verticalCenter: parent.verticalCenter }
-                        spacing: 2
-                        Label { width: parent.width; elide: Text.ElideRight; text: row.modelData.label; size: Theme.tBody; weight: Theme.wMedium }
-                        Label {
-                            width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-                            text: (row.modelData.clearable ? "Comes back on its own · " : "Check first · ") + row.modelData.why
-                            size: Theme.tFootnote
-                            color: row.modelData.clearable ? Theme.textTertiary : Theme.orange
+                    spacing: 0
+                    Item {
+                        width: parent.width
+                        height: Math.max(Theme.sp(48), text.implicitHeight + Theme.s3)
+                        Rectangle {
+                            width: 8; height: 8; radius: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: cv.pal[row.index % cv.pal.length]
+                        }
+                        Column {
+                            id: text
+                            anchors { left: parent.left; leftMargin: 18; right: side.left; rightMargin: Theme.s3; verticalCenter: parent.verticalCenter }
+                            spacing: 2
+                            Label { width: parent.width; elide: Text.ElideRight; text: row.modelData.label; size: Theme.tBody; weight: Theme.wMedium }
+                            Label {
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: (row.modelData.clearable ? "Comes back on its own · " : "Check first · ") + row.modelData.why
+                                size: Theme.tFootnote
+                                color: row.modelData.clearable ? Theme.textTertiary : Theme.orange
+                            }
+                        }
+                        Row {
+                            id: side
+                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                            spacing: Theme.s2
+                            Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.bytes(row.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
+                            Ui.Button {
+                                visible: row.modelData.clearable
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: Theme.sp(28); size: Theme.tSub
+                                text: cv.clearing === row.modelData.id ? "Clearing…" : cv.armed === row.modelData.id ? "Clear " + SystemStats.bytes(row.modelData.bytes) + "?" : "Clear"
+                                enabled: !cv.clearing
+                                onClicked: cv.clear(row.modelData)
+                            }
                         }
                     }
-                    Row {
-                        id: side
-                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    Column {
+                        x: 18
+                        width: parent.width - 18
                         spacing: Theme.s2
-                        Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.bytes(row.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
-                        Ui.Button {
-                            visible: row.modelData.clearable
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: Theme.sp(28); size: Theme.tSub
-                            text: cv.clearing === row.modelData.id ? "Clearing…" : cv.armed === row.modelData.id ? "Clear " + SystemStats.bytes(row.modelData.bytes) + "?" : "Clear"
-                            enabled: !cv.clearing
-                            onClicked: cv.clear(row.modelData)
+                        bottomPadding: row.parts.length > 0 ? Theme.s3 : 0
+                        Repeater {
+                            model: row.parts
+                            Item {
+                                id: part
+                                required property var modelData
+                                width: parent.width
+                                height: pcol.implicitHeight
+                                Column {
+                                    id: pcol
+                                    anchors { left: parent.left; right: pside.left; rightMargin: Theme.s3 }
+                                    spacing: 2
+                                    Label { width: parent.width; wrapMode: Text.Wrap; text: part.modelData.label; size: Theme.tSub; weight: Theme.wMedium }
+                                    Label {
+                                        width: parent.width; wrapMode: Text.WrapAnywhere
+                                        text: part.modelData.command
+                                        size: Theme.tFootnote; font.family: Theme.fontMono || Theme.fontText; color: Theme.textSecondary
+                                    }
+                                    Label {
+                                        visible: text !== ""
+                                        width: parent.width; wrapMode: Text.Wrap
+                                        text: part.modelData.note
+                                        size: Theme.tFootnote; color: Theme.textTertiary
+                                    }
+                                }
+                                Row {
+                                    id: pside
+                                    anchors { right: parent.right; top: parent.top }
+                                    spacing: Theme.s2
+                                    Label { anchors.verticalCenter: parent.verticalCenter; text: part.modelData.bytes < 1048576 ? "< 1 MB" : SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
+                                    Ui.Button {
+                                        visible: part.modelData.runnable
+                                        height: Theme.sp(28); size: Theme.tSub
+                                        text: cv.clearing === part.modelData.id ? "Pruning…" : cv.armed === part.modelData.id ? "Prune?" : "Prune"
+                                        enabled: !cv.clearing
+                                        onClicked: cv.clear(part.modelData)
+                                    }
+                                    Ui.Button {
+                                        visible: !part.modelData.runnable
+                                        kind: "quiet"
+                                        height: Theme.sp(28); size: Theme.tSub
+                                        text: cv.copied === part.modelData.id ? "Copied" : "Copy command"
+                                        onClicked: cv.copy(part.modelData)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        Label {
+            visible: cv.unavailableLine !== ""
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: cv.unavailableLine
+            size: Theme.tFootnote; color: Theme.textTertiary
         }
 
         Label {
