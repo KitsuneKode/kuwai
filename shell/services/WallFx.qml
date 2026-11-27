@@ -81,7 +81,7 @@ Singleton {
         phase = "";
         startFn = null;
         loadLimit.stop(); watchdog.stop(); settleLimit.stop();
-        handOff.stop(); recheck.stop(); landed.stop(); after.stop();
+        handOff.stop(); go.stop(); recheck.stop(); landed.stop(); after.stop();
         reveal.stop(); fadeIn.stop(); fadeOut.stop(); swap.running = false;
     }
     function bail(why) {
@@ -157,6 +157,13 @@ Singleton {
             if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
             swap.command = ["awww", "img", root.next, "--transition-type", "none"];
             swap.running = true;
+            go.restart();
+        }
+    }
+    Timer {
+        id: go
+        interval: 32
+        onTriggered: {
             root.mode = root.pick();
             root.phase = "revealing";
             reveal.duration = root.mode === "glass" ? Theme.wallRevealMs : Theme.wallCutMs;
