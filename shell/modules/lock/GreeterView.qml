@@ -241,7 +241,7 @@ Item {
             }
             ClippingRectangle {
                 anchors.centerIn: parent
-                width: 88; height: 88; radius: 44
+                width: 88; height: 88; radius: width / 2
                 color: Qt.alpha(view.accent, 0.5)
                 Label {
                     anchors.centerIn: parent
@@ -346,17 +346,13 @@ Item {
         }
     }
     Rectangle { anchors.fill: parent; color: Theme.desktop; opacity: desk.status === Image.Ready ? 0 : view.leave }   // no wallpaper: the desktop as it is
-    ClippingRectangle {
-        id: hole
-        readonly property real r: 44 + (view.revealMax - 44) * view.tReveal
-        visible: view.tReveal > 0
-        x: view.revealAt.x - r; y: view.revealAt.y - r
-        width: 2 * r; height: 2 * r; radius: r
-        color: Theme.desktop
+    Item {
+        id: deskBox
+        anchors.fill: parent
+        visible: false
         Image {
             id: desk
-            x: -hole.x; y: -hole.y
-            width: view.width; height: view.height
+            anchors.fill: parent
             scale: 1 + 0.08 * (1 - view.tReveal) * view.move
             source: view.lock.desktopWall ? "file://" + view.lock.desktopWall : ""
             sourceSize: Qt.size(Theme.screenSize(Screen, "width", 1920), Theme.screenSize(Screen, "height", 1080))
@@ -364,10 +360,35 @@ Item {
             asynchronous: true
             onStatusChanged: if (status === Image.Ready && view.lock.leaving && outro.running && !reveal.running && view.tReveal === 0) reveal.start()
         }
+    }
+    ShaderEffectSource {
+        id: deskTex
+        sourceItem: view.tReveal > 0 ? deskBox : null
+        live: view.tReveal > 0 && view.tReveal < 1
+        hideSource: true
+        visible: false
+    }
+    ShaderEffect {
+        id: hole
+        anchors.fill: parent
+        visible: view.tReveal > 0
+        property var source: deskTex
+        property color accent: view.accent
+        property vector2d size: Qt.vector2d(width, height)
+        property vector2d center: Qt.vector2d(view.revealAt.x, view.revealAt.y)
+        property real mode: Theme.reduceMotion ? 2 : 0
+        property real t: view.tReveal
+        property real radius: 44 + (view.revealMax - 44) * view.tReveal
+        fragmentShader: Qt.resolvedUrl("../../shaders/portal.frag.qsb")
+    }
+    ClippingRectangle {
+        x: view.revealAt.x - width / 2; y: view.revealAt.y - height / 2
+        width: 88; height: 88; radius: 44
+        color: "transparent"
+        visible: view.tReveal > 0
+        opacity: 1 - Math.min(1, view.tReveal * 4)
         Image {
-            anchors.centerIn: parent
-            width: 88; height: 88
-            opacity: 1 - Math.min(1, view.tReveal * 4)
+            anchors.fill: parent
             source: face.source
             sourceSize: Qt.size(176, 176)
             fillMode: Image.PreserveAspectCrop

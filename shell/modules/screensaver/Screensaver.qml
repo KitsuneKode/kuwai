@@ -265,7 +265,8 @@ Scope {
     }
 
     property real level: showing ? 1 : 0
-    Behavior on level { NumberAnimation { duration: root.showing ? 1200 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    Behavior on level { NumberAnimation { duration: root.showing ? 900 : 220; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    readonly property bool veiling: !Theme.reduceMotion && level > 0.001 && level < 0.999
 
     Variants {
         model: Quickshell.screens
@@ -286,8 +287,18 @@ Scope {
                 Item {
                     id: stage
                     anchors.fill: parent
-                    opacity: root.level
+                    opacity: Theme.reduceMotion ? root.level : 1
                     focus: true
+                    layer.enabled: root.veiling
+                    layer.effect: ShaderEffect {
+                        property color accent: Theme.accent
+                        property vector2d size: Qt.vector2d(stage.width, stage.height)
+                        property vector2d center: Qt.vector2d(stage.width / 2, stage.height / 2)
+                        property real mode: 3
+                        property real t: root.level
+                        property real radius: 0
+                        fragmentShader: Qt.resolvedUrl("../../shaders/portal.frag.qsb")
+                    }
                     Keys.onPressed: e => { root.dismiss(); e.accepted = true; }
 
                     // The film's screen stays clear: the film is under this

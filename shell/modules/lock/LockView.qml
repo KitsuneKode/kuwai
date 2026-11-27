@@ -109,14 +109,26 @@ Item {
             }
             MultiEffect { anchors.fill: parent; source: lockArt; blurEnabled: true; blur: 1; blurMax: 64; saturation: 0.55; brightness: -0.18 }
         }
-        // The same picture sharp, decoded only for the unlock.
+        // The same picture sharp, decoded only for the unlock: doors onto the desktop.
         Image {
+            id: sharp
             anchors.fill: parent
-            visible: view.u > 0
-            opacity: view.u
-            source: visible ? wall.source : ""
+            visible: false
+            source: view.lock.leaving || view.u > 0 ? wall.source : ""
             sourceSize: Qt.size(view.width, view.height)
             fillMode: Image.PreserveAspectCrop
+        }
+        ShaderEffect {
+            anchors.fill: parent
+            visible: view.u > 0 && sharp.status === Image.Ready
+            property var source: sharp
+            property color accent: view.tint
+            property vector2d size: Qt.vector2d(width, height)
+            property vector2d center: Qt.vector2d(width / 2, height / 2)
+            property real mode: Theme.reduceMotion ? 2 : 1
+            property real t: view.u
+            property real radius: 0
+            fragmentShader: Qt.resolvedUrl("../../shaders/portal.frag.qsb")
         }
     }
     Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, 0.22 * (1 - view.u)) }
