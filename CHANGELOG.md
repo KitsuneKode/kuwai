@@ -5,7 +5,7 @@ release may change settings, binds or file layout; when it does, the migration
 that carries an existing install across ships with it (`kuwai migrations`) and
 is listed here.
 
-## Unreleased
+## 0.2.0
 
 ### Welcome
 - A new install opens Welcome: the four keys that reach nearly everything, and
@@ -78,8 +78,20 @@ is listed here.
 - "Only when you open Software Update" means no checks run by themselves.
 
 ### Security
-- Release updates (`kuwai update-self`) take only tags that exist on GitHub,
-  refuse a tag that moves, and check signatures once you list a signer.
+- Kuwai installs only signed releases: `kuwai setup` fetches one release tag
+  and checks its signature (a key in `release-signers/`) and every file
+  against the digest the tag carries before anything in it runs;
+  `kuwai update-self` checks a release the same way, and refuses a tag that
+  moves.
+- What runs as root comes from root's own copy of a signed release, checked
+  by root again each time: the login entry, the login screen, alarms that
+  wake the laptop, the password prompt and the update helper. From a clone
+  they install only with `--trust-clone`, which says it trusts every file.
+- The update helper's password prompt names the whole transaction (how many
+  Arch packages and exactly which versions, held packages, AUR packages);
+  if pacman resolves anything else after it syncs, nothing is installed.
+- Release keys can change: a release signed by a key root trusts can add a
+  key, and the next one, signed by the new key, can drop the old one.
 - The password prompt can run from a copy only root can change
   (`kuwai auth pin`).
 - Clipboard history and the GitHub/Gmail feeds run only if you said yes

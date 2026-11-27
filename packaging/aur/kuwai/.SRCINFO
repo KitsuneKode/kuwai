@@ -1,6 +1,6 @@
 pkgbase = kuwai
 	pkgdesc = A calm Hyprland desktop: a Dynamic Island, notifications, controls and an agent cockpit (Quickshell)
-	pkgver = 0.1.0
+	pkgver = 0.2.0
 	pkgrel = 1
 	url = https://github.com/KitsuneKode/kuwai
 	install = kuwai.install
@@ -73,7 +73,7 @@ pkgbase = kuwai
 	optdepends = networkmanager: Wi Fi controls
 	optdepends = bluez-utils: Bluetooth controls
 	optdepends = python-gobject: apps keeping the screen on for a video or a call
-	source = kuwai::git+https://github.com/KitsuneKode/kuwai.git#tag=v0.1.0?signed
+	source = kuwai::git+https://github.com/KitsuneKode/kuwai.git#tag=v0.2.0?signed
 	validpgpkeys = 7C78CB855D504BDF3E9B74AFF150E88B50720270
 	sha256sums = SKIP
 

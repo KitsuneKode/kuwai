@@ -6,7 +6,7 @@
 # release again for each person, checks it against release-signers/ before
 # anything in it runs, and runs its install.sh (which can undo itself).
 pkgname=kuwai
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="A calm Hyprland desktop: a Dynamic Island, notifications, controls and an agent cockpit (Quickshell)"
 arch=('any')
