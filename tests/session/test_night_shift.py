@@ -43,4 +43,4 @@ def test_it_starts_hyprsunset_when_it_isnt_running(tmp_path):
 def test_a_failure_is_reported_so_the_switch_goes_back_to_off(tmp_path):
     rc, _ = run(tmp_path, daemon_starts=False)
     assert rc != 0
-    assert "onExited: code => { if (code !== 0) root.temperature = 6500; }" in SRC
+    assert "onExited: code => { if (code !== 0 && warm.at === root.warmGen) root.temperature = 6500; }" in SRC, "only the latest request may reset the switch"
