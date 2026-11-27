@@ -1,0 +1,33 @@
+release-signers: the OpenPGP public keys whose signed release tags kuwai trusts.
+
+What goes here
+  One armored public key per file, named NAME.asc. Nothing else is read.
+  kuwai-setup, kuwai update-self and root's own check build a keyring from these
+  files alone (in a temporary GNUPGHOME, or a keyring root keeps), never from
+  your own GnuPG keyring, so a key you happen to trust elsewhere signs nothing here.
+  While this folder holds no key, every one of them refuses: no release can be checked.
+
+Adding the release key (once, by the maintainer)
+  gpg --list-secret-keys --keyid-format long          find the key's fingerprint (40 hex digits)
+  gpg --export --armor FINGERPRINT > release-signers/kuwai-release.asc
+  gpg --show-keys --with-fingerprint release-signers/kuwai-release.asc
+                                                      check the fingerprint it prints is yours
+  git add release-signers/kuwai-release.asc && git commit -m "Release key"
+  Publish the fingerprint where people can check it (README, website, keyserver).
+
+Tagging a release
+  kuwai release vX.Y.Z
+  On main, clean. It runs, with your key from this folder:
+    d=$(bin/kuwai-verify manifest-rev . HEAD)
+    git -c gpg.format=openpgp tag -s -u FINGERPRINT -m "kuwai X.Y.Z" -m "kuwai-tree-sha256 $d" vX.Y.Z HEAD
+  then checks the tag the way an install will, and deletes it if that fails.
+  The kuwai-tree-sha256 line is the digest of every file in the tree (path,
+  executable bit, content, link target): root checks its copy against it without
+  git. A tag made by plain `git tag -s` has no such line and is refused.
+  Publish it: git push origin vX.Y.Z (a release tag never moves once pushed).
+
+Changing keys
+  A new key is added here and released in a tag signed by a key already here.
+  Root keeps the fingerprints it was first given (kuwai-setup passes this
+  folder's); it refreshes the key material from each release it checks but
+  never adds a fingerprint from one.

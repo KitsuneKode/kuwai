@@ -81,8 +81,8 @@ as_user "cd '$K' && ./install.sh" >/tmp/again.log 2>&1
 check "a second install exits 0" [ $? -eq 0 ]
 check "a second install changes nothing" [ "$(snap)" = "$installed" ]
 
-check "login session adds" bash -c "'$K/system/session' && '$K/system/session' --check && [ -f /usr/share/wayland-sessions/kuwai.desktop ]"
-check "login session removes" bash -c "'$K/system/session' --undo && [ ! -e /usr/share/wayland-sessions/kuwai.desktop ] && [ ! -e /usr/local/bin/kuwai-session ]"
+check "login session adds (trusting the clone)" bash -c "'$K/system/session' --trust-clone && '$K/system/session' --check && [ -f /usr/share/wayland-sessions/kuwai.desktop ]"
+check "login session removes" bash -c "'$K/system/session' --undo --trust-clone && [ ! -e /usr/share/wayland-sessions/kuwai.desktop ] && [ ! -e /usr/local/bin/kuwai-session ]"
 
 as_user "cd '$K' && ./install.sh --uninstall && rm -rf ~/.local/share/kuwai" >/tmp/uninstall.log 2>&1
 check "uninstall exits 0" [ $? -eq 0 ]

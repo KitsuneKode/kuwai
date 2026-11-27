@@ -17,7 +17,7 @@ command goes to the shell half, bin/kuwai-ctl (channel, promote, bar, notifs, ti
   kuwai motion [full|reduced|off]
   kuwai gpu [auto|nvidia|intel]   renderer for the next login
   kuwai rescue                    password prompt, clipboard, island, idle: back to working
-  kuwai auth [status|here|restart|fallback|restore|reset-tries|pin|unpin]   the password prompt (pin: root-owned copy)
+  kuwai auth [status|here|restart|fallback|restore|reset-tries|pin|unpin]   the password prompt (pin: root-owned copy, from root's checked release)
   kuwai feature [NAME on|off]     list / switch what kuwai does on its own
   kuwai screen [NAME scale N|rate HZ|reset]  a screen's scale and refresh rate (over monitors.lua)
   kuwai pointer SETTING VALUE     speed, accel, natural scrolling, tap, scroll speed, key repeat (kuwai pointer for the list)
@@ -412,7 +412,20 @@ auth_pin_state() {
 cmd_auth() {
     case ${1:-status} in
         pin)
-            local tmp st
+            local tmp st lib=/usr/local/lib/kuwai
+            if [ "${2:-}" != --trust-clone ]; then
+                if [ ! -d "$lib/current/shell-auth" ]; then
+                    echo "The password prompt is pinned from root's checked copy of a signed release, and there isn't one yet: kuwai setup puts it in place." >&2
+                    echo "(Developing kuwai: kuwai auth pin --trust-clone pins this checkout's prompt as it is.)" >&2
+                    return 1
+                fi
+                echo "Copies the password prompt from root's copy of kuwai $(basename "$(readlink -f "$lib/current")") to $AUTH_PINNED, owned by root,"
+                echo "after root checks that copy against its signature again. sudo asks once."
+                sudo /usr/bin/python3 -I "$lib/current/bin/kuwai-verify" place auth-prompt >/dev/null || { echo "not pinned" >&2; return 1; }
+                systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user restart kuwai-auth.service && echo "password prompt now runs from $AUTH_PINNED"
+                return
+            fi
+            echo "--trust-clone: pinning this checkout's prompt as it is; nothing checks it against a release." >&2
             if ! git -C "$ROOT" diff --quiet HEAD -- shell-auth || [ -n "$(git -C "$ROOT" ls-files --others --exclude-standard -- shell-auth)" ]; then
                 echo "shell-auth/ has uncommitted changes: commit or discard them first" >&2; return 1
             fi

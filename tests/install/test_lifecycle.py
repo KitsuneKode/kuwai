@@ -412,11 +412,13 @@ def test_the_login_entry_is_offered_without_a_terminal(install_env):
     (i.repo / 'system').mkdir()
     shutil.copy2(ROOT / 'system/session', i.repo / 'system/session')
     shutil.copy2(ROOT / 'system/kuwai.desktop', i.repo / 'system/kuwai.desktop')
+    shutil.copy2(ROOT / 'system/release.sh', i.repo / 'system/release.sh')
     shutil.copy2(ROOT / 'bin/kuwai-session', i.repo / 'bin/kuwai-session')
     i.env['KUWAI_SYSROOT'] = str(i.home.parent / 'sysroot')
     out = i.run()
-    assert 'sudo ' + str(i.repo / 'system/session') in out
-    subprocess.run([str(i.repo / 'system/session')], env=i.env, check=True, capture_output=True)
+    assert "root's checked copy of a signed release" in out and 'kuwai setup' in out
+    assert 'sudo ' + str(i.repo / 'system/session') + ' --trust-clone' in out
+    subprocess.run([str(i.repo / 'system/session'), '--trust-clone'], env=i.env, check=True, capture_output=True)
     assert '"Kuwai" is on the login screen' in i.run()
 
 

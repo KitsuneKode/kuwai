@@ -3,8 +3,10 @@ set -euo pipefail
 
 usage() {
 cat <<'KUWAI_USAGE'
-kuwai + kuwai: install, check, or remove, without touching anything it can't
-put back. Run from the repo (wherever you cloned it).
+kuwai: install, check, or remove, without touching anything it can't put back.
+kuwai setup runs this from a signed release it has checked; run from a clone it
+installs that clone for you, and leaves everything that needs root to root's
+checked copy of a release.
 
   ./install.sh               install (or update the install) for this user
   ./install.sh --dry-run     say what it would do; change nothing
@@ -33,11 +35,13 @@ What it does:
      GitHub/Gmail feeds only if you say yes (asked once, kept in
      ~/.config/kuwai/collect.conf; kuwai collect changes it)
   6. a "Kuwai" entry on the login screen, beside your other sessions, and a
-     root-owned copy of the password prompt (sudo, once: system/session and
-     kuwai auth pin; without a terminal it says the commands instead)
+     root-owned copy of the password prompt, both from root's checked copy of
+     a signed release in /usr/local/lib/kuwai (sudo, once; without a terminal,
+     or without that copy, it says the commands instead)
   7. the checks
 Never: autologin, or your settings. The login screen and alarms that wake the
-laptop are separate, with sudo: greeter/install, system/install.
+laptop are separate, with sudo, from root's copy too:
+/usr/local/lib/kuwai/current/greeter/install, …/system/install.
 KUWAI_USAGE
 }
 
@@ -46,9 +50,10 @@ CFG=${XDG_CONFIG_HOME:-$HOME/.config}
 DATA=${XDG_DATA_HOME:-$HOME/.local/share}
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/kuwai
 STABLE=$DATA/kuwai
+LIB=${KUWAI_SYSROOT:-}/usr/local/lib/kuwai
 UNITS=(kuwai-auth.service kuwai-shell.service kuwai-shell-broken.service kuwai-wallpaper.service kuwai-clipboard.service kuwai-feeds.service kuwai-backup.service kuwai-backup.timer)
 
-DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install; SEPARATE=0; WANT_CLIP=""; WANT_FEEDS=""
+FROM_RELEASE=0; DRY=0; DEPS=0; YES=0; PRINT_MISSING=0; NO_SERVICES=0; MODE=install; SEPARATE=0; WANT_CLIP=""; WANT_FEEDS=""
 for a in "$@"; do
     case $a in
         --dry-run) DRY=1 ;;
@@ -63,6 +68,7 @@ for a in "$@"; do
         --uninstall) MODE=uninstall ;;
         --separate-session) SEPARATE=1 ;;
         --doctor) MODE=doctor ;;
+        --from-release) FROM_RELEASE=1 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $a (see --help)" >&2; exit 2 ;;
     esac
@@ -269,21 +275,25 @@ separate_session() {
 
 login_session() {
     step "Login session"
-    local s=$REPO/system/session
+    local s=$REPO/system/session r=$LIB/current/system/session
     if [ ! -x "$s" ]; then ok "nothing to add in this copy"
     elif "$s" --check >/dev/null 2>&1; then ok "\"Kuwai\" is on the login screen"
-    elif [ $DRY = 1 ]; then say "  would: sudo $s (adds \"Kuwai\" to the login screen)"
+    elif [ ! -x "$r" ]; then
+        warn "the login entry comes from root's checked copy of a signed release, which isn't installed: kuwai setup puts it in place"
+        say "    (developing kuwai, trusting this clone as it is: sudo $s --trust-clone)"
+    elif [ $DRY = 1 ]; then say "  would: sudo $r (adds \"Kuwai\" to the login screen)"
     elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
-        say "  adding \"Kuwai\" to the login screen (sudo, once; nothing else of the system changes)"
-        sudo "$s" | sed 's/^/  /' || warn "not added; run: sudo $s"
+        say "  adding \"Kuwai\" to the login screen from root's checked copy (sudo, once; nothing else of the system changes)"
+        sudo "$r" | sed 's/^/  /' || warn "not added; run: sudo $r"
     else
-        warn "add \"Kuwai\" to the login screen with: sudo $s"
+        warn "add \"Kuwai\" to the login screen with: sudo $r"
     fi
 }
 
 pin_prompt() {
     step "Password prompt"
     if [ -f /usr/local/share/kuwai/shell-auth/shell.qml ]; then ok "runs from root's copy (/usr/local/share/kuwai/shell-auth)"
+    elif [ ! -d "$LIB/current/shell-auth" ]; then warn "the password prompt is pinned from root's checked copy of a signed release, which isn't installed: kuwai setup puts it in place"
     elif [ $DRY = 1 ]; then say "  would: kuwai auth pin (a root-owned copy of the password prompt; sudo, once)"
     elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
         say "  pinning the password prompt: a root-owned copy, so the code that reads your password isn't code your account can change"
@@ -333,7 +343,7 @@ install_all() {
         fi
     fi
     do_ mkdir -p "$STATE"
-    [ $DRY = 1 ] || printf '%s\n' "$REPO" >"$STATE/dev-root"
+    [ $DRY = 1 ] || [ $FROM_RELEASE = 1 ] || printf '%s\n' "$REPO" >"$STATE/dev-root"
     [ -f "$STATE/channel" ] || { [ $DRY = 1 ] && say "  would: write stable to $STATE/channel" || echo stable >"$STATE/channel"; }
     ok "channel: $(cat "$STATE/channel" 2>/dev/null || echo stable)"
 
@@ -432,8 +442,8 @@ install_all() {
     [ $DRY = 1 ] || { step "Original state"; ok "kept in $STATE/original (./install.sh --uninstall puts it back)"; }
 
     step "Optional, with sudo"
-    say "  sudo $REPO/greeter/install    the login screen (greetd; --undo for SDDM)"
-    say "  sudo $REPO/system/install     alarms that wake the laptop from sleep"
+    say "  sudo $LIB/current/greeter/install    the login screen (greetd; --undo puts the old login back)"
+    say "  sudo $LIB/current/system/install     alarms that wake the laptop from sleep"
     say "  kuwai feeds gmail-setup        Gmail notifications (the app password goes to your keyring)"
 
     [ $DRY = 1 ] || doctor
@@ -456,9 +466,10 @@ uninstall_all() {
     say "  The stable checkout ($STABLE), your settings (~/.config/kuwai) and notes stay."
     if [ -f "$STABLE/.git" ]; then say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
     else say "  Remove the checkout too:  rm -rf $STABLE"; fi
-    say "  The Kuwai login entry: sudo $REPO/system/session --undo"
+    say "  The Kuwai login entry: sudo $LIB/current/system/session --undo"
     say "  The pinned password prompt: kuwai auth unpin"
-    say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
+    say "  The login screen / alarms: sudo $LIB/current/greeter/install --undo · sudo $LIB/current/system/install --undo"
+    say "  Root's copy of kuwai, after those: sudo rm -rf $LIB"
     return $rc
 }
 

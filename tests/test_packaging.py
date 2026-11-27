@@ -29,6 +29,12 @@ def test_srcinfo_is_current():
     assert (ROOT / "VERSION").read_text().strip() >= out
 
 
-def test_setup_refuses_root_and_pins_the_release():
-    setup = (PKG / "kuwai-setup").read_text()
-    assert 'id -u)" = 0' in setup and '"v$version^{commit}"' in setup and "@VERSION@" in setup
+def test_the_package_is_the_signed_release_and_sets_up_from_it():
+    pkgbuild = (PKG / "PKGBUILD").read_text()
+    assert '#tag=v$pkgver?signed"' in pkgbuild, "makepkg checks the release tag's signature"
+    assert re.search(r"^validpgpkeys=\('[0-9A-F]{40}'\)$", pkgbuild, re.M)
+    for f in ("bin/kuwai-setup", "bin/kuwai-verify", "release-signers/*"):
+        assert f in pkgbuild, f"{f} comes from the signed tag"
+    assert not (PKG / "kuwai-setup").exists(), "no wrapper that runs an unchecked clone"
+    setup = (ROOT / "bin/kuwai-setup").read_text()
+    assert '[ "$(id -u)" != 0 ] ||' in setup and 'SIGNERS=$HERE/release-signers' in setup

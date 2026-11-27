@@ -1,0 +1,187 @@
+"""kuwai-setup installs only a release signed by a key in release-signers, whose every file is the
+signed one, and runs nothing from it before both are checked."""
+import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+VERIFY = ROOT / "bin/kuwai-verify"
+GIT_ENV = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"}
+
+
+def source_repo(tmp_path, keys, *signers):
+    repo = tmp_path / "src"
+    (repo / "bin/compat").mkdir(parents=True)
+    shutil.copy2(VERIFY, repo / "bin/kuwai-verify")
+    (repo / "install.sh").write_text('#!/bin/sh\necho "$@" > "$KUWAI_TEST_MARK"\n')
+    (repo / "install.sh").chmod(0o755)
+    (repo / "bin/compat/kuwai-verify").symlink_to("../kuwai-verify")
+    (repo / "notes.txt").write_text("a release\n")
+    keys.signers(repo / "release-signers", *(signers or [keys.mine]))
+    keys.git(repo.parent, "init", "-q", "-b", "main", str(repo))
+    keys.git(repo, "add", "-A")
+    keys.git(repo, "commit", "-qm", "release")
+    return repo
+
+
+def verify(*args):
+    return subprocess.run([str(VERIFY), *map(str, args)], capture_output=True, text=True, env=GIT_ENV, timeout=60)
+
+
+def test_a_signed_release_verifies_and_is_staged_as_signed(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    signers = k.signers(tmp_path / "signers", k.mine)
+    r = verify("tag", repo, "v1.0.0", "--signers", signers)
+    assert r.returncode == 0, r.stderr
+    info = json.loads(r.stdout)
+    assert info["signer"] == k.mine and info["digest"] == k.digest(repo, "v1.0.0")
+    stage = tmp_path / "cache/stage"
+    r = verify("fetch", repo, "--signers", signers, "--into", stage)
+    assert r.returncode == 0, r.stderr
+    info = json.loads(r.stdout)
+    assert info["name"] == "v1.0.0", "the newest release when none is named"
+    assert verify("manifest", stage).stdout.strip() == info["digest"]
+    assert (stage / "bin/compat/kuwai-verify").is_symlink()
+    assert Path(info["tagFile"]).read_bytes().startswith(b"object ")
+    assert oct(stage.stat().st_mode & 0o777) == "0o700"
+
+
+def test_the_newest_release_is_picked_by_version_not_by_name(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.2.0")
+    k.release(repo, "v1.10.0")
+    r = verify("fetch", repo, "--signers", k.signers(tmp_path / "signers", k.mine), "--into", tmp_path / "stage")
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["name"] == "v1.10.0"
+
+
+@pytest.mark.parametrize("case, why", [
+    ("unsigned", "isn't signed"),
+    ("plain", "plain tag"),
+    ("unknown-key", "isn't a kuwai release key"),
+    ("no-digest", "digest of its files"),
+    ("wrong-digest", "aren't the ones its signature names"),
+    ("renamed", "was made as"),
+])
+def test_a_tag_that_isnt_a_signed_release_is_refused(tmp_path, release_keys, case, why):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    signers = k.signers(tmp_path / "signers", k.mine)
+    if case == "unsigned":
+        k.git(repo, "tag", "-a", "-m", "kuwai 1.0.0", "v1.0.0")
+    elif case == "plain":
+        k.git(repo, "tag", "v1.0.0")
+    elif case == "unknown-key":
+        k.release(repo, "v1.0.0", fpr=k.theirs)
+    elif case == "no-digest":
+        k.release(repo, "v1.0.0", line=False)
+    elif case == "wrong-digest":
+        k.release(repo, "v1.0.0", digest="0" * 64)
+    else:
+        k.release(repo, "v0.9.0")
+        k.git(repo, "update-ref", "refs/tags/v1.0.0", k.git(repo, "rev-parse", "refs/tags/v0.9.0"))
+    r = verify("tag", repo, "v1.0.0", "--signers", signers)
+    assert r.returncode == 1 and why in r.stderr, r.stderr
+    stage = tmp_path / "stage"
+    r = verify("fetch", repo, "v1.0.0", "--signers", signers, "--into", stage)
+    assert r.returncode == 1 and why in r.stderr, r.stderr
+    assert not (stage / "install.sh").exists(), "nothing is checked out before the tag checks out"
+
+
+def test_no_key_in_release_signers_refuses_everything(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    (empty / "README").write_text("no key yet\n")
+    for r in (verify("tag", repo, "v1.0.0", "--signers", empty), verify("signers", empty),
+              verify("fetch", repo, "--signers", empty, "--into", tmp_path / "stage")):
+        assert r.returncode == 1 and "holds no key" in r.stderr
+    assert not (tmp_path / "stage").exists()
+
+
+def test_an_ssh_signed_tag_is_refused_plainly(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    key = tmp_path / "ssh"
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
+    k.git(repo, "-c", "gpg.format=ssh", "-c", f"user.signingkey={key}", "tag", "-s", "-m", "kuwai 1.0.0",
+          "-m", f"kuwai-tree-sha256 {k.digest(repo, 'HEAD')}", "v1.0.0")
+    r = verify("tag", repo, "v1.0.0", "--signers", k.signers(tmp_path / "signers", k.mine))
+    assert r.returncode == 1 and "SSH key" in r.stderr
+
+
+def setup_dir(tmp_path, keys, *fprs):
+    d = tmp_path / "setup"
+    (d / "bin").mkdir(parents=True)
+    shutil.copy2(ROOT / "bin/kuwai-setup", d / "bin/kuwai-setup")
+    shutil.copy2(VERIFY, d / "bin/kuwai-verify")
+    if fprs:
+        keys.signers(d / "release-signers", *fprs)
+    else:
+        (d / "release-signers").mkdir()
+    return d
+
+
+def run_setup(tmp_path, d, *args):
+    env = {**GIT_ENV, "HOME": str(tmp_path / "home"), "XDG_CACHE_HOME": str(tmp_path / "cache"),
+           "KUWAI_TEST_MARK": str(tmp_path / "ran")}
+    return subprocess.run([str(d / "bin/kuwai-setup"), *map(str, args)], env=env, capture_output=True, text=True,
+                          stdin=subprocess.DEVNULL, timeout=120)
+
+
+def test_setup_runs_the_release_only_after_checking_it(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    r = run_setup(tmp_path, setup_dir(tmp_path, k, k.mine), "--source", repo, "--yes")
+    assert r.returncode == 0, r.stderr
+    assert f"Verified kuwai v1.0.0: signed by {k.mine}" in r.stdout
+    assert (tmp_path / "ran").read_text().split() == ["--from-release", "--yes"]
+    assert "sudo /usr/bin/python3 -I" in r.stdout and "--signer " + k.mine in r.stdout, "root's step is said, not skipped"
+
+
+@pytest.mark.parametrize("signed_by", ["theirs", "nobody"])
+def test_setup_runs_nothing_from_a_release_it_cant_check(tmp_path, release_keys, signed_by):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    if signed_by == "theirs":
+        k.release(repo, "v1.0.0", fpr=k.theirs)
+    else:
+        k.git(repo, "tag", "-a", "-m", "kuwai 1.0.0", "v1.0.0")
+    r = run_setup(tmp_path, setup_dir(tmp_path, k, k.mine), "--source", repo)
+    assert r.returncode != 0 and "nothing was installed" in r.stderr
+    assert not (tmp_path / "ran").exists(), "the release's install.sh never ran"
+    assert list((tmp_path / "cache/kuwai/releases").iterdir()) == [], "its folder is gone"
+
+
+def test_setup_refuses_without_a_release_key(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    r = run_setup(tmp_path, setup_dir(tmp_path, k), "--source", repo)
+    assert r.returncode != 0 and "holds no key" in r.stderr
+    assert not (tmp_path / "ran").exists()
+
+
+def test_setup_verify_only_installs_nothing(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    r = run_setup(tmp_path, setup_dir(tmp_path, k, k.mine), "--source", repo, "--verify-only")
+    assert r.returncode == 0, r.stderr
+    assert "nothing was installed" in r.stdout and not (tmp_path / "ran").exists()
+
+
+def test_setup_never_runs_as_root():
+    text = (ROOT / "bin/kuwai-setup").read_text()
+    assert '[ "$(id -u)" != 0 ] ||' in text
+    assert text.index('"$VERIFY" fetch') < text.index('"$STAGE/install.sh"'), "the release runs only after fetch checked it"
