@@ -40,6 +40,7 @@ def load(tmp_path, monkeypatch):
 
     def no_thumbs(*a, **k):
         raise AssertionError("made a thumbnail that already exists")
+    monkeypatch.setattr(m, "connected_screen_walls", lambda *args, **kwargs: ([], {}))
     monkeypatch.setattr(m.subprocess, "run", no_thumbs)
     return m, home, walls
 

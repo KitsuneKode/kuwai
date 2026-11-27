@@ -202,13 +202,15 @@ def listing() -> dict:
         walls.append({**item, "thumb": thumb(path, cache), "current": path == active, "palette": []})
     if len(cache) != known:
         save(CACHE, json.dumps(cache))
+    present = hyde_here()
     return {
         "current": cur,
         "themes": themes,
         "wallpapers": walls,
         "mode": color_mode(),
         "modes": MODES,
-        "hyde": hyde_here(),
+        "hyde": present,
+        "backend": "themes" if present else "look",
         "monitors": monitors,
         "screenWallpapers": screen_walls,
     }
@@ -307,7 +309,11 @@ def main(argv):
             look = os.path.join(ROOT, "bin", "kuwai-look")
             cm = color_mode()
             mode = MODES[cm] if 0 <= cm < len(MODES) else "theme"
-            return launch([look, "set-wallpaper", "--mode", mode, "--output", output, argv[1]], wait)
+            command = [look, "set-wallpaper", "--mode", mode, "--output", output, argv[1]]
+            previous = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.join(HOME, ".cache"), "hyde", "wall.set")
+            if os.path.isfile(previous):
+                command += ["--fallback-wall", os.path.realpath(previous)]
+            return launch(command, wait)
         set_global_wall(STATE_HOME, argv[1])
         run = os.environ.get("XDG_RUNTIME_DIR") or os.path.join(HOME, ".cache")
         script = 'printf "%s" "$3" > "$1.want"; exec 9>"$1"; flock 9; [ "$(cat "$1.want" 2>/dev/null)" = "$3" ] || exit 0; "$2" -s "$3" --global 9>&-'

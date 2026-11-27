@@ -70,7 +70,7 @@ def still(step):
     walls, cur, themed = [], "", False
     try:
         listing = json.loads(run([os.path.join(BIN, "kuwai-themes"), "list"]).stdout)
-        themed = listing.get("hyde") is not False
+        themed = listing.get("backend") != "look"
         if not themed:
             listing = json.loads(run([os.path.join(BIN, "kuwai-look"), "list"]).stdout)
         entries = listing.get("wallpapers", [])

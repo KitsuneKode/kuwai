@@ -462,7 +462,7 @@ def wallpaper_palette(image, mode, prev):
     return state, palette
 
 
-def cmd_set_wallpaper(image, mode="dark", apply_live=True, output=None):
+def cmd_set_wallpaper(image, mode="dark", apply_live=True, output=None, fallback_wall=""):
     real = os.path.realpath(image)
     if not os.path.isfile(real):
         raise SystemExit(f"kuwai-look: no such image: {image}")
@@ -474,7 +474,7 @@ def cmd_set_wallpaper(image, mode="dark", apply_live=True, output=None):
             raise SystemExit("kuwai-look: screen identity unavailable")
         if apply_live and not apply_awww(real, output=connector):
             raise SystemExit("kuwai-look: could not apply the wallpaper")
-        set_screen_wall(STATE_HOME, ident, real, fallback_wall=current_wall())
+        set_screen_wall(STATE_HOME, ident, real, fallback_wall=fallback_wall or current_wall())
         focused = primary_monitor(monitors)
         recolored = focused is not None and focused.get("name") == connector and mode != "theme"
         state, palette, errors = prev, None, []
@@ -494,10 +494,7 @@ def cmd_set_wallpaper(image, mode="dark", apply_live=True, output=None):
 
 
 def current_wall():
-    if os.path.isfile(WALL_LINK):
-        return os.path.realpath(WALL_LINK)
-    hyde_wall = os.path.join(CACHE_HOME, "hyde", "wall.set")
-    return os.path.realpath(hyde_wall) if os.path.isfile(hyde_wall) else ""
+    return os.path.realpath(WALL_LINK) if os.path.isfile(WALL_LINK) else ""
 
 
 def cmd_focus_wallpaper(apply_live=True, wall=None, mode=None):
@@ -908,6 +905,13 @@ def main(argv):
             raise SystemExit("kuwai-look: --output needs a value")
         output = args[idx + 1]
         args = args[:idx] + args[idx + 2:]
+    fallback_wall = ""
+    if "--fallback-wall" in args:
+        idx = args.index("--fallback-wall")
+        if idx + 1 >= len(args):
+            raise SystemExit("kuwai-look: --fallback-wall needs a value")
+        fallback_wall = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
     boundary = None
     if "--boundary" in args:
         idx = args.index("--boundary")
@@ -926,7 +930,7 @@ def main(argv):
         args = args[:idx] + args[idx + 2:]
 
     if cmd == "set-wallpaper" and len(args) == 1:
-        res = with_lock(lambda: cmd_set_wallpaper(args[0], mode=mode, apply_live=apply_live, output=output))
+        res = with_lock(lambda: cmd_set_wallpaper(args[0], mode=mode, apply_live=apply_live, output=output, fallback_wall=fallback_wall))
         print(json.dumps(res))
         return 0
     if cmd == "restore" and not args:

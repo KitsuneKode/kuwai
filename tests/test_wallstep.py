@@ -36,7 +36,7 @@ def test_wallpapers_step_and_wrap(tmp_path):
 
 
 def test_native_wallstep_uses_native_gallery_even_when_packs_are_listed(tmp_path):
-    bin_, log, env = setup(tmp_path, {"hyde": False, "wallpapers": [{"path": "/w/pack.jpg"}]}, [])
+    bin_, log, env = setup(tmp_path, {"hyde": False, "backend": "look", "wallpapers": [{"path": "/w/pack.jpg"}]}, [])
     native = {"wallpapers": [{"path": "/w/current.jpg", "current": True}, {"path": "/w/native.jpg"}]}
     (bin_ / "kuwai-look").write_text(f"#!/bin/sh\necho '{json.dumps(native)}'\n")
     assert subprocess.run([str(bin_ / "kuwai-wallstep"), "still", "next"], env=env, timeout=30).returncode == 0
