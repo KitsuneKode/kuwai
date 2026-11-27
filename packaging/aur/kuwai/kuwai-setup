@@ -3,11 +3,11 @@ set -eu
 version=@VERSION@
 src=${KUWAI_SRC:-${XDG_DATA_HOME:-$HOME/.local/share}/kuwai-src}
 if [ "$(id -u)" = 0 ]; then
-    echo "kuwai-setup: run it as yourself, not root: Kuwai lives in your home" >&2
+    echo "kuwai-setup: run it as yourself, not root: kuwai lives in your home" >&2
     exit 1
 fi
 if [ ! -d "$src/.git" ]; then
-    echo "kuwai-setup: fetching Kuwai $version into $src"
+    echo "kuwai-setup: fetching kuwai $version into $src"
     git clone --quiet --filter=blob:none --no-checkout https://github.com/KitsuneKode/kuwai.git "$src"
     git -C "$src" checkout --quiet -B main "v$version^{commit}"
 fi

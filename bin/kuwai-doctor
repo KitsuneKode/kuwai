@@ -19,7 +19,7 @@ notify_send_broken() {
     notify-send --version >/dev/null 2>&1
 }
 
-[ "$QUIET" = 1 ] || echo "Kuwai doctor · session checks (kuwai + Hyprland + shell)"
+[ "$QUIET" = 1 ] || echo "kuwai doctor · session checks (kuwai + Hyprland + shell)"
 
 if [ "${KUWAI_IN_DOCTOR:-0}" != 1 ] && [ -x "$KUWAI/bin/kuwai" ]; then
     [ "$QUIET" = 1 ] || echo "Hyprland & kuwai"

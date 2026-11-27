@@ -13,7 +13,7 @@ Press **`Super+/`** (or hold **`Super`** for ~0.9 s) to view every live binding 
 | Keys | Action |
 | --- | --- |
 | `Super+A` | Launcher (apps, windows, files, `=` calc, `!` processes/ports, `+` packages) |
-| `Super+N` | Notifications center |
+| `Super+N` | Notifications centre |
 | `Super+Ctrl+Space` | Controls (Wi-Fi, Bluetooth, Sound, DND, Display) |
 | `Super+Ctrl+Alt+W` | Wi-Fi networks |
 | `Super+Alt+B` | Bluetooth |
@@ -60,7 +60,7 @@ Press **`Super+/`** (or hold **`Super`** for ~0.9 s) to view every live binding 
 | `Super+Q` / `Alt+F4` | Close window |
 | `Super+W` | Float / tile window |
 | `Super+F` / `Super+F11` | Fullscreen |
-| `Super+Shift+F` | Maximize (bar and gaps stay) |
+| `Super+Shift+F` | Maximise (bar and gaps stay) |
 | `Super+Ctrl+F` | Pin window on every workspace |
 | `Super+G` | Toggle window group (tabs) |
 | `Super+[` / `Super+]` | Previous / next tab, column, or window |
@@ -84,7 +84,7 @@ Press **`Super+/`** (or hold **`Super`** for ~0.9 s) to view every live binding 
 | `Super+Alt+L` | Cycle workspace layout (scrolling, dwindle, monocle, floating) |
 | `Super+S` / `Super+Shift+S` / `Super+Alt+S` | Toggle scratchpad / move window / send window (stay) |
 | `Super+\`` / `Super+Shift+\`` | Drop-down console / move window to console |
-| `Super+O` / `Super+Shift+O` | Minimize window / restore last minimized |
+| `Super+O` / `Super+Shift+O` | Minimise window / restore last minimised |
 | `Super+Alt+W` / `Super+Alt+Shift+W` | Picture-in-picture: next corner / other screen |
 | `Super+Ctrl+K` | Click a window to kill it |
 | `Super+Delete` | Quit Hyprland |
@@ -155,6 +155,6 @@ Press **`Super+/`** (or hold **`Super`** for ~0.9 s) to view every live binding 
 ## Inside panels
 
 - **Island section strip:** `Alt+1` Agents · `Alt+2` Usage · `Alt+3` System · `Alt+4` Cleanup.
-- **Notification Center:** type to search · `↑`/`↓` select · `Enter` open · `Delete` dismiss · `←`/`→` fold/expand group · `Tab` filter · `Ctrl+Tab` switch tab · `Ctrl+D` DND · `Ctrl+Z` undo clear · `Esc` clear search then close.
+- **Notification Centre:** type to search · `↑`/`↓` select · `Enter` open · `Delete` dismiss · `←`/`→` fold/expand group · `Tab` filter · `Ctrl+Tab` switch tab · `Ctrl+D` DND · `Ctrl+Z` undo clear · `Esc` clear search then close.
 - **Clipboard (`Super+V`):** `↑`/`↓`/`←`/`→` move · `Enter` paste into previous window · `Shift+Enter` copy · `Space` Quick Look · `Ctrl+E` edit · `Ctrl+P` pin · `Ctrl+O` OCR · `Ctrl+K` actions · `Ctrl+X` / `Shift+Delete` delete (`Ctrl+Z` undo) · `Ctrl+H` reveal masked secret · `Alt+1`–`9` paste nth item.
 - **Settings (`Super+Ctrl+I`):** `↑`/`↓` switch section · type (or `/` / `Ctrl+F`) to search every setting · `Tab` / `Shift+Tab` walk controls · `Esc` clear search then close.

@@ -33,7 +33,7 @@ Scope {
     GlobalShortcut {
         appid: "kuwai"
         name: "center"
-        description: "Notifications: open or close the center"
+        description: "Notifications: open or close the centre"
         onPressed: Notifs.toggleCenter("notifications", "key")
     }
     GlobalShortcut {

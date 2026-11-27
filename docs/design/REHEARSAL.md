@@ -102,7 +102,7 @@ x11 --motion full --output DIR`). Each rule of a gesture is a check:
 - with reduced motion nothing is left half-way.
 
 Every swipe in the shell is `components/SwipeAway` (the notch's list, the
-center, agents, T3, the lock screen's cards), so these checks cover them all.
+centre, agents, T3, the lock screen's cards), so these checks cover them all.
 The checks were proven by breaking the swipe eight ways and watching each one
 fail; when you add a check, break the thing it guards and see it fail first.
 A new drag is built on `Spring` (interruptible, keeps its velocity), `Fling`

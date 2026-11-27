@@ -691,7 +691,7 @@ Item {
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: if (!agents.hovered && !rest.agentMoment) Notifs.toggleCenter("controls", "pointer", rest.bar.screenName) }
         Accessible.role: Accessible.Button
-        Accessible.name: "Status, open Control Center"
+        Accessible.name: "Status, open Control Centre"
         Accessible.onPressAction: Notifs.toggleCenter("controls", "pointer", rest.bar.screenName)
     }
 

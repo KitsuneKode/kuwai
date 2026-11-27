@@ -242,10 +242,10 @@ Row {
             onClicked: Hyprland.dispatch("hl.dsp.workspace.toggle_special('" + (sp.shown || "special").replace(/[^A-Za-z0-9_-]/g, "") + "')")
         }
         Accessible.role: Accessible.Button
-        Accessible.name: "Hide " + (({ special: "the scratchpad", notes: "notes", console: "the console", minimized: "minimized windows" })[sp.shown] || sp.shown)
+        Accessible.name: "Hide " + (({ special: "the scratchpad", notes: "notes", console: "the console", minimized: "minimised windows" })[sp.shown] || sp.shown)
         Accessible.onPressAction: Hyprland.dispatch("hl.dsp.workspace.toggle_special('" + (sp.shown || "special").replace(/[^A-Za-z0-9_-]/g, "") + "')")
         Tip {
-            text: ({ special: "Scratchpad", notes: "Notes", console: "Console", minimized: "Minimized windows" })[sp.shown] || ("Special: " + sp.shown)
+            text: ({ special: "Scratchpad", notes: "Notes", console: "Console", minimized: "Minimised windows" })[sp.shown] || ("Special: " + sp.shown)
             shown: spArea.containsMouse
             below: true
         }

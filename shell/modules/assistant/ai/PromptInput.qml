@@ -708,7 +708,7 @@ Rectangle {
 
     function submit() {
         const val = inputArea.text.trim();
-        const prompt = val !== "" ? val : (OllamaService.pendingImage !== "" ? "Analyze this screenshot in detail." : "");
+        const prompt = val !== "" ? val : (OllamaService.pendingImage !== "" ? "Analyse this screenshot in detail." : "");
         if (prompt === "") return;
 
         inputArea.text = "";

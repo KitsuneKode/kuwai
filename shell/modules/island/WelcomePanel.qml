@@ -42,7 +42,7 @@ Item {
                 Label {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: wp.first ? "Welcome to Kuwai" : "What's new in Kuwai " + Welcome.version
+                    text: wp.first ? "Welcome to kuwai" : "What's new in kuwai " + Welcome.version
                     size: Theme.tTitle2; weight: Theme.wSemibold
                 }
                 Label {

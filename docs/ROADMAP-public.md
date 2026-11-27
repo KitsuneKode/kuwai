@@ -18,7 +18,7 @@ This page lists planned work **not yet shipped** in `v0.1.0`. Internal working n
 ## Screensavers, wallpapers, and themes
 
 - **Screensaver ladder:** make the screensaver a first-class step before idle lock (`saver → fade → lock`), add a long-idle power step (clock on black or DPMS off after an hour), and add a photo-shuffle mode.
-- **Live wallpaper polish:** serialize per-monitor `mpvpaper` operations, show a still frame when a live wallpaper is paused, and unify compositor DPMS state handling.
+- **Live wallpaper polish:** serialise per-monitor `mpvpaper` operations, show a still frame when a live wallpaper is paused, and unify compositor DPMS state handling.
 - **Per-monitor and day/night wallpapers:** support different wallpapers per monitor and optional day/night switching, plus additional open-licensed theme packs.
 - **Minimal Plymouth boot theme:** optional black boot splash with a single accent ring.
 

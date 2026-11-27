@@ -1,4 +1,4 @@
-"""Kuwai assistant's local agent (called as `kuwai-ollama agent <request.json>`).
+"""kuwai assistant's local agent (called as `kuwai-ollama agent <request.json>`).
 
 Drives Ollama's /api/chat, runs tools, and prints one JSON event per line on
 stdout, using T3 Code's runtime vocabulary so other providers can emit the same:

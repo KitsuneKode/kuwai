@@ -54,7 +54,7 @@ session), *you* (needs the user).
   off while the shell owns idle. **Done when** `rice promote` runs it and
   refuses on failure (`--force` to override).
 - [x] **State screenshots**: `kuwai-check --shots` drives the test hook
-  and saves island / toast / center states to `~/.cache/kuwai/shots/<commit>/`
+  and saves island / toast / centre states to `~/.cache/kuwai/shots/<commit>/`
   (never opening keyboard-grabbing panels unless `--interactive`).
 - [ ] **Split the branch** (*you* + all): island moments · proximity ·
   agents · idle · updater · AI into separate PRs.
@@ -105,7 +105,7 @@ Order matters: each slice should pass `rice doctor` and `kuwai-check` before the
 - [~] **Budget** (fresh start 207 MB; hot reloads grow it, so the gate stays 450): shell idle ≤ 350 MB Pss_Anon, ≤ 2 % CPU idle, no
   per-second timers while hidden (checked by `kuwai-check`).
 - [ ] Lazy: the assistant overlay (*ai*), clipboard thumbnails (release
-  on cool-down), the Notification Center's Sound/Controls tabs.
+  on cool-down), the Notification Centre's Sound/Controls tabs.
 - [ ] **AI model offload** (*ai*): unload `llama-server` after N idle
   minutes, load on first use; never run it on battery unless asked. The
   single biggest RAM/heat win (14 GB, ~3 cores).

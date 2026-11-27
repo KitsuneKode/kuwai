@@ -143,9 +143,9 @@
       "max": 8760,
       "section": "notifs",
       "label": "Keep seen notifications",
-      "detail": "How long dismissed-but-unread rows stay in the center",
+      "detail": "How long dismissed-but-unread rows stay in the centre",
       "group": "",
-      "searchTerms": "keep seen notifications how long dismissed-but-unread rows stay in the center 6 h 1 day 3 days never ",
+      "searchTerms": "keep seen notifications how long dismissed-but-unread rows stay in the centre 6 h 1 day 3 days never ",
       "requires": [],
       "restartScope": "live"
     },

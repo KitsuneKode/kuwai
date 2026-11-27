@@ -50,7 +50,7 @@ Singleton {
             if (Saver.locked || Saver.showing || Island.panel !== "" || Notifs.centerOpen || Notifs.fullscreenNow) { restart(); return; }
             root.announced = true;
             if (root.mode === "first") Island.open("welcome", "", "pointer");
-            else Moments.show({ kind: "update", glyph: "\u{f06b0}", label: "Kuwai " + root.version, value: "What's new", ring: -1, tone: Theme.textPrimary,
+            else Moments.show({ kind: "update", glyph: "\u{f06b0}", label: "kuwai " + root.version, value: "What's new", ring: -1, tone: Theme.textPrimary,
                                 go: () => Island.open("welcome", "", "pointer"), dismiss: () => root.markSeen() }, 8000);
         }
     }

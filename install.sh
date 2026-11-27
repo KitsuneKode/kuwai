@@ -16,7 +16,7 @@ put back. Run from the repo (wherever you cloned it).
   ./install.sh --feeds / --no-feeds           GitHub/Gmail notifications, or not (asked otherwise)
   ./install.sh --uninstall   put back what was there before the first install
   ./install.sh --separate-session  an older install that used ~/.config/hypr:
-                             move Kuwai to ~/.config/kuwai/hypr and give ~/.config/hypr back
+                             move kuwai to ~/.config/kuwai/hypr and give ~/.config/hypr back
   ./install.sh --doctor      only check (kuwai doctor + kuwai-check)
 
 What it does:
@@ -32,7 +32,7 @@ What it does:
      backup), linked from the stable checkout and enabled; clipboard history and
      GitHub/Gmail feeds only if you say yes (asked once, kept in
      ~/.config/kuwai/collect.conf; kuwai collect changes it)
-  6. a "Kuwai" entry on the login screen, beside your other sessions, and a
+  6. a "kuwai" entry on the login screen, beside your other sessions, and a
      root-owned copy of the password prompt (sudo, once: system/session and
      kuwai auth pin; without a terminal it says the commands instead)
   7. the checks
@@ -173,9 +173,9 @@ check_deps() {
 hypr_version() {
     command -v Hyprland >/dev/null || return 0
     local v; v=$(Hyprland --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
-    [ -n "$v" ] || { warn "couldn't read Hyprland's version; Kuwai needs 0.57 or later (Lua config)"; return 0; }
+    [ -n "$v" ] || { warn "couldn't read Hyprland's version; kuwai needs 0.57 or later (Lua config)"; return 0; }
     if [ "$(printf '%s\n0.57\n' "$v" | sort -V | head -1)" != 0.57 ]; then
-        warn "Hyprland $v is too old: Kuwai's config is Lua, which needs Hyprland 0.57 or later (sudo pacman -Syu)"
+        warn "Hyprland $v is too old: kuwai's config is Lua, which needs Hyprland 0.57 or later (sudo pacman -Syu)"
         [ $DRY = 1 ] && return 0
         return 1
     fi
@@ -264,20 +264,20 @@ separate_session() {
     done
     place "$REPO/hypr/templates/hyprland.lua" "$KDIR/hyprland.lua" && ok "$KDIR/hyprland.lua ← hypr/templates/hyprland.lua"
     if ORIG manages "$CFG/hypr/hyprland.lua"; then ORIG restore-one "$CFG/hypr/hyprland.lua" || true
-    else warn "$CFG/hypr/hyprland.lua was Kuwai's before kuwai kept records; it's left as it is (replace it with your own to make the plain Hyprland session yours again)"; fi
+    else warn "$CFG/hypr/hyprland.lua was kuwai's before kuwai kept records; it's left as it is (replace it with your own to make the plain Hyprland session yours again)"; fi
 }
 
 login_session() {
     step "Login session"
     local s=$REPO/system/session
     if [ ! -x "$s" ]; then ok "nothing to add in this copy"
-    elif "$s" --check >/dev/null 2>&1; then ok "\"Kuwai\" is on the login screen"
-    elif [ $DRY = 1 ]; then say "  would: sudo $s (adds \"Kuwai\" to the login screen)"
+    elif "$s" --check >/dev/null 2>&1; then ok "\"kuwai\" is on the login screen"
+    elif [ $DRY = 1 ]; then say "  would: sudo $s (adds \"kuwai\" to the login screen)"
     elif [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; then
-        say "  adding \"Kuwai\" to the login screen (sudo, once; nothing else of the system changes)"
+        say "  adding \"kuwai\" to the login screen (sudo, once; nothing else of the system changes)"
         sudo "$s" | sed 's/^/  /' || warn "not added; run: sudo $s"
     else
-        warn "add \"Kuwai\" to the login screen with: sudo $s"
+        warn "add \"kuwai\" to the login screen with: sudo $s"
     fi
 }
 
@@ -355,10 +355,10 @@ install_all() {
     elif [ $DRY = 1 ]; then "$REPO/bin/kuwai-home" --dry-run | sed 's/^/  /'
     else KUWAI_HOME_SRC="$STABLE/home" "$REPO/bin/kuwai-home" | sed 's/^/  /'; fi
 
-    step "Kuwai's Hyprland config"
+    step "kuwai's Hyprland config"
     local dir; dir=$(kuwai_dir)
     if [ $SEPARATE = 1 ] && [ "$dir" = "$CFG/hypr" ]; then separate_session; dir=$KDIR; fi
-    [ "$dir" = "$KDIR" ] || warn "an older install: Kuwai reads $dir, so the plain Hyprland session starts Kuwai too (./install.sh --separate-session moves it to $KDIR)"
+    [ "$dir" = "$KDIR" ] || warn "an older install: kuwai reads $dir, so the plain Hyprland session starts kuwai too (./install.sh --separate-session moves it to $KDIR)"
     local entry=$dir/hyprland.lua
     if [ -f "$entry" ] && cmp -s "$entry" "$REPO/hypr/templates/hyprland.lua"; then ok "$entry is current"
     else
@@ -373,7 +373,7 @@ install_all() {
             installed "$dir/$f"
         fi
     done
-    [ "$dir" = "$CFG/hypr" ] || [ ! -f "$CFG/hypr/hyprland.lua" ] || ok "$CFG/hypr/hyprland.lua: not Kuwai's, left as it is"
+    [ "$dir" = "$CFG/hypr" ] || [ ! -f "$CFG/hypr/hyprland.lua" ] || ok "$CFG/hypr/hyprland.lua: not kuwai's, left as it is"
 
     step "The kuwai command"
     local kbin=$HOME/.local/bin/kuwai
@@ -438,7 +438,7 @@ install_all() {
 
     [ $DRY = 1 ] || doctor
     say ""
-    say "Done. Log out and pick Kuwai on the login screen (from a console: kuwai-session)."
+    say "Done. Log out and pick kuwai on the login screen (from a console: kuwai-session)."
 }
 
 uninstall_all() {
@@ -456,7 +456,7 @@ uninstall_all() {
     say "  The stable checkout ($STABLE), your settings (~/.config/kuwai) and notes stay."
     if [ -f "$STABLE/.git" ]; then say "  Remove the checkout too:  git -C $REPO worktree remove $STABLE"
     else say "  Remove the checkout too:  rm -rf $STABLE"; fi
-    say "  The Kuwai login entry: sudo $REPO/system/session --undo"
+    say "  The kuwai login entry: sudo $REPO/system/session --undo"
     say "  The pinned password prompt: kuwai auth unpin"
     say "  The login screen / alarms: sudo greeter/install --undo · sudo system/install --undo"
     return $rc

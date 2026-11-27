@@ -102,7 +102,7 @@ FocusScope {
         { name: "Clipboard", sub: "History and pins", glyph: "\u{f014c}", run: () => Clipboard.toggle("all") },
         { name: "Screen Recording", sub: "Choose a screen, audio and frame rate", glyph: "\u{f044a}", run: () => Clipboard.recordKey() },
         { name: "Screenshot", sub: "Pick an area or a window, then annotate", glyph: "\u{f0104}", run: () => Apps.run([Paths.bin + "/kuwai-shot", "area"]) },
-        { name: "Notifications", sub: "The center", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
+        { name: "Notifications", sub: "The centre", glyph: "\u{f009a}", run: () => Notifs.toggleCenter("notifications", "key") },
         { name: "Claude here", need: "claude", sub: "Claude Code in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("claude") },
         { name: "Codex here", need: "codex", sub: "Codex in this folder, as a kittymux tab", glyph: "\u{f06a9}", run: () => launcher.agentHere("codex") },
         { name: "Agents", sub: "Every kitty pane and T3 thread, the model each runs", glyph: "\u{f0e7b}", run: () => Qt.callLater(() => Island.open("agents", Island.screen, "key")), keep: true },

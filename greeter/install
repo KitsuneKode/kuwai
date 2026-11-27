@@ -118,7 +118,7 @@ fi
 was=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null || true)
 stage_once
 cat <<PLAN
-This makes Kuwai's login screen the one this machine boots to:
+This makes kuwai's login screen the one this machine boots to:
   · installs greetd and rsync (pacman shows what and asks)
   · replaces /etc/pam.d/greetd and /etc/greetd/config.toml (the old ones are kept in $KEEP)
   · removes /etc/systemd/system/getty@tty1.service.d/override.conf (an autologin, if you had one; kept too)

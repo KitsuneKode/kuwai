@@ -1,1 +1,1 @@
-"""Kuwai standalone look and palette pipeline."""
+"""kuwai standalone look and palette pipeline."""

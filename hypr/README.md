@@ -12,7 +12,7 @@ themes, wallpapers and pickers working while HyDE is still installed.
 ~/.config/kuwai/hypr/monitors.lua  this machine's screens            (yours)
 ~/.config/kuwai/hypr/user.lua      apps, launchers, per-app rules     (yours)
 ~/.config/kuwai/keys.tsv           your own chords for kuwai's actions (yours; Settings → Shortcuts, `kuwai keys`)
-/usr/local/bin/kuwai-session       the "Kuwai" login entry: start-hyprland -- --config <entry>
+/usr/local/bin/kuwai-session       the "kuwai" login entry: start-hyprland -- --config <entry>
 
 hypr/init.lua                  load order; errors → one notification + `kuwai doctor`
 hypr/kuwai/core.lua            K: paths, file probes, binds (K.bind/K.bind_hold/K.submap), state
@@ -70,7 +70,7 @@ Rules: `kuwai.K.rules.rule({ name = …, match = { class = "^(app)$" }, float = 
 | `screenshare_privacy` | while sharing: DND on, notifications and private apps (password managers, chats) drawn black | — |
 | `auto_battery` | unplugged → battery mode, plugged in → the mode you had | — |
 | `auto_game` | a fullscreen game turns blur/shadows/animations off, live | — |
-| `night_light` | warm screens sunset→sunrise (K.night lat/lon in user.lua); the center's Night Shift still works in between | — |
+| `night_light` | warm screens sunset→sunrise (K.night lat/lon in user.lua); the centre's Night Shift still works in between | — |
 | `persistent_size` | floating apps reopen at the size you left them | — |
 | `hold_super` | hold Super alone ~0.9 s → Shortcuts panel while held | Super (hold) |
 | `wobble` | a little spring in windows you drag | — |

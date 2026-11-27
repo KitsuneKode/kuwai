@@ -49,7 +49,7 @@ flows had sharp operational and security edges:
      system config.
    - `bin/kuwai-pacnew` extracts the previous package default from the pacman
      cache for a three-way comparison: lines the user removed from the old
-     default are recognized as deliberate user choices rather than new package
+     default are recognised as deliberate user choices rather than new package
      defaults. When the prior default is no longer cached, it refuses to claim
      the file is untouched and marks it `review`.
    - Always preserve tool-managed files such as `/etc/pacman.d/mirrorlist`

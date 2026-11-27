@@ -6,7 +6,7 @@ kuwai runs as your normal user session (Hyprland, Quickshell, systemd user units
 
 | Component | Installed by | Boundary |
 | --- | --- | --- |
-| `/usr/local/bin/kuwai-session` and `/usr/share/wayland-sessions/kuwai.desktop` | `sudo system/session` (run once by `install.sh`; `--undo` removes) | Registers the **Kuwai** Wayland session entry |
+| `/usr/local/bin/kuwai-session` and `/usr/share/wayland-sessions/kuwai.desktop` | `sudo system/session` (run once by `install.sh`; `--undo` removes) | Registers the **kuwai** Wayland session entry |
 | `/usr/local/share/kuwai/shell-auth/` | `kuwai auth pin` (run once by `install.sh`; `unpin` removes) | Root-owned copy of the standalone polkit password prompt (`kuwai-auth.service`). Uses vendored components (no symlinks to `shell/`), software rendering, no core dumps, and `TextInput.NoEcho` (five-dot pulse so password length is never revealed). The island only trusts prompts from `/usr/bin/qs` running the pinned/stable path in the `kuwai-auth.service` cgroup |
 | `/usr/local/lib/kuwai/kuwai-update-root` | `kuwai update install-helper` | Started on demand via `pkexec` with the allowed operations named in `argv` (`upgrade`, `deps`, `install`, `pacnew`, `clean-cache`). Runs `pacman` and `paccache` only; copies built AUR packages without following symlinks into a root-only directory and checks their `sha256` before `pacman -U`; refuses automatic `.pacnew` replacement on `passwd`, `shadow`, `group`, `gshadow`, `fstab`, and `crypttab`; validates sudoers with `visudo -c` |
 | `/var/lib/kuwai-greeter/` (optional) | `sudo greeter/install` (`--code` updates; `--undo` restores previous DM) | Installs committed `shell/` and `greeter/` files owned by root (links refused). Your user can write only `/var/lib/kuwai-greeter/home/` (wallpaper, colours, face, and plain monitor/keyboard data validated line-by-line by `greeter/hyprland.lua`) |
@@ -21,7 +21,7 @@ kuwai runs as your normal user session (Hyprland, Quickshell, systemd user units
 
 ## Hardening enforced by tests
 
-- **Untrusted text (`tests/security/test_text_format.py`):** external strings (titles, notification text, tool output) render as `Text.PlainText` or sanitized markup with no remote `<img>` fetches.
+- **Untrusted text (`tests/security/test_text_format.py`):** external strings (titles, notification text, tool output) render as `Text.PlainText` or sanitised markup with no remote `<img>` fetches.
 - **Links (`tests/security/test_links.py`):** opened links pass through `Links.safeLink` (web and mail schemes only).
 - **Commands:** values are passed as `argv`, never interpolated into shell strings; process termination from the launcher checks process identity so reused PIDs cannot be hit.
 - **Releases (`tests/recovery/test_release_refs.py`):** `kuwai update-self` fetches only `v*` release tags from `origin`, verifies signatures against `release-signers`, and refuses any tag whose target commit moves after first sight.

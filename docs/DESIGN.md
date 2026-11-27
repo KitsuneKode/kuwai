@@ -76,7 +76,7 @@ Three sources, one rule set: Apple's fluid-interface talks, Fluid
 Functionalism (springs), Emil Kowalski (curves, gates).
 
 **Gate first.** Motion only where it has a job: showing where something
-came from (the center sliding in from the edge it lives on), state changes,
+came from (the centre sliding in from the edge it lives on), state changes,
 feedback. Things you hit tens of times a day stay near-imperceptible (rows:
 press 0.985, the HUD: 180ms, 6px).
 
@@ -89,7 +89,7 @@ bounce 0.12 (large surfaces, morphs). Exits are tweens one tier quicker.
 `easeDrawer` 0.32,0.72,0,1). Never ease-in on UI. UI stays under 300ms:
 press 140, enter 200, exit 150, glide 150, reflow 200, HUD 180/150.
 
-**The center is the notch grown** (the phone's model): Notifications is
+**The centre is the notch grown** (the phone's model): Notifications is
 pulled down from the notch, Controls and Sound from its right side. It hangs
 from the top edge in the island's black (NotchShape, LiquidRim), panelS + 20
 wide, and grows out of the island's rest shape on the island's springs
@@ -138,7 +138,7 @@ Swipe locks its axis on the first pixel, follows 1:1 away from the corner
 (right/up), damps the other way by `1/(1.5+|d|/20)`, dismisses past 45px or
 0.11px/ms averaged over the gesture, with a 200ms ease-out throw.
 
-## Notification center
+## Notification centre
 
 The notch grown (above), grouped by app; each group folds into a
 stack (newest on top, two plates peeking out below). Opening focuses search.
@@ -194,7 +194,7 @@ name.
 Things that ask for an answer grow out of the island the way an iPhone's
 alarm does (`modules/island/AlarmCard.qml`): an alarm ringing (Snooze ·
 Stop ✕, until answered, 5 min at most), a reminder due (Later · Done ✓, 30 s,
-then the center), a timer done (Repeat · Done). The mark is in its tone
+then the centre), a timer done (Repeat · Done). The mark is in its tone
 (orange asks, green is done); the bell swings like a hung bell and a ring of
 light breathes out of it while an alarm rings; a reminder's ring fills once.
 The text rises 4 px in order, the answers last. Reduced motion: none of it
