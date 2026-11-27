@@ -47,3 +47,68 @@ describe('mail and texts are messages too', () => {
   });
   test('on the desktop by default: shown', () => expect(hidden({ app: 'Gmail', title: 'Anna', body: 'x' }, ctx())).toBe(false));
 });
+
+import { eventTitle } from '../../shell/services/notifPrivacy.mjs';
+import { functions } from '../helpers/qml.mjs';
+
+describe('the next event on the lock screen and the saver', () => {
+  const standup = { title: 'Standup', start: 0, private: false };
+  const lock = (o) => ctx(Object.assign({ place: 'lock' }, o));
+  test('its title only where the lock shows messages in full ("never")', () => {
+    expect(eventTitle(standup, lock({ mode: 'never' }))).toBe('Standup');
+    expect(eventTitle(standup, lock({ mode: 'lock' }))).toBe('');
+    expect(eventTitle(standup, lock({ mode: 'always' }))).toBe('');
+    expect(eventTitle(standup, ctx({ place: 'saver', mode: 'never' }))).toBe('Standup');
+    expect(eventTitle(standup, ctx({ place: 'saver', mode: 'lock' }))).toBe('');
+  });
+  test('a private or confidential event: never its title, whatever the setting', () => {
+    expect(eventTitle(Object.assign({}, standup, { private: true }), lock({ mode: 'never' }))).toBe('');
+  });
+  test('while sharing the screen: no title anywhere', () => {
+    expect(eventTitle(standup, lock({ mode: 'never', sharing: true }))).toBe('');
+    expect(eventTitle(standup, ctx({ sharing: true }))).toBe('');
+  });
+  test('sensitive words or a person kept private in the title hide it', () => {
+    expect(eventTitle({ title: 'Reset bank password' }, lock({ mode: 'never' }))).toBe('');
+    expect(eventTitle({ title: 'Lunch with Anna' }, lock({ mode: 'never', privateSenders: 'anna' }))).toBe('');
+  });
+  test('no title or the calendar\'s stand-in: none to show', () => {
+    expect(eventTitle({ title: '(No title)' }, lock({ mode: 'never' }))).toBe('');
+    expect(eventTitle({ title: '  ' }, lock({ mode: 'never' }))).toBe('');
+    expect(eventTitle(null, lock({ mode: 'never' }))).toBe('');
+  });
+  test('the desktop shows it unless everything is private', () => {
+    expect(eventTitle(standup, ctx())).toBe('Standup');
+    expect(eventTitle(standup, ctx({ mode: 'always' }))).toBe('');
+  });
+});
+
+describe('which event the lock names', () => {
+  const ics = (extra) => ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART:20261127T140000', 'DTEND:20261127T150000', 'SUMMARY:Review'].concat(extra, ['END:VEVENT', 'END:VCALENDAR']).join('\n');
+  const cal = () => functions('shell/services/Calendar.qml', ['parse', 'parseTime', 'icsText', 'nextToday'], { events: [] });
+  test('CLASS:PRIVATE and CONFIDENTIAL are private; PUBLIC and none are not', () => {
+    const c = cal();
+    const at = Date.now;
+    Date.now = () => new Date(2026, 10, 27, 9).getTime();
+    try {
+      expect(c.parse(ics(['CLASS:PRIVATE']))[0].private).toBe(true);
+      expect(c.parse(ics(['CLASS:CONFIDENTIAL']))[0].private).toBe(true);
+      expect(c.parse(ics(['CLASS:PUBLIC']))[0].private).toBe(false);
+      expect(c.parse(ics([]))[0].private).toBe(false);
+    } finally { Date.now = at; }
+  });
+  test('the next one today within the window; not tomorrow, not all-day, not one already started', () => {
+    const c = cal();
+    const now = new Date(2026, 10, 27, 22, 0).getTime(), h = 3600000;
+    c.events = [
+      { start: now - h, end: now + h, allDay: false, title: 'Started' },
+      { start: now, end: now + h, allDay: true, title: 'All day' },
+      { start: now + 2.5 * h, end: now + 3 * h, allDay: false, title: 'Tomorrow' }
+    ];
+    expect(c.nextToday(now, 4 * h)).toBe(null);
+    c.events.push({ start: now + 0.5 * h, end: now + h, allDay: false, title: 'Late call' });
+    c.events.sort((a, b) => a.start - b.start);
+    expect(c.nextToday(now, 4 * h).title).toBe('Late call');
+    expect(c.nextToday(now, 0.25 * h)).toBe(null);
+  });
+});

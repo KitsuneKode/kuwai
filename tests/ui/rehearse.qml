@@ -126,11 +126,19 @@ ShellRoot {
         }
 
         function restore() {
-            for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
+            for (let i = undo.length - 1; i >= 0; i--) {
+                if (undo[i][0] === Settings) Settings.set(undo[i][1], undo[i][2]);
+                else undo[i][0][undo[i][1]] = undo[i][2];
+            }
             undo = [];
         }
         function applySets(s, sets) {
             for (const one of sets) {
+                if (one[0] === "@setting") {
+                    undo.push([Settings, one[1], Settings.value(one[1])]);
+                    if (!Settings.set(one[1], one[2])) { fail("scene " + s.id + ": setting " + one[1] + " refused"); return false; }
+                    continue;
+                }
                 const svc = service(one[0]);
                 if (!svc) { fail("scene " + s.id + " names an unknown service: " + one[0]); return false; }
                 if (one[1] === "call") { svc[one[2]].apply(svc, one[3] || []); continue; }

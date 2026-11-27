@@ -21,6 +21,7 @@ import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
 import qs.services
+import "../../services/notifPrivacy.mjs" as Privacy
 
 Scope {
     id: root
@@ -419,10 +420,10 @@ Scope {
                         }
                         Text {
                             readonly property var next: Calendar.nextAfter(face.now.getTime(), 12 * 3600000)
-                            readonly property bool named: Settings.notifPrivacy === "never" && !Notifs.sharing
+                            readonly property string named: next ? Privacy.eventTitle(next, Notifs.privacyFor("saver")) : ""
                             textFormat: Text.PlainText
                             visible: !!next
-                            text: next ? "\u{f00f0}  " + (named ? Dates.time(next.start) + " · " + next.title : "Next event at " + Dates.time(next.start)) : ""
+                            text: next ? "\u{f00f0}  " + (named ? Dates.time(next.start) + " · " + named : "Next event at " + Dates.time(next.start)) : ""
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, win.width * 0.4)
                             font.family: Theme.fontText

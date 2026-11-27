@@ -2,8 +2,8 @@
 // top-right corner (LockCorner: Bluetooth when on, Wi-Fi or a cable, the
 // charge), the island only for a moment (LockIsland: locking, unlocking, a
 // timer), the date over a big rounded clock in the theme's tint, a line of
-// glanceable things (weather, focus), what's playing on a glass card, the
-// notifications that matter (LockNotifs), and "Press any key to unlock" at
+// glanceable things (weather, focus), the next event today (LockEvent), what's
+// playing, the notifications that matter (LockNotifs; all on a plate as dark as the picture needs), and "Press any key to unlock" at
 // the bottom. A key or a click turns that line into the password
 // pill (it rises out of the hint on a spring) and the clock shrinks a little
 // to make room; left empty for 12 s it settles back. The wallpaper is
@@ -223,11 +223,12 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             y: Math.round(parent.height * 0.46)
             spacing: 12
+            LockEvent { id: nextEvent; anchors.horizontalCenter: parent.horizontalCenter; now: view.now.getTime(); plate: view.plate }
             LockMedia { id: media; anchors.horizontalCenter: parent.horizontalCenter; plate: view.plate; live: view.awake || view.preview }
             LockNotifs {
                 anchors.horizontalCenter: parent.horizontalCenter
                 plate: view.plate
-                room: unlockBox.y + hint.y - cards.y - (media.visible ? media.height + cards.spacing : 0) - Theme.s4
+                room: unlockBox.y + hint.y - cards.y - (media.visible ? media.height + cards.spacing : 0) - (nextEvent.visible ? nextEvent.height + cards.spacing : 0) - Theme.s4
                 onTapped: item => { view.lock.openAfter = item; view.ask(); }
             }
         }
