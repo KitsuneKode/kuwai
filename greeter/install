@@ -119,6 +119,15 @@ mine_alone() {
     [ -f "$RECEIPT" ]
 }
 
+kept_by_root_alone() {
+    local p perm
+    for p in "${SYS:-/}" "$SYS/var" "$SYS/var/lib" "$DEST" "$KEEP" "$KEEP"/*; do
+        [ -e "$p" ] && [ ! -L "$p" ] && [ "$(stat -c %u -- "$p")" = "$(id -u)" ] || return 1
+        perm=$(stat -c %a -- "$p")
+        (( (8#$perm & 8#022) == 0 )) || return 1
+    done
+}
+
 write_receipt() {
     [ -e "$RECEIPT" ] && return 0
     local pair name target sum dm tmp
@@ -149,6 +158,10 @@ if [ $MODE = code ]; then
 fi
 
 if [ $MODE = undo ]; then
+    if [ ! -e "$RECEIPT" ] && [ ! -L "$RECEIPT" ] && kept_by_root_alone; then
+        write_receipt
+        echo "There was no record of what the login screen's install replaced (installs before this one kept none); made one from the copies only root could have kept." >&2
+    fi
     if ! mine_alone; then
         echo "There is no root-owned record of what the login screen's install replaced, so nothing is restored." >&2
         echo "Put back /etc/pam.d/greetd and /etc/greetd/config.toml by hand if you changed them; greetd is left as it is." >&2

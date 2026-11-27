@@ -52,7 +52,9 @@ not a public issue. Say what you did, what happened, and the commit you ran.
   different set after it syncs, nothing is installed.
 - **Undoing the login screen.** `greeter/install --undo` restores only what the root-owned
   receipt written at install lists (paths it replaced, each kept copy's digest, the earlier
-  login manager); without that receipt it restores nothing.
+  login manager). An install from before receipts has none: then, only if every folder from
+  `/` down to the kept copies and each copy is root's and writable by no one else, it first
+  records what is kept there, and follows that. Otherwise it restores nothing.
 
 What only a real install shows: `sudo`/`pkexec` and polkit on the machine, the real
 `/usr/local` ownership, greetd booting into the login screen.

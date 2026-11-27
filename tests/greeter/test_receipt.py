@@ -89,14 +89,32 @@ def test_install_writes_a_receipt_and_undo_follows_it(greeter):
     assert "enable sddm.service" in log.read_text()
 
 
-@pytest.mark.parametrize("damage", ["missing", "writable", "link"])
+def test_undo_of_an_install_from_before_receipts_records_what_root_kept_first(greeter):
+    run, sysroot, log = greeter
+    assert run("--yes").returncode == 0
+    keep = sysroot / "var/lib/kuwai-greeter/original"
+    (keep / "receipt").unlink()
+    r = run("--undo")
+    assert r.returncode == 0, r.stderr
+    assert "no record" in r.stderr
+    etc = sysroot / "etc"
+    assert (etc / "pam.d/greetd").read_text() == "old pam\n"
+    assert not (etc / "greetd/config.toml").exists()
+    assert (etc / "systemd/system/getty@tty1.service.d/override.conf").read_text() == "autologin\n"
+    assert "enable sddm.service" in log.read_text()
+    assert (keep / "receipt").stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("damage", ["missing-keep-writable", "missing-dest-writable", "missing-kept-writable",
+                                    "missing-var-writable", "writable", "link"])
 def test_undo_without_a_trustworthy_receipt_restores_nothing(greeter, damage):
     run, sysroot, log = greeter
     assert run("--yes").returncode == 0
     keep = sysroot / "var/lib/kuwai-greeter/original"
     receipt = keep / "receipt"
-    if damage == "missing":
+    if damage.startswith("missing"):
         receipt.unlink()
+        {"keep": keep, "dest": keep.parent, "kept": keep / "pam-greetd", "var": sysroot / "var"}[damage.split("-")[1]].chmod(0o777)
     elif damage == "writable":
         receipt.chmod(0o666)
     else:
