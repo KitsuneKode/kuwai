@@ -57,6 +57,40 @@ check "the wake helper installs from root's copy" bash -c "$LIB/current/system/i
 check "the update helper is placed from root's copy" bash -c "/usr/bin/python3 -I $LIB/current/bin/kuwai-verify place update-helper && cmp -s $LIB/kuwai-update-root $H/src/bin/kuwai-update-root && [ \"\$(stat -c %U:%a $LIB/kuwai-update-root)\" = root:755 ]"
 check "the password prompt is placed from root's copy" bash -c "/usr/bin/python3 -I $LIB/current/bin/kuwai-verify place auth-prompt && diff -r /usr/local/share/kuwai/shell-auth $H/src/shell-auth && [ \"\$(find /usr/local/share/kuwai ! -user root | wc -l)\" = 0 ]"
 
+su - tester -c '
+set -euo pipefail
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+R=$(cat ~/fpr); O=$(cat ~/other)
+mkdir ~/both && gpg --export --armor "$R" > ~/both/r.asc && gpg --export --armor "$O" > ~/both/o.asc
+cd ~/src
+cut() {
+    local name=$1 key=$2 d; shift 2
+    rm -f release-signers/*.asc
+    for k in "$@"; do gpg --export --armor "$k" > "release-signers/$k.asc"; done
+    git add -A && git -c user.name=t -c user.email=t@e commit -q --allow-empty -m "$name"
+    d=$(bin/kuwai-verify manifest-rev . HEAD)
+    git -c user.name=t -c user.email=t@e tag -s -u "$key" -m "kuwai ${name#v}" -m "kuwai-tree-sha256 $d" "$name"
+    bin/kuwai-verify fetch ~/src "$name" --signers ~/both --into ~/.cache/kuwai/releases/"$name" > ~/"$name".json
+}
+cut v0.3.0 "$R" "$R" "$O"
+cut v0.4.0 "$O" "$O"
+cut v0.5.0 "$R" "$R" "$O"
+'
+inst() {
+    local d
+    d=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["digest"])' "$H/$1.json")
+    /usr/bin/python3 -I $LIB/current/bin/kuwai-verify install --from "$H/.cache/kuwai/releases/$1" \
+        --tag-file "$H/.cache/kuwai/releases/$1/.git/kuwai-release.tag" --name "$1" --digest "$d" "${@:2}"
+}
+export H LIB
+export -f inst
+check "kuwai-setup, once root has a release, names root's own verifier and no key" bash -c "su - tester -c 'cd ~/src && bin/kuwai-setup --source ~/src --tag v0.3.0 --system' > /tmp/setup.out 2>&1; cat /tmp/setup.out; grep -q 'sudo /usr/bin/python3 -I /usr/local/lib/kuwai/releases/v0.2.0/bin/kuwai-verify install' /tmp/setup.out && ! grep -q -- '--signer' /tmp/setup.out"
+check "a release signed by a key root trusts adds the key it lists" bash -c "inst v0.3.0 && grep -qxF \"\$(cat $H/fpr)\" $LIB/signers/fingerprints && grep -qxF \"\$(cat $H/other)\" $LIB/signers/fingerprints && [ \"\$(wc -l < $LIB/signers/fingerprints)\" = 2 ]"
+check "the next one, signed by the new key, drops the old" bash -c "inst v0.4.0 && [ \"\$(cat $LIB/signers/fingerprints)\" = \"\$(cat $H/other)\" ] && /usr/bin/python3 -I $LIB/current/bin/kuwai-verify check $LIB/current"
+refuses "a release signed by the dropped key is refused" inst v0.5.0
+refuses "and naming the dropped key back in is refused" inst v0.5.0 --signer "$FPR"
+check "root stays at the release the new key signed" bash -c "[ \"\$(readlink $LIB/current)\" = releases/v0.4.0 ] && [ \"\$(stat -c %U:%a $LIB/signers/fingerprints)\" = root:644 ]"
+
 mkdir -p /etc/pam.d /etc/systemd/system/getty@tty1.service.d
 echo "old pam" > /etc/pam.d/greetd
 echo "autologin" > /etc/systemd/system/getty@tty1.service.d/override.conf
@@ -68,10 +102,14 @@ check "its code is root's" bash -c '[ "$(find /var/lib/kuwai-greeter -path /var/
 check "undo restores what the receipt lists" bash -c "$LIB/current/greeter/install --undo && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ \"\$(cat /etc/systemd/system/getty@tty1.service.d/override.conf)\" = autologin ] && [ ! -e /etc/greetd/config.toml ] && grep -q 'enable sddm.service' /tmp/systemctl.log"
 check "a second install keeps the first record" bash -c "$LIB/current/greeter/install --yes && [ \"\$(wc -l < /var/lib/kuwai-greeter/original/receipt)\" = 4 ]"
 rm /var/lib/kuwai-greeter/original/receipt
-refuses "undo without the receipt restores nothing" $LIB/current/greeter/install --undo
+check "undo of an install without a receipt records root's kept copies, then restores them" bash -c "$LIB/current/greeter/install --undo 2>&1 | grep -q 'no record' && [ \"\$(cat /etc/pam.d/greetd)\" = 'old pam' ] && [ \"\$(stat -c %U:%a /var/lib/kuwai-greeter/original/receipt)\" = root:600 ]"
+check "the login screen installs again" $LIB/current/greeter/install --yes
+rm /var/lib/kuwai-greeter/original/receipt
+chmod 777 /var/lib/kuwai-greeter/original
+refuses "undo without a receipt, kept copies others could write, restores nothing" $LIB/current/greeter/install --undo
 check "the kuwai pam file stayed" grep -q pam_keyinit /etc/pam.d/greetd
 
-echo "# planted" >> $LIB/releases/v0.2.0/system/kuwai.desktop
+echo "# planted" >> "$(readlink -f $LIB/current)/system/kuwai.desktop"
 refuses "root's copy, changed by root afterwards, is refused" $LIB/current/system/session
 refuses "and nothing is placed from it" /usr/bin/python3 -I $LIB/current/bin/kuwai-verify place update-helper
 
