@@ -1170,6 +1170,12 @@ FocusScope {
                         onPicked: id => Settings.set("wallTransition", id)
                     }
                 }
+                SettingsRow {
+                    key: "wallDayNight"
+                    label: "Day and night wallpaper"
+                    detail: "Switch between a theme's day and night pictures at sunrise and sunset"
+                    Toggle { on: Settings.wallDayNight; onToggled: Settings.set("wallDayNight", !Settings.wallDayNight) }
+                }
             }
             SettingsGroup {
                 title: "Live wallpaper"

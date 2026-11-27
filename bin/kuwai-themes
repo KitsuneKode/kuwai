@@ -276,6 +276,17 @@ def main(argv):
             pass
     elif cmd == "photos":
         print(json.dumps(photos()), flush=True)
+    elif cmd == "variant" and len(argv) == 2 and argv[1] in ("day", "night"):
+        look = os.path.join(ROOT, "bin", "kuwai-look")
+        name = current()
+        if not name:
+            return 1
+        os.execv(look, [look, "variant", argv[1], "--theme", name, "--fetch"])
+    elif cmd == "apply-variant" and len(argv) == 2:
+        look = os.path.join(ROOT, "bin", "kuwai-look")
+        cm = color_mode()
+        mode = MODES[cm] if 0 <= cm < len(MODES) else "theme"
+        return launch([look, "apply-variant", "--mode", mode, argv[1]], wait)
     elif cmd == "theme" and len(argv) == 2 and os.path.isdir(os.path.join(THEMES, argv[1])):
         wall = os.path.realpath(os.path.join(THEMES, argv[1], "wall.set"))
         if os.path.isfile(wall):

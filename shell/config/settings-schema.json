@@ -1001,6 +1001,18 @@
       "restartScope": "live"
     },
     {
+      "key": "wallDayNight",
+      "type": "boolean",
+      "default": false,
+      "section": "saver",
+      "label": "Day and night wallpaper",
+      "detail": "Switch between a theme's day and night pictures at sunrise and sunset",
+      "group": "Wallpaper",
+      "searchTerms": "day night wallpaper sunrise sunset sun hours automatic switch variant",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "fKeys",
       "type": "string",
       "default": "actions",

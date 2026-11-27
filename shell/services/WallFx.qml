@@ -36,6 +36,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.config
 import "wallOutcome.mjs" as Outcome
+import "wallDayNight.mjs" as DayNight
 
 Singleton {
     id: root
@@ -68,6 +69,88 @@ Singleton {
     property bool scoped: false
     property var readyScreens: ({})
     property string nextReal: ""
+    property string lastBoundary: ""
+    property var pendingSun: null
+    property var preparedSun: null
+    readonly property bool sunBlocked: Saver.locked || Saver.screensOff || Saver.showing
+        || Quickshell.screens.some(screen => Saver.isOutputOff(screen.name))
+
+    function onSunSchedule(text) {
+        let data;
+        try { data = JSON.parse(String(text).trim().split("\n").pop()); } catch (e) { return; }
+        if (!Settings.wallDayNight || !DayNight.newBoundary(lastBoundary, data)) return;
+        lastBoundary = data.boundary;
+        pendingSun = data;
+        preparedSun = null;
+        onDayNightReady();
+    }
+    function onDayNightReady() {
+        if (!Settings.wallDayNight || sunBlocked || phase !== "" || queued || variantProc.running) return;
+        if (preparedSun) {
+            const plan = preparedSun;
+            preparedSun = null;
+            const tool = Paths.bin + (Hyde.present ? "/kuwai-themes" : "/kuwai-look");
+            const start = () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", tool, "apply-variant", plan.path]);
+            const guard = () => {
+                if (!Settings.wallDayNight || plan.boundary !== lastBoundary) return false;
+                if (!sunBlocked) return true;
+                preparedSun = plan;
+                return false;
+            };
+            if (plan.outputs.length) play(plan.path, start, false, plan.outputs, guard);
+            else if (guard()) start();
+        } else if (pendingSun) {
+            variantProc.boundary = pendingSun.boundary;
+            variantProc.result = "";
+            variantProc.command = Hyde.present
+                ? [Paths.bin + "/kuwai-themes", "variant", pendingSun.phase]
+                : [Paths.bin + "/kuwai-look", "variant", pendingSun.phase, "--fetch"];
+            pendingSun = null;
+            variantProc.running = true;
+        }
+    }
+    function applyVariantResult(text, boundary) {
+        if (!Settings.wallDayNight || boundary !== lastBoundary) return;
+        let data;
+        try { data = JSON.parse(text); } catch (e) { return; }
+        if (data.path && !data.current && Array.isArray(data.outputs))
+            preparedSun = { path: data.path, outputs: data.outputs, boundary: boundary };
+    }
+    onPhaseChanged: if (phase === "") Qt.callLater(onDayNightReady)
+    onSunBlockedChanged: if (!sunBlocked) onDayNightReady()
+    Connections {
+        target: Settings
+        function onWallDayNightChanged() {
+            if (!Settings.wallDayNight) {
+                root.lastBoundary = "";
+                root.pendingSun = null;
+                root.preparedSun = null;
+            }
+        }
+    }
+    Timer {
+        id: sunTimer
+        interval: 60000
+        repeat: true
+        triggeredOnStart: true
+        running: Settings.wallDayNight
+        onTriggered: if (!sunProbe.running) sunProbe.running = true
+    }
+    Process {
+        id: sunProbe
+        command: ["hyprctl", "repl", "return kuwai.sun_schedule()"]
+        stdout: StdioCollector { onStreamFinished: root.onSunSchedule(text) }
+    }
+    Process {
+        id: variantProc
+        property string boundary: ""
+        property string result: ""
+        stdout: StdioCollector { onStreamFinished: variantProc.result = text }
+        onExited: code => {
+            if (code === 0) root.applyVariantResult(result, boundary);
+            Qt.callLater(root.onDayNightReady);
+        }
+    }
 
     function currentScreens() {
         const out = [];
@@ -123,10 +206,11 @@ Singleton {
         function onScreensChanged() { root.screensChanged(); }
     }
 
-    function play(path, start, live, targets) {
-        if (!path) return;
+    property var swapGuard: null
+    function play(path, start, live, targets, guard) {
+        if (!path || (guard && !guard())) return;
         if (phase !== "") {
-            queued = { path: path, start: start, live: !!live, targets: targets || null };
+            queued = { path: path, start: start, live: !!live, targets: targets || null, guard: guard };
             return;
         }
         const wantTargets = normalizeTargets(targets);
@@ -139,6 +223,7 @@ Singleton {
         verifyLater.stop();
         toLive = !!live;
         scoped = wantTargets.length > 0;
+        swapGuard = guard || null;
         participants = selected;
         targetOutputs = scoped ? selected.slice() : [];
         verifyTargets = targetOutputs.slice();
@@ -160,6 +245,7 @@ Singleton {
         phase = "";
         liveHeld = false;
         startFn = null;
+        swapGuard = null;
         participants = [];
         targetOutputs = [];
         scoped = false;
@@ -171,7 +257,9 @@ Singleton {
     }
     function bail(why) {
         const path = next, start = startFn, live = toLive, wasSwapped = swapped, outs = (targetOutputs || []).slice();
+        const allowed = typeof swapGuard === "undefined" || !swapGuard || swapGuard();
         cancelTransition();
+        if (!allowed) { drain(); return; }
         lastRun = "fallback: " + why;
         if (!start && !live && !wasSwapped && path) Quickshell.execDetached(awwwCommand(path, outs));
         if (start) start();
@@ -181,7 +269,7 @@ Singleton {
     function drain() {
         const q = queued;
         queued = null;
-        if (q) Qt.callLater(() => root.play(q.path, q.start, q.live, q.targets));
+        if (q) Qt.callLater(() => root.play(q.path, q.start, q.live, q.targets, q.guard));
     }
 
     // What awww shows now, per screen (": DP-3: 2560x1440, … image: /path").
@@ -255,6 +343,8 @@ Singleton {
         id: handOff
         interval: 16
         onTriggered: {
+            if (root.swapGuard && !root.swapGuard()) { root.cancelTransition(); root.drain(); return; }
+            root.swapGuard = null;
             if (root.toLive) root.liveHeld = true;
             else if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-livewall", "stop"]);
             swap.command = root.awwwCommand(root.next, root.targetOutputs);

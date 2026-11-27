@@ -228,7 +228,8 @@ def read_tsv(theme):
         p = line.split("\t")
         rows.append({"line": n, "name": p[0], "url": p[1], "sha256": p[2] if len(p) > 2 else "",
                      "licence": p[3] if len(p) > 3 else "", "author": p[4] if len(p) > 4 else "",
-                     "page": p[5] if len(p) > 5 else ""})
+                     "page": p[5] if len(p) > 5 else "",
+                     "variant": p[6].strip().lower() if len(p) > 6 else ""})
     return rows
 
 
@@ -255,6 +256,8 @@ def check_tsv(theme, files_dir=None):
                 problems.append(f"{where}: no author to credit")
             if not row["page"].startswith("https://"):
                 problems.append(f"{where}: no source page URL")
+        if row.get("variant") and row["variant"] not in ("day", "night"):
+            problems.append(f"{where}: variant {row['variant']!r} must be day or night")
         if files_dir and ":" in row["sha256"]:
             algo, want = row["sha256"].split(":", 1)
             f = next((Path(files_dir) / f"{row['name']}{e}" for e in (".jpg", ".png", ".webp") if (Path(files_dir) / f"{row['name']}{e}").exists()), None)

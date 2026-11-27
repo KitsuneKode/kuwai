@@ -216,6 +216,7 @@ end
 K.night = K.night or { warm = 4200, start = 20, stop = 6 }
 
 local function sun_hours(lat, lon, t)
+	t = t or os.time()
 	local rad, deg = math.pi / 180, 180 / math.pi
 	local N = os.date("*t", t).yday
 	local lng = lon / 15
@@ -235,26 +236,62 @@ local function sun_hours(lat, lon, t)
 		local T = H + RA - 0.06571 * tt - 6.622
 		return (T - lng) % 24
 	end
-	local offset = (os.time() - os.time(os.date("!*t"))) / 3600
+	local offset = (os.time(os.date("*t", t)) - os.time(os.date("!*t", t))) / 3600
 	local r, s = calc(true), calc(false)
 	return r and (r + offset) % 24, s and (s + offset) % 24
 end
 K.sun_hours = sun_hours
 
+local function sun_date_key(t, previous)
+	local d = os.date("*t", t)
+	if previous then
+		d.day = d.day - 1
+		d.hour = 12
+		d.isdst = nil
+		d = os.date("*t", os.time(d))
+	end
+	return string.format("%04d-%02d-%02d", d.year, d.month, d.day)
+end
+
+local function sun_schedule(t)
+	t = t or os.time()
+	local now = os.date("*t", t)
+	local h = (now.hour or 0) + (now.min or 0) / 60 + (now.sec or 0) / 3600
+	local rise, set
+	if K.night.lat and K.night.lon then
+		rise, set = K.sun_hours(K.night.lat, K.night.lon, t)
+	else
+		set = tonumber(K.night.start) or 20
+		rise = tonumber(K.night.stop) or 6
+	end
+	local night = rise and set and (set > rise and (h >= set or h < rise) or set < rise and h >= set and h < rise)
+	local p = night and "night" or "day"
+	local previous = rise and set and (set > rise and night and h < rise or set < rise and not night and h < set)
+	local dkey = sun_date_key(t, previous)
+	return { phase = p, rise = rise, set = set, boundary = dkey .. ":" .. p }
+end
+K.sun_schedule = sun_schedule
+K.sun_phase = function(t)
+	return sun_schedule(t).phase
+end
+
+function kuwai.sun_schedule(t)
+	local s = sun_schedule(t)
+	local jstr = K.json_str or function(v)
+		return '"' .. tostring(v):gsub('\\', '\\\\'):gsub('"', '\\"') .. '"'
+	end
+	return string.format(
+		'{"phase":%s,"rise":%s,"set":%s,"boundary":%s}',
+		jstr(s.phase),
+		s.rise and string.format("%.4f", s.rise) or "null",
+		s.set and string.format("%.4f", s.set) or "null",
+		jstr(s.boundary)
+	)
+end
+
 if K.feature("night_light") then
 	local function phase()
-		local now = os.date("*t")
-		local h = now.hour + now.min / 60
-		if K.night.lat and K.night.lon then
-			local rise, set = sun_hours(K.night.lat, K.night.lon, os.time())
-			if not rise then
-				return "day"
-			end
-			return (h >= set or h < rise) and "night" or "day"
-		end
-		local s = tonumber(K.night.start) or 20
-		local e = tonumber(K.night.stop) or 6
-		return (s > e and (h >= s or h < e) or (s <= e and h >= s and h < e)) and "night" or "day"
+		return K.sun_phase()
 	end
 	local function apply(p)
 		if p == "night" and not (K.display and K.display.current() == "accurate") then

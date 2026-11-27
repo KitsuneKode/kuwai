@@ -168,3 +168,20 @@ def test_focus_switch_preserves_legacy_default_and_does_not_reapply_wallpaper(tm
     assert link.resolve() == original
     assert not awww_log.exists()
     assert json.loads(run_look(env, "status").stdout)["wallpaper"] == str(original)
+
+
+def test_variant_changes_only_outputs_inheriting_the_default(tmp_path):
+    monitors = [
+        {"name": "DP-1", "description": "External panel", "focused": True},
+        {"name": "eDP-1", "description": "Laptop panel", "focused": False},
+    ]
+    env, _, awww_log = make_env(tmp_path, monitors)
+    custom = paint(tmp_path / "custom.png", (20, 50, 80))
+    dawn = paint(tmp_path / "dawn.png", (80, 50, 20))
+    assert run_look(env, "set-wallpaper", str(custom), "--output", "DP-1").returncode == 0
+    assert run_look(env, "apply-variant", str(dawn)).returncode == 0
+    assert awww_log.read_text().splitlines()[-1] == f"img -o eDP-1 {dawn} --transition-type none"
+    saved = json.loads((tmp_path / "state/kuwai/wallpapers.json").read_text())
+    assert saved["default"] == str(dawn)
+    assert saved["screens"] == {"External panel": str(custom)}
+    assert (tmp_path / "state/kuwai/wallpaper").resolve() == custom

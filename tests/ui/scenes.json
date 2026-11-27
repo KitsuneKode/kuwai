@@ -14305,6 +14305,26 @@
    }
   },
   {
+   "id": "settings/day-night-wallpaper",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "props": {
+    "current": 12,
+    "searchText": "sunrise"
+   },
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "wallDayNight",
+      true
+     ]
+    ]
+   ]
+  },
+  {
    "id": "settings/saver",
    "name": "settings",
    "panel": "SettingsPanel",
