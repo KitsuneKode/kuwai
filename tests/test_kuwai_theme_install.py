@@ -29,7 +29,9 @@ def test_install_lists_the_theme_with_its_own_palette(tmp_path):
     good = hashlib.sha256((pics / "a.png").read_bytes()).hexdigest()
     (src / "wallpapers.tsv").write_text(f"01-a\thttps://walls.invalid/a.png\t{good}\n"
                                         f"02-b\thttps://walls.invalid/b.png\n"
-                                        f"03-c\thttps://walls.invalid/b.png\t{'0' * 64}\n")
+                                        f"03-c\thttps://walls.invalid/b.png\t{'0' * 64}\n"
+                                        f"04-d\thttps://walls.invalid/b.png\tsha1:{hashlib.sha1((pics / 'b.png').read_bytes()).hexdigest()}\n"
+                                        f"05-e\thttps://walls.invalid/b.png\tsha1:{'0' * 40}\n")
     stubs = tmp_path / "stubs"
     stubs.mkdir()
     (stubs / "curl").write_text(f"""#!/bin/sh
@@ -52,7 +54,7 @@ cp "{pics}/$(basename "$url")" "$dest"
     assert wall.is_symlink() and wall.resolve().parent == (dest / "wallpapers").resolve()
     assert wall.resolve().exists()
     walls = sorted(p.name for p in (dest / "wallpapers").glob("*.jpg"))
-    assert walls == ["01-a.jpg", "02-b.jpg"], "a file that doesn't match its listed checksum is skipped"
+    assert walls == ["01-a.jpg", "02-b.jpg", "04-d.jpg"], "Commons' sha1: pins are checked as sha1; a file that doesn't match is skipped"
     assert "checksum differs" in r.stderr
     # run again: nothing breaks, nothing is fetched twice
     assert subprocess.run(["bash", str(repo / "bin/kuwai-theme"), "install", "demo-night"], env=env, capture_output=True, text=True, timeout=60).returncode == 0

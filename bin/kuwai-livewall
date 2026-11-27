@@ -32,12 +32,13 @@ mpv_detect_hwdec() {
     for rn in /dev/dri/renderD*; do
         [ -e "$rn" ] || continue
         v=$(cat "/sys/class/drm/$(basename "$rn")/device/vendor" 2>/dev/null || true)
-        if [ "$v" = "0x8086" ]; then
-            MPV_HWDEC="hwdec=vaapi-copy vaapi-device=$rn"
-            MPV_HWDEC_ENV=(LIBVA_DRIVER_NAME=iHD)
-            return 0
-        fi
+        case $v in
+            0x8086) MPV_HWDEC="hwdec=vaapi-copy vaapi-device=$rn"; MPV_HWDEC_ENV=(LIBVA_DRIVER_NAME=iHD); return 0 ;;
+            0x1002) MPV_HWDEC="hwdec=vaapi-copy vaapi-device=$rn"; MPV_HWDEC_ENV=(LIBVA_DRIVER_NAME=radeonsi); return 0 ;;
+            0x10de) MPV_HWDEC="hwdec=nvdec-copy"; return 0 ;;
+        esac
     done
+    MPV_HWDEC="hwdec=auto-copy-safe"
 }
 mpv_detect_hwdec
 MPV_OPTS="no-audio loop $MPV_HWDEC panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
