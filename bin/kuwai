@@ -432,7 +432,7 @@ cmd_auth() {
             [ $st = 0 ] || { echo "not pinned" >&2; return 1; }
             systemctl --user reset-failed kuwai-auth.service 2>/dev/null; systemctl --user restart kuwai-auth.service && echo "password prompt now runs from $AUTH_PINNED" ;;
         unpin)
-            sudo rm -rf "$AUTH_PINNED" && systemctl --user restart kuwai-auth.service && echo "password prompt runs from $ROOT/shell-auth again" ;;
+            sudo sh -c 'rm -rf "$1" && rmdir --ignore-fail-on-non-empty "$(dirname "$1")"' sh "$AUTH_PINNED" && systemctl --user restart kuwai-auth.service && echo "password prompt runs from $ROOT/shell-auth again" ;;
         diff)
             for f in Label Spring NotchShape GlassCard RaisedButton; do
                 diff -u <(cat "$ROOT/shell/components/$f.qml") <(sed '1,/^\/\/ on purpose/d' "$ROOT/shell-auth/components/$f.qml") \
