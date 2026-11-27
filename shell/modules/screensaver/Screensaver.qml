@@ -22,7 +22,6 @@ import qs.config
 import qs.components
 import qs.services
 import "saverPhotos.mjs" as Photos
-import "../../services/notifPrivacy.mjs" as Privacy
 
 Scope {
     id: root
@@ -416,109 +415,11 @@ Scope {
 
                     Rectangle { anchors.fill: parent; color: "black"; opacity: root.longLevel; visible: opacity > 0.001 }
 
-                    // The clock: large, light, and somewhere new each minute.
-                    Column {
-                        id: face
-                        spacing: 2
-                        opacity: 1 - root.longLevel * (1 - Theme.saverLongDim)
-                        property date now: new Date()
-                        onVisibleChanged: if (visible) now = new Date()
-                        Connections {
-                            target: root
-                            function onShowingChanged() {
-                                if (root.showing) {
-                                    face.now = new Date();
-                                    saverClock.interval = 60000 - (Date.now() % 60000) + 50;
-                                    saverClock.restart();
-                                }
-                            }
-                        }
-                        Timer {
-                            id: saverClock
-                            interval: 60000 - (Date.now() % 60000) + 50
-                            running: root.showing
-                            onTriggered: { face.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
-                        }
-                        Text {
-                            textFormat: Text.PlainText
-                            text: Dates.clock(face.now)
-                            font.family: Theme.fontRounded
-                            font.pixelSize: Math.round(win.height * 0.13)
-                            font.weight: Font.Light
-                            font.features: Theme.numeralFeatures(true, true)
-                            color: Qt.rgba(1, 1, 1, 0.92)
-                        }
-                        Text {
-                            textFormat: Text.PlainText
-                            text: Dates.longDate(face.now)
-                            font.family: Theme.fontText
-                            font.pixelSize: Math.round(win.height * 0.022)
-                            color: Qt.rgba(1, 1, 1, 0.7)
-                            leftPadding: 6
-                        }
-                        Text {
-                            textFormat: Text.PlainText
-                            visible: Weather.ok && !root.longDark
-                            opacity: 1 - root.longLevel
-                            text: Weather.glyph + "  " + Weather.temp + "°" + (Weather.desc ? " · " + Weather.desc : "")
-                            font.family: Theme.fontText
-                            font.pixelSize: Math.round(win.height * 0.017)
-                            color: Qt.rgba(1, 1, 1, 0.6)
-                            leftPadding: 6; topPadding: 10
-                        }
-                        Text {
-                            readonly property var next: Calendar.nextAfter(face.now.getTime(), 12 * 3600000)
-                            readonly property string named: next ? Privacy.eventTitle(next, Notifs.privacyFor("saver")) : ""
-                            textFormat: Text.PlainText
-                            visible: !!next && !root.longDark
-                            opacity: 1 - root.longLevel
-                            text: next ? "\u{f00f0}  " + (named ? Dates.time(next.start) + " · " + named : "Next event at " + Dates.time(next.start)) : ""
-                            elide: Text.ElideRight
-                            width: Math.min(implicitWidth, win.width * 0.4)
-                            font.family: Theme.fontText
-                            font.pixelSize: Math.round(win.height * 0.017)
-                            color: Qt.rgba(1, 1, 1, 0.6)
-                            leftPadding: 6; topPadding: 10
-                        }
-                        Text {
-                            textFormat: Text.PlainText
-                            visible: Media.playing && !!Media.active && !root.longDark && !Settings.screensaverPulse
-                            opacity: 1 - root.longLevel
-                            text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
-                            elide: Text.ElideRight
-                            width: Math.min(implicitWidth, win.width * 0.4)
-                            font.family: Theme.fontText
-                            font.pixelSize: Math.round(win.height * 0.017)
-                            color: Qt.rgba(1, 1, 1, 0.6)
-                            leftPadding: 6; topPadding: 10
-                        }
-                        MediaPulse {
-                            visible: Settings.screensaverPulse && Media.playing && !!Media.active && !root.longDark
-                            opacity: 1 - root.longLevel
-                            active: visible && root.showing
-                            title: Media.active ? Media.title(Media.active) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
-                            size: Math.round(win.height * 0.017)
-                            maxWidth: win.width * 0.4
-                        }
-                        // Bottom-left third at first, then a new place each minute.
-                        x: win.width * 0.07; y: win.height * 0.62
-                        Behavior on x { NumberAnimation { duration: Theme.saverMoveMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine } }
-                        Behavior on y { NumberAnimation { duration: Theme.saverMoveMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine } }
-                        // Each screen on its own rhythm (45–75 s, new each time), so
-                        // two monitors don't move in lockstep; always fully inside a
-                        // 6 % margin (it could be placed with its date past the edge).
-                        Timer {
-                            interval: 45000 + Math.random() * 30000; repeat: true
-                            running: root.showing && !Theme.reduceMotion
-                            onTriggered: {
-                                const m = 0.06;
-                                const maxX = Math.max(win.width * m, win.width * (1 - m) - face.width);
-                                const maxY = Math.max(win.height * m, win.height * (1 - m) - face.height);
-                                face.x = win.width * m + Math.random() * (maxX - win.width * m);
-                                face.y = win.height * m + Math.random() * (maxY - win.height * m);
-                                interval = 45000 + Math.random() * 30000;
-                            }
-                        }
+                    SaverClock {
+                        areaW: win.width; areaH: win.height
+                        showing: root.showing
+                        dark: root.longDark
+                        level: root.longLevel
                     }
 
                     // Any pointer input: dismiss (and keep it from reaching a window).

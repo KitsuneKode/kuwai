@@ -33,13 +33,11 @@ Item {
     readonly property color accent: view.lock.accent || Theme.accent
     readonly property color tint: Theme.lockTint(accent)
     readonly property real move: Theme.reduceMotion ? 0 : 1
-    property date now: new Date()
-    // The clock wakes on the minute, not every second (it shows minutes), as LockView's.
-    Timer {
-        running: true
-        interval: 60000 - (Date.now() % 60000) + 50
-        onTriggered: { view.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
-    }
+    readonly property real topShade: 0.42
+    readonly property real topReach: 0.42
+    readonly property real bottomShade: 0.55
+    readonly property real bottomReach: 0.45
+    readonly property date now: clockFace.now
     readonly property int hour: now.getHours()
     readonly property string greeting: hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
 
@@ -148,53 +146,54 @@ Item {
         // bottom; all of it, a touch, when asking.
         Rectangle {
             anchors { left: parent.left; right: parent.right; top: parent.top }
-            height: parent.height * 0.42
+            height: parent.height * view.topReach
             gradient: Gradient {
-                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.42) }
+                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, view.topShade) }
                 GradientStop { position: 1; color: "transparent" }
             }
         }
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: parent.height * 0.45
+            height: parent.height * view.bottomReach
             gradient: Gradient {
                 GradientStop { position: 0; color: "transparent" }
-                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.55) }
+                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, view.bottomShade) }
             }
         }
         Rectangle { anchors.fill: parent; color: Qt.rgba(0.03, 0.02, 0.03, 0.38 * view.f) }
-        ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22 }
+        ClockGround {
+            id: topGround
+            anchors.fill: parent
+            source: wall.source; ink: view.tint; face: clockFace
+            base: view.topShade * Math.max(0, 1 - (zone.y + zone.height) / view.topReach)
+        }
+        ClockGround {
+            id: bottomGround
+            anchors.fill: parent
+            source: wall.source; ink: view.tint; edge: Qt.BottomEdge; want: Theme.lockSmallWant
+            area: Qt.rect(Math.min(you.x, power.x), you.y, Math.max(you.x + you.width, power.x + power.width) - Math.min(you.x, power.x), view.height - you.y)
+            base: view.bottomShade * Math.max(0, Math.min(1, (zone.y - (1 - view.bottomReach)) / view.bottomReach))
+        }
     }
 
     // ── The clock, top centre (where the lock screen has it) ─────────────
     // Asking, it only steps back a little: nothing travels across the screen.
-    Column {
-        id: clock
+    ClockFace {
+        id: clockFace
         anchors.horizontalCenter: parent.horizontalCenter
         y: Math.round(view.height * Theme.lockClockTop)
         transformOrigin: Item.Top
         scale: view.mix(1, 0.9, view.fp)
         opacity: view.shown(view.tClock) * view.mix(1, 0.85, view.f)
         transform: Translate { y: view.lift(view.tClock) }
-        spacing: Theme.lockClockGap
-        Label {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: Dates.longDate(view.now)
-            size: Theme.tLockDate; weight: Theme.wSemibold
-            color: view.tint
-        }
-        TextMorph {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: Dates.clock(view.now)
-            size: Theme.lockClockSize(view.height); weight: Theme.wBold; rounded: true
-            color: view.tint
-            duration: Theme.breatheMs; stagger: 60
-        }
+        ink: view.tint
+        screenH: view.height
+        longDate: true
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: view.greeting
-            size: Theme.tLockLine; weight: Theme.wMedium
-            color: Qt.alpha(view.tint, 0.72)
+            size: clockFace.lineSize; weight: Theme.wMedium
+            color: Qt.alpha(view.tint, Theme.lockHintAlpha)
             opacity: 1 - view.f
         }
     }
