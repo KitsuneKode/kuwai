@@ -5,6 +5,37 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## STATE (2026-11-28, early) — what landed overnight, what is left
+
+Landed (main, stable 64a94e8 and before): README tour and six clips over licensed
+skies; fresh-install test (container 55/55, VM 85/85; three uninstall/undo bugs
+fixed); themes on a fresh install, licensed Kuwai Night (NPS/ESO), Wallhaven sets
+personal-only; display presets without monitors.lua, workspaces 1-10 on desktops,
+identical monitors, docked lid; moved XDG folders keep the assistant's denials;
+safety (fwalk cache clear, ports from /proc, Agents force stop, AUR without a
+helper, kittymux from PATH); polish (PC key names, UK spelling, lower-case kuwai,
+one state per panel, orange only for needs-you, shared lock/login tokens, Shapes
+farewell, six new rehearsal scenes); live wallpaper and WallFx hardening; saver
+long-idle clock, Photos, Flow, music pulse, Plymouth theme; lock plate, next
+event under the privacy rule, hidden notifications need an unlock; Activity tab;
+busy-shell watcher (kuwai-hotwatch); brightness restored after a restart while
+dimmed; icons of apps installed mid-session; panel header clear of the tabs.
+Outside kuwai: kittymux #61 (Kiro); shuush dictation pass (40 % faster
+post-processing, Re-clean, real WPM, "my clipboard"); voxtype warm mic + queued
+takes + notify-send timeout (reviewed twice, options off by default).
+
+Left:
+- [ ] Signed releases: the re-check's last fixes (receipt of kept copies, umask),
+      then the owner's one-time steps (key → promote → --trust-clone → tag v0.2.0
+      → verify → push → AUR → kuwai setup --system → greeter install → auth pin).
+- [ ] Running: one ClockFace + login ClockGround; Docker/journal in Caches;
+      per-monitor and day/night wallpapers, Get more packs.
+- [ ] Real hardware only: Plymouth at boot, lock plate and swipe, saver styles,
+      live wallpaper pause/resume, DPMS, Activity Stop/Force quit, warm mic.
+- [ ] After release: sweep's island panel (option A, thin), kitty pane-title
+      default (kittymux), notification centre in the island look, read
+      hotwatch captures if the shell gets busy again.
+
 ## STATE (2026-11-27, late) — what is left, where UX falls short
 
 Done today, beyond the release review: wallpaper changes at a measured steady
