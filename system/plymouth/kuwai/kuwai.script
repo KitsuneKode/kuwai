@@ -1,0 +1,134 @@
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+view.w = Window.GetWidth();
+view.h = Window.GetHeight();
+view.cx = Window.GetX() + view.w / 2;
+view.cy = Window.GetY() + view.h / 2;
+view.unit = view.h / 1080;
+if (view.unit < 1) view.unit = 1;
+
+fun scaled(image) {
+    if (view.unit == 1) return image;
+    return image.Scale(Math.Int(image.GetWidth() * view.unit), Math.Int(image.GetHeight() * view.unit));
+}
+
+fun fit(image, limit) {
+    if (image.GetWidth() <= limit) return image;
+    return image.Scale(Math.Int(limit), Math.Int(image.GetHeight() * limit / image.GetWidth()));
+}
+
+ring.image = scaled(Image("ring.png"));
+ring.sprite = Sprite(ring.image);
+ring.sprite.SetPosition(view.cx - ring.image.GetWidth() / 2, view.cy - ring.image.GetHeight() / 2, 1);
+ring.sprite.SetOpacity(0);
+ring.turn = 0;
+ring.alpha = 0;
+
+pill.image = scaled(Image("pill.png"));
+pill.sprite = Sprite(pill.image);
+pill.x = view.cx - pill.image.GetWidth() / 2;
+pill.y = view.cy + ring.image.GetHeight() / 2 + 48 * view.unit;
+pill.sprite.SetPosition(pill.x, pill.y, 2);
+pill.sprite.SetOpacity(0);
+
+dot.image = scaled(Image("dot.png"));
+dot.step = 15 * view.unit;
+dot.left = view.cx - 2 * dot.step - dot.image.GetWidth() / 2;
+dot.top = pill.y + (pill.image.GetHeight() - dot.image.GetHeight()) / 2;
+for (i = 0; i < 5; i++) {
+    dots[i].sprite = Sprite(dot.image);
+    dots[i].sprite.SetPosition(dot.left + i * dot.step, dot.top, 3);
+    dots[i].sprite.SetOpacity(0);
+}
+
+hint.sprite = Sprite();
+note.sprite = Sprite();
+
+wave.t = 100;
+prompt.shown = 0;
+prompt.bullets = 0;
+
+fun show_hint(text) {
+    local.image = fit(Image.Text(text, 1, 1, 1, 0.6, "Sans 13"), pill.image.GetWidth() - 36 * view.unit);
+    hint.sprite.SetImage(local.image);
+    hint.sprite.SetPosition(view.cx - local.image.GetWidth() / 2, pill.y + (pill.image.GetHeight() - local.image.GetHeight()) / 2, 3);
+    hint.sprite.SetOpacity(1);
+}
+
+fun show_note(text) {
+    local.image = fit(Image.Text(text, 1, 1, 1, 0.7, "Sans 12"), view.w * 0.8);
+    note.sprite.SetImage(local.image);
+    note.sprite.SetPosition(view.cx - local.image.GetWidth() / 2, pill.y + pill.image.GetHeight() + 14 * view.unit, 3);
+    note.sprite.SetOpacity(1);
+}
+
+fun show_dots(on) {
+    local.i = 0;
+    while (local.i < 5) {
+        if (on) dots[local.i].sprite.SetOpacity(0.6);
+        else dots[local.i].sprite.SetOpacity(0);
+        local.i = local.i + 1;
+    }
+}
+
+fun hide_prompt() {
+    prompt.shown = 0;
+    pill.sprite.SetOpacity(0);
+    hint.sprite.SetOpacity(0);
+    note.sprite.SetOpacity(0);
+    show_dots(0);
+}
+
+fun password_cb(text, bullets) {
+    prompt.shown = 1;
+    pill.sprite.SetOpacity(1);
+    if (bullets != prompt.bullets) {
+        prompt.bullets = bullets;
+        wave.t = 0;
+    }
+    if (bullets > 0) {
+        hint.sprite.SetOpacity(0);
+        show_dots(1);
+    } else {
+        show_hint("Enter Password");
+        show_dots(0);
+    }
+    show_note(text);
+}
+
+fun question_cb(text, entry) {
+    prompt.shown = 1;
+    prompt.bullets = 0;
+    pill.sprite.SetOpacity(1);
+    show_dots(0);
+    show_hint(entry);
+    show_note(text);
+}
+
+fun refresh_cb() {
+    ring.turn = ring.turn + 0.0126;
+    ring.sprite.SetImage(ring.image.Rotate(ring.turn));
+    if (ring.alpha < 1) {
+        ring.alpha = ring.alpha + 0.04;
+        if (ring.alpha > 1) ring.alpha = 1;
+        ring.sprite.SetOpacity(ring.alpha);
+    }
+    if (prompt.shown && prompt.bullets > 0 && wave.t < 40) {
+        wave.t = wave.t + 1;
+        local.i = 0;
+        while (local.i < 5) {
+            local.k = wave.t - local.i * 1.4;
+            local.o = 0.6;
+            if (local.k >= 0 && local.k < 4) local.o = 0.6 + 0.4 * local.k / 4;
+            else if (local.k >= 4 && local.k < 14) local.o = 1 - 0.4 * (local.k - 4) / 10;
+            dots[local.i].sprite.SetOpacity(local.o);
+            local.i = local.i + 1;
+        }
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh_cb);
+Plymouth.SetDisplayNormalFunction(hide_prompt);
+Plymouth.SetDisplayPasswordFunction(password_cb);
+Plymouth.SetDisplayQuestionFunction(question_cb);

@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+set -eu
+HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+ROOT=""; DRY=0; DIRTY=0; REBUILD=1; MODE=install
+usage() {
+    echo "usage: sudo system/plymouth/install [--undo] [--dry-run] [--dirty] [--no-initramfs] [--root DIR]
+  installs the kuwai boot splash (black, one turning accent ring, the lock screen's password
+  pill for encrypted disks) and makes it Plymouth's default theme;
+  --undo         puts the previous theme back and removes kuwai's
+  --dry-run      says what it would do and changes nothing
+  --dirty        installs the working tree instead of the committed files
+  --no-initramfs leaves the initramfs alone (the default theme is still set)
+  --root DIR     works inside DIR instead of / (for trying it out; it never runs
+                 plymouth-set-default-theme itself there unless PLYMOUTH_SET_DEFAULT_THEME names one)" >&2
+    exit 2
+}
+while [ $# -gt 0 ]; do
+    case $1 in
+        --undo) MODE=undo ;;
+        --dry-run) DRY=1 ;;
+        --dirty) DIRTY=1 ;;
+        --no-initramfs) REBUILD=0 ;;
+        --root) shift; [ $# -gt 0 ] || usage; ROOT=${1%/} ;;
+        *) usage ;;
+    esac
+    shift
+done
+if [ -z "$ROOT" ] && [ $DRY = 0 ] && [ "$(id -u)" != 0 ]; then
+    echo "run with sudo (or add --dry-run to see what it would do)" >&2
+    exit 1
+fi
+OWN=()
+[ "$(id -u)" = 0 ] && OWN=(-o root -g root)
+DEST=$ROOT/usr/share/plymouth/themes/kuwai
+KEEP=$ROOT/var/lib/kuwai/plymouth
+CONF=$ROOT/etc/plymouth/plymouthd.conf
+MKINIT=$ROOT/etc/mkinitcpio.conf
+SETTER=${PLYMOUTH_SET_DEFAULT_THEME:-}
+if [ -z "$SETTER" ] && [ -z "$ROOT" ]; then
+    SETTER=$(command -v plymouth-set-default-theme || true)
+fi
+
+say() { printf '%s\n' "$*"; }
+act() {
+    if [ $DRY = 1 ]; then say "would: $*"; else "$@"; fi
+}
+
+current_theme() {
+    [ -r "$CONF" ] || return 0
+    sed -n 's/^[[:space:]]*Theme=[[:space:]]*\([^[:space:]]*\).*$/\1/p' "$CONF" | tail -n 1
+}
+
+set_theme() {
+    local args=()
+    [ "${2:-}" = rebuild ] && [ $REBUILD = 1 ] && args+=(-R)
+    if [ -n "$SETTER" ]; then
+        act "$SETTER" "${args[@]}" "$1"
+    else
+        say "would run: plymouth-set-default-theme ${args[*]} $1   (not run: no plymouth-set-default-theme under ${ROOT:-/})"
+    fi
+}
+
+hook_present() {
+    [ -r "$MKINIT" ] && grep -E '^[[:space:]]*HOOKS=' "$MKINIT" | grep -Eq '(^|[^[:alnum:]_-])plymouth([^[:alnum:]_-]|$)'
+}
+
+STAGED=""
+stage() {
+    STAGED=$(mktemp -d) || exit 1
+    trap "rm -rf -- $(printf %q "$STAGED")" EXIT
+    local repo
+    repo=$(cd "$HERE/../.." && pwd)
+    if [ $DIRTY = 1 ]; then
+        (cd "$HERE" && tar -c kuwai) | tar -x -C "$STAGED"
+    else
+        local run=()
+        [ -n "${SUDO_USER:-}" ] && [ "$(id -u)" = 0 ] && run=(sudo -u "$SUDO_USER")
+        if [ -n "$("${run[@]}" git -C "$repo" status --porcelain -- system/plymouth 2>/dev/null)" ]; then
+            echo "system/plymouth has uncommitted changes: commit them, or pass --dirty to install the working tree" >&2
+            exit 1
+        fi
+        "${run[@]}" git -C "$repo" archive HEAD:system/plymouth kuwai 2>/dev/null | tar -x -C "$STAGED" || {
+            echo "$repo isn't a git checkout with system/plymouth committed: pass --dirty to install it as it is" >&2
+            exit 1
+        }
+    fi
+    if [ -n "$(find "$STAGED" ! -type f ! -type d)" ]; then
+        echo "refused: links or special files in system/plymouth/kuwai:" >&2
+        find "$STAGED" ! -type f ! -type d >&2
+        exit 1
+    fi
+    for f in kuwai.plymouth kuwai.script ring.png pill.png dot.png; do
+        [ -f "$STAGED/kuwai/$f" ] || { echo "system/plymouth/kuwai/$f is missing" >&2; exit 1; }
+    done
+}
+
+if [ $MODE = undo ]; then
+    prev=""
+    [ -r "$KEEP/previous-theme" ] && prev=$(cat "$KEEP/previous-theme")
+    now=$(current_theme)
+    if [ "$now" = kuwai ]; then
+        if [ -n "$prev" ] && [ "$prev" != kuwai ]; then set_theme "$prev" rebuild
+        else set_theme --reset rebuild; fi
+    fi
+    act rm -rf -- "$DEST"
+    act rm -f -- "$KEEP/previous-theme"
+    say "kuwai boot splash removed."
+    exit 0
+fi
+
+stage
+say "installing the kuwai boot splash into ${ROOT:-/}"
+( cd "$STAGED/kuwai" && find . -type f | sort | sed 's|^\./||' | xargs sha256sum ) | sed 's/^/  /'
+act install -d -m 0755 "${OWN[@]}" "$DEST"
+for f in kuwai.plymouth kuwai.script ring.png pill.png dot.png; do
+    act install -m 0644 "${OWN[@]}" "$STAGED/kuwai/$f" "$DEST/$f"
+done
+now=$(current_theme)
+if [ "$now" != kuwai ]; then
+    act install -d -m 0755 "${OWN[@]}" "$KEEP"
+    if [ $DRY = 1 ]; then say "would: remember the current theme (${now:-none}) in $KEEP/previous-theme"
+    else printf '%s\n' "$now" >"$KEEP/previous-theme"; chmod 0644 "$KEEP/previous-theme"; fi
+fi
+if hook_present; then
+    set_theme kuwai rebuild
+else
+    set_theme kuwai
+    cat <<'MSG'
+
+The default theme is set, but the initramfs won't show it yet: /etc/mkinitcpio.conf has no
+`plymouth` hook. Add it to HOOKS yourself, after `base udev` (and, for an encrypted root, before
+`encrypt`; `sd-encrypt` needs nothing else), then run `sudo mkinitcpio -P`. Your kernel command
+line also needs `quiet splash`. See docs/manual/boot.md.
+MSG
+fi
+say "done. Nothing changes until the next boot; \`system/plymouth/install --undo\` puts it back."

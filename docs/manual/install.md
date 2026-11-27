@@ -50,6 +50,7 @@ All optional system helpers are reversible with `--undo`:
 sudo greeter/install          # greetd login screen (--code updates its root copy; --undo restores previous DM)
 sudo system/install           # kuwai-wake RTC alarm wake helper (--undo removes it)
 kuwai update install-helper   # installs /usr/local/lib/kuwai/kuwai-update-root for Software Update
+sudo system/plymouth/install  # boot splash theme (see boot.md; --dry-run first, --undo removes it)
 ```
 
 ## Channels, releases, and updates

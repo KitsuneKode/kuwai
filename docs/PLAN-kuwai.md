@@ -127,10 +127,12 @@ Next, by severity then value:
       on the lock, title only under the privacy rule (Grok 4); dismissing a
       hidden or code notification needs an unlock (Grok 5).
 - [ ] One ClockFace for lock, login and saver (Sonnet 3); login ClockGround zone.
-- [ ] Saver as a real idle step: saver → fade → lock, default Still with the
+- [x] Saver as a real idle step: saver → fade → lock, default Still with the
       current wallpaper (Sonnet 4); long-idle ladder: after an hour, clock on
       black or DPMS (Composer 1); photo shuffle (Composer 2); one throttled GLSL
-      style (Composer 3); a quiet media pulse (Composer 5).
+      style (Composer 3); a quiet media pulse (Composer 5). Done 2026-11-27:
+      screensaverLongMins (60), Photos, Flow, screensaverPulse (off); owner to
+      watch the real screens.
 - [ ] Live wallpaper: Qt fallback obeys the 10 s release (Sol 4); per-connector
       mpvpaper ops serialized, success only when playing (Sol 5); DPMS state from
       the compositor (Sol 6); a still frame under a paused live wallpaper (Neon).
@@ -144,7 +146,7 @@ Next, by severity then value:
       ordered delivery; per-entry audio + 'Re-clean' in Studio; 'my clipboard' /
       'rewrite this' / 'stop dictation' phrases; usage rollup with real WPM.
 - [ ] Earlier: Activity tab; Docker/journald in Caches. (API keys → keyring: done, kuwai secrets.)
-- [ ] Boot: a minimal Plymouth theme (black, one accent ring) (Sonnet 8).
+- [x] Boot: a minimal Plymouth theme (black, one accent ring) (Sonnet 8). system/plymouth/, docs/manual/boot.md; owner runs the install and sees it at boot.
 
 ## INSPIRATION PASS (2026-11-27) — Clove and pocket-dots, with Neon 4 and Sol 6.2
 
