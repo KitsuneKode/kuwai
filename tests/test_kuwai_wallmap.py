@@ -39,3 +39,12 @@ def test_first_map_on_a_fresh_cache(tmp_path):
     # and the second time it is the cached one
     again = subprocess.run([sys.executable, str(ROOT / "bin/kuwai-wallmap"), "--cached", str(picture)], env=env, capture_output=True, text=True, timeout=60)
     assert again.returncode == 0 and Path(again.stdout.strip()) == out
+
+
+def test_without_the_model_a_miss_says_so_and_nothing_is_started(tmp_path):
+    picture = tmp_path / "wall.png"
+    picture.write_bytes(b"\x89PNG\r\n\x1a\n")
+    env = dict(os.environ, HOME=str(tmp_path), XDG_DATA_HOME=str(tmp_path / "data"), XDG_CACHE_HOME=str(tmp_path / "cache"))
+    r = subprocess.run([sys.executable, str(ROOT / "bin/kuwai-wallmap"), "--cached", str(picture)], env=env, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 2, "WallFx starts a background map only on a miss with the model there (exit 1)"
+    assert "if (code === 1 && root.phase" in (ROOT / "shell/services/WallFx.qml").read_text()

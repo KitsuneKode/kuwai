@@ -3,7 +3,7 @@
 
   kuwai-wallmap PICTURE                 print the map's path (made once, cached), or exit 1
   kuwai-wallmap PICTURE --mask MASK     use MASK (white = subject) instead of the model
-  kuwai-wallmap --cached PICTURE        print the map's path only if it is already made (instant)
+  kuwai-wallmap --cached PICTURE        print the map's path only if it is already made (instant); exit 2 without the model
   kuwai-wallmap --warm DIR              make the maps for every picture in DIR, in the background
   kuwai-wallmap --install               set up the cut-out model (opt-in, ~1 GB, once)
   kuwai-wallmap --status                is the model there; how many maps are cached
@@ -151,7 +151,7 @@ def main(argv: list[str]) -> int:
         if p.is_file() and key(p).exists():
             print(key(p))
             return 0
-        return 1
+        return 1 if (VENV / "bin" / "python").exists() else 2
     if argv[0] == "--warm" and len(argv) == 2:
         for p in sorted(Path(argv[1]).expanduser().iterdir()):
             if p.suffix.lower() in PICTURES:

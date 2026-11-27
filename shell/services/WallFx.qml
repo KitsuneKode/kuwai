@@ -116,7 +116,7 @@ Singleton {
     Process {
         id: mapLookup
         stdout: StdioCollector { onStreamFinished: if (root.phase !== "") root.mapPath = text.trim() }
-        onExited: code => { if (code !== 0 && root.phase !== "") Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", root.next]); }
+        onExited: code => { if (code === 1 && root.phase !== "") Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", root.next]); }
     }
     function pick() {
         const want = Settings.wallTransition;
