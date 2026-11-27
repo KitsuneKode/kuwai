@@ -7,24 +7,24 @@ const schema = {
   "@graph": [
     {
       "@type": "WebPage",
-      name: "kuwai Brand Kit",
+      name: "kuwai Brand and Design Tokens",
       url: "https://kuwai.kitsunekode.in/brand/",
-      description: "Official SVG marks, wordmarks, obsidian liquid-glass color tokens, and syndication endpoints for kuwai.",
+      description: "SVG marks, wordmarks, and core colour tokens from shell/config/Theme.qml.",
       isPartOf: { "@id": "https://kuwai.kitsunekode.in/#website" }
     },
     {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: "https://kuwai.kitsunekode.in/" },
-        { "@type": "ListItem", position: 2, name: "Brand Kit", item: "https://kuwai.kitsunekode.in/brand/" }
+        { "@type": "ListItem", position: 2, name: "Brand", item: "https://kuwai.kitsunekode.in/brand/" }
       ]
     }
   ]
 };
 ---
 <BaseLayout
-  title="Brand Kit and Design Tokens: kuwai"
-  description="Official kuwai SVG marks, wordmarks, obsidian liquid-glass color tokens, Open Graph social cards, and RSS/Atom discovery endpoints."
+  title="Brand and Design Tokens — kuwai"
+  description="SVG marks, wordmarks, and core colour tokens from shell/config/Theme.qml."
   canonicalPath="/brand/"
   ogImage="/og-image.png"
   solidHeader={true}
@@ -34,20 +34,20 @@ const schema = {
     <section class="subpage-head">
       <div class="container">
         <h1 class="subpage-title">Brand and design tokens</h1>
-        <p class="section-intro">No mascot, no ornamental chrome. The continuous-ear Dynamic Island silhouette, a single amber attention dot, and Inter optical typography define kuwai across dark and light surfaces.</p>
+        <p class="section-intro">No mascot and no decorative chrome. The flared notch silhouette, one meaning per colour, and Inter optical typography define the shell.</p>
       </div>
     </section>
 
     <section class="section">
       <div class="container">
         <div class="section-head">
-          <h2>Official SVG marks and lockups</h2>
-          <p class="section-intro">Pure vector SVG assets mirrored in the repository brand kit alongside crisp PNG and maskable PWA icons up to 512 px.</p>
+          <h2>SVG marks and wordmarks</h2>
+          <p class="section-intro">Mirrored from <code>docs/brandkit/assets/</code> in the repository.</p>
         </div>
 
         <div class="brand-grid">
           <div class="brand-plate plate-dark">
-            <img src="/assets/brand/kuwai-wordmark.svg" alt="kuwai horizontal wordmark on dark obsidian surface" width="210" height="48">
+            <img src="/assets/brand/kuwai-wordmark.svg" alt="kuwai wordmark on dark background" width="210" height="48">
             <div class="plate-bar">
               <span>Wordmark (dark)</span>
               <a href="/assets/brand/kuwai-wordmark.svg" download class="inline-link">Download SVG</a>
@@ -55,7 +55,7 @@ const schema = {
           </div>
 
           <div class="brand-plate plate-light">
-            <img src="/assets/brand/kuwai-wordmark-dark.svg" alt="kuwai horizontal wordmark on light surface" width="210" height="48">
+            <img src="/assets/brand/kuwai-wordmark-dark.svg" alt="kuwai wordmark on light background" width="210" height="48">
             <div class="plate-bar">
               <span>Wordmark (light)</span>
               <a href="/assets/brand/kuwai-wordmark-dark.svg" download class="inline-link">Download SVG</a>
@@ -63,15 +63,15 @@ const schema = {
           </div>
 
           <div class="brand-plate plate-dark">
-            <img src="/assets/brand/kuwai-mark-tile.svg" alt="kuwai squircle app icon tile" width="96" height="96">
+            <img src="/assets/brand/kuwai-mark-tile.svg" alt="kuwai app tile mark" width="96" height="96">
             <div class="plate-bar">
-              <span>App tile and favicon</span>
+              <span>App tile</span>
               <a href="/assets/brand/kuwai-mark-tile.svg" download class="inline-link">Download SVG</a>
             </div>
           </div>
 
           <div class="brand-plate plate-dark">
-            <img src="/assets/brand/kuwai-mark.svg" alt="kuwai standalone notch mark" width="64" height="64">
+            <img src="/assets/brand/kuwai-mark.svg" alt="kuwai notch mark" width="64" height="64">
             <div class="plate-bar">
               <span>Standalone mark</span>
               <a href="/assets/brand/kuwai-mark.svg" download class="inline-link">Download SVG</a>
@@ -85,7 +85,7 @@ const schema = {
       <div class="container">
         <div class="section-head">
           <h2>One meaning per colour</h2>
-          <p class="section-intro">Core semantic palette from the kuwai design system. Click any swatch to copy its hex value.</p>
+          <p class="section-intro">Core semantic palette from <code>shell/config/Theme.qml</code>. Click any swatch to copy its hex value.</p>
         </div>
 
         <BrandSwatches client:visible />
@@ -95,30 +95,14 @@ const schema = {
     <section class="section">
       <div class="container">
         <div class="section-head">
-          <h2>Social cards, feeds, and discovery</h2>
-          <p class="section-intro">Every Open Graph preview, XML feed, sitemap, web manifest, and machine-readable file ships with the static build.</p>
+          <h2>UI primitives</h2>
+          <p class="section-intro">Every panel composes the same buttons, chips, cards, notices, meters, toggles, and tiles from <code>shell/components/ui/</code>.</p>
         </div>
 
-        <div class="og-grid">
-          <figure class="media-frame">
-            <img src="/og-image.png" alt="kuwai primary Open Graph social card at 1200 by 630 pixels" loading="lazy">
-            <figcaption>Primary Open Graph and Twitter card (<code>/og-image.png</code>, 1200 x 630)</figcaption>
-          </figure>
-          <figure class="media-frame">
-            <img src="/og-changelog.png" alt="kuwai changelog Open Graph social card at 1200 by 630 pixels" loading="lazy">
-            <figcaption>Changelog and headroom card (<code>/og-changelog.png</code>, 1200 x 630)</figcaption>
-          </figure>
-        </div>
-
-        <div class="discovery-list">
-          <a href="/feed.xml" class="discovery-row"><span>RSS 2.0 release feed</span><code>/feed.xml</code></a>
-          <a href="/atom.xml" class="discovery-row"><span>Atom 1.0 release feed</span><code>/atom.xml</code></a>
-          <a href="/sitemap-index.xml" class="discovery-row"><span>XML sitemap index</span><code>/sitemap-index.xml</code></a>
-          <a href="/robots.txt" class="discovery-row"><span>Crawler rules</span><code>/robots.txt</code></a>
-          <a href="/site.webmanifest" class="discovery-row"><span>PWA manifest and maskable icons</span><code>/site.webmanifest</code></a>
-          <a href="/llms.txt" class="discovery-row"><span>Machine-readable AI summary</span><code>/llms.txt</code></a>
-          <a href="/.well-known/security.txt" class="discovery-row"><span>RFC 9116 security policy</span><code>/.well-known/security.txt</code></a>
-        </div>
+        <figure class="media-frame">
+          <img src="/media/primitives.png" alt="kuwai UI primitives gallery rendered from the shell" loading="lazy">
+          <figcaption>Rendered directly from the shell's gallery view (<code>shell/modules/Gallery.qml</code>).</figcaption>
+        </figure>
       </div>
     </section>
   </main>

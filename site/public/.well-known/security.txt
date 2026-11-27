@@ -1,5 +1,5 @@
 Contact: https://github.com/KitsuneKode/kuwai/security/advisories/new
-Policy: https://github.com/KitsuneKode/kuwai/blob/feat/assistant-agent/SECURITY.md
+Policy: https://github.com/KitsuneKode/kuwai/blob/main/SECURITY.md
 Canonical: https://kuwai.kitsunekode.in/.well-known/security.txt
 Expires: 2027-11-24T00:00:00.000Z
 Preferred-Languages: en

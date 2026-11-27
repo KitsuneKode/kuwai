@@ -19,7 +19,7 @@ export async function GET(context: APIContext) {
 
   const entries = releases
     .map((entry) => {
-      const link = `${site}/changelog#${entry.data.slugId}`;
+      const link = `${site}/changelog/#${entry.data.slugId}`;
       return [
         "  <entry>",
         `    <title>${escapeXml(entry.data.title)}</title>`,
@@ -34,15 +34,15 @@ export async function GET(context: APIContext) {
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>kuwai Releases and Engineering Notes</title>
-  <subtitle>Liquid-glass Hyprland desktop and Dynamic Island built for coding agents.</subtitle>
+  <title>kuwai Releases</title>
+  <subtitle>Arch Linux Hyprland 0.57 desktop and Quickshell shell.</subtitle>
   <link href="${site}/atom.xml" rel="self" type="application/atom+xml"/>
   <link href="${site}/" rel="alternate" type="text/html"/>
   <id>${site}/</id>
   <updated>${updated}</updated>
   <icon>${site}/assets/brand/icon-192.png</icon>
   <author>
-    <name>KitsuneKode</name>
+    <name>kuwai</name>
     <uri>https://github.com/KitsuneKode/kuwai</uri>
   </author>
 ${entries}

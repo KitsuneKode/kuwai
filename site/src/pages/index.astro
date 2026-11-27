@@ -1,44 +1,280 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import DynamicIslandStage from "../components/DynamicIslandStage.tsx";
-import PermissionSandbox from "../components/PermissionSandbox.tsx";
-import UpgradeList from "../components/UpgradeList.tsx";
-import SurfaceShowcase from "../components/SurfaceShowcase.tsx";
-import HeadroomExplorer from "../components/HeadroomExplorer.tsx";
 import InstallBlock from "../components/InstallBlock.tsx";
 
 const siteUrl = "https://kuwai.kitsunekode.in";
 
-const faqs = [
+const features = [
   {
-    q: "Will kuwai overwrite my existing Hyprland configuration?",
-    a: "No. kuwai writes its Hyprland configuration to ~/.config/kuwai/hypr/ and registers its own login session, leaving ~/.config/hypr untouched. Any file it replaces is backed up and restored automatically by ./install.sh --uninstall."
+    id: "island",
+    title: "The island",
+    summary: "One status surface at the top edge of each screen. At rest it shows workspaces, the clock, status, and live activity such as a timer, recording, dictation, or music. Background work floats beside it in separate capsules for agents, usage limits, system news, and minimized windows. Hovering opens a glance row; clicking or pulling down grows the panel.",
+    details: [
+      "Privacy dots appear beside status when the microphone (orange), camera (green), or screen sharing/recording (purple) is active, naming the app on hover.",
+      "Alarms, due reminders, finished timers, and connecting audio devices grow out of the notch as cards you can answer from the keyboard (Super+Ctrl+Enter).",
+      "Pressing Super+Tab opens Mission Control across every workspace on the screen; Alt+Tab switches windows from the shell."
+    ],
+    media: [
+      {
+        src: "/media/clips/island-hover.webp",
+        alt: "Resting on the kuwai island opens the glance row with workspaces, clock, machine status, and agents",
+        caption: "Hovering the island opens the glance row (recorded live at 60 fps)."
+      },
+      {
+        src: "/media/island/capsule-states.png",
+        alt: "Capsule states: Working, Needs you, Hit a limit, and Error",
+        caption: "Capsule states: working, needs you, hit a limit, and error."
+      },
+      {
+        src: "/media/clips/island-timer.webp",
+        alt: "A running timer displayed as a ring in the island",
+        caption: "Timers and Pomodoro cycles run inside the island."
+      },
+      {
+        src: "/media/tour/calendar-events.png",
+        alt: "Calendar panel showing a month view and events from an iCal feed",
+        caption: "Calendar panel (Super+Alt+C) with HTTPS iCal feeds."
+      }
+    ]
   },
   {
-    q: "Do I need HyDE or Apple's SF Pro font installed?",
-    a: "Neither is required. kuwai ships its own standalone atomic Look engine with 11 bundled themes and uses Inter (open-source OFL, installed automatically from Arch repos) with optical sizing. If SF Pro is present on your machine, kuwai upgrades typography automatically."
+    id: "notifications",
+    title: "Notifications",
+    summary: "kuwai runs its own org.freedesktop.Notifications server with a stacked toast list, notch peeks for important or replyable alerts, and a Notification Center (Super+N) grouped by app with search and undo clear.",
+    details: [
+      "Chat message bodies are hidden on passive surfaces and on the lock screen by default; while sharing your screen, non-critical bodies stay hidden everywhere.",
+      "Do Not Disturb (Super+Alt+N) and screen-share mute suppress normal alerts while letting critical alerts through.",
+      "Optional GitHub (via gh) and Gmail (IMAP IDLE, app password in keyring) feeds turn inbox items into notifications with inline reply and mark-as-read; off until you enable them."
+    ],
+    media: []
   },
   {
-    q: "How do agent approvals work without typing into my terminal?",
-    a: "Approval actions route through native PermissionRequest hooks for Claude Code and Codex. Your decision goes straight to the hook with zero synthetic keystrokes, and only appears for single-line commands you can read in full. Ignored prompts fall back cleanly to the terminal after 45 seconds."
+    id: "clipboard",
+    title: "Clipboard",
+    summary: "Super+V opens the clipboard shelf above the workspace, backed by cliphist. Search with fuzzy matching, inspect items in Quick Look (Space), edit text in place, run OCR on images (Ctrl+O), and keep pinned entries (Super+Shift+V) beyond the history cap.",
+    details: [
+      "Clipboard history is opt-in (asked during install, toggled any time with kuwai collect clipboard on|off).",
+      "Password-manager entries are skipped when the app sets the password hint, and secret-shaped text is masked in the list.",
+      "Markdown, code, and Mermaid diagrams render in Quick Look; deleting an entry can be undone with Ctrl+Z for a few seconds."
+    ],
+    media: []
   },
   {
-    q: "How much memory and CPU does the desktop shell use at idle?",
-    a: "A fresh stable shell starts near 207 MB and settles between 207 and 350 MB at idle under 2% CPU. Surfaces unmount when hidden, streaming helpers terminate with the shell via pdeathsig, and our upcoming boot optimization cuts full-session boot memory by 73%."
+    id: "launcher",
+    title: "Launcher",
+    summary: "Super+A searches desktop apps, open windows, files under home (via fd), kuwai settings, and actions in one fixed-height list ranked by frecency.",
+    details: [
+      "Built-in calculator handles arithmetic, percentages, units, and currencies (=), with optional qalc fallback.",
+      "Prefix ! lists processes and listening ports (for example ! 3000) so you can stop your own processes without opening a terminal.",
+      "Prefix + searches official Arch repositories and the AUR to install or remove packages; : searches emoji, ; searches Nerd Font glyphs; natural-language commands start timers, reminders, alarms, and quick notes."
+    ],
+    media: [
+      {
+        src: "/media/clips/launcher.webp",
+        alt: "The kuwai launcher answering math as you type",
+        caption: "Launcher answering calculations inline as you type."
+      },
+      {
+        src: "/media/tour/launcher-packages.png",
+        alt: "Launcher package search showing Arch repository and AUR results",
+        caption: "Package search (+) across official Arch repositories and the AUR."
+      }
+    ]
   },
   {
-    q: "What happens if an edit or update breaks the shell?",
-    a: "kuwai runs from a supervised systemd service on the stable channel. Promotions run automated unit, token, and 141-frame visual checks first, roll back automatically within 4 seconds if a load fails, and fall back to a rescue bar if anything ever crashes repeatedly."
+    id: "controls",
+    title: "Controls, sound, and displays",
+    summary: "Super+Ctrl+Space opens Controls from the notch: Wi-Fi (Super+Ctrl+Alt+W), Bluetooth (Super+Alt+B), Do Not Disturb, Night Shift, Caffeine, microphone mute, Reduce Motion, display presets, brightness, and a per-app PipeWire sound mixer.",
+    details: [
+      "Display presets switch between Everyday, Accurate, Movie (120 Hz on external displays), Gaming, and Battery, with automatic HDR or explicit browser HDR (kuwai display hdr).",
+      "HDR status in the notch reads the live signal on the wire (PQ/HLG via kuwai-hdr) rather than guessing from a toggle.",
+      "The System section shows CPU, memory by app (proportional RSS so multi-process browsers count once), GPU state, and quick mode switches; Now Playing cleans browser titles and supports per-player actions."
+    ],
+    media: [
+      {
+        src: "/media/clips/sound.webp",
+        alt: "Sound panel showing per-app volume sliders, outputs, and microphone level",
+        caption: "Sound view: per-app streams, output switching, and live microphone level."
+      },
+      {
+        src: "/media/tour/system-typical.png",
+        alt: "System panel showing CPU, proportional memory by app, and GPU telemetry",
+        caption: "System panel: CPU, proportional memory by app, and GPU."
+      },
+      {
+        src: "/media/tour/media-playing.png",
+        alt: "Now Playing panel with album art, progress bar, and transport controls",
+        caption: "Now Playing panel with playback controls and seek bar."
+      }
+    ]
+  },
+  {
+    id: "lock",
+    title: "Lock and login",
+    summary: "The session lock (Super+L) and the optional greetd login screen share the same layout, password pill, corner status, and motion.",
+    details: [
+      "The password pill uses no character echo: five dots pulse on each keystroke so password length is never shown, with a Caps Lock warning underneath.",
+      "Power actions (Sleep, Restart, Shut Down) require holding for 0.8 seconds instead of a single click, both at login and in the session power menu (Super+Backspace).",
+      "At login, greeter/sync copies only validated display and keyboard layout data; the greeter's QML and Lua code stays root-owned in /var/lib/kuwai-greeter."
+    ],
+    media: [
+      {
+        src: "/media/login/login.webp",
+        alt: "kuwai greetd login screen with centered clock, user avatar, and hold-to-power row",
+        caption: "Login screen on greetd (optional: sudo greeter/install)."
+      },
+      {
+        src: "/media/login/lock.webp",
+        alt: "kuwai session lock screen with blurred wallpaper, clock, and notification preview",
+        caption: "Lock screen (Super+L) with private notification previews."
+      }
+    ]
+  },
+  {
+    id: "looks",
+    title: "Screensaver, wallpapers, and themes",
+    summary: "Super+Shift+T opens Themes, Wallpapers, Live wallpapers, and Screensavers. kuwai ships 13 dark theme definitions (Kuwai Night, Aurora, Chrome Sunset, Crimson Noir, Deep Field, Earthlight, Garage, Matcha, Neon District, Pixel Dusk, Sakura Night, Violet Hour, Void) driven by its standalone kuwai-look palette engine.",
+    details: [
+      "Palette switches check contrast against WCAG 4.5:1 and update the shell, Hyprland borders, and terminal colours atomically; HyDE is optional.",
+      "Still wallpaper changes spread out from the notch with a shader transition; live wallpapers re-encode once (kuwai-wall add) and pause when covered by windows.",
+      "Screensavers run Dusk (shader), Borealis (theme-accent shader), Night (out-of-process looping film whose memory is freed on wake), Live wallpaper, or Still wallpaper."
+    ],
+    media: [
+      {
+        src: "/media/clips/themes.webp",
+        alt: "Themes panel switching between palettes and wallpapers",
+        caption: "Switching themes and palettes from the island."
+      },
+      {
+        src: "/media/clips/wallpaper.webp",
+        alt: "Wallpaper transition spreading from the notch across the desktop",
+        caption: "Wallpaper transition growing out of the notch."
+      }
+    ]
+  },
+  {
+    id: "dictation",
+    title: "Dictation hooks",
+    summary: "If voxtype is installed, kuwai binds dictation keys automatically (hold F9 to dictate, Super+Ctrl+D to toggle, Super+Shift+D or Escape to cancel, Super+Ctrl+Alt+D to recover a cancelled take, Super+Ctrl+E to edit a selection by voice).",
+    details: [
+      "The island hosts voxtype's Quickshell HUD inside the main shell when configured with VOXTYPE_OSD_HOST, avoiding a second Quickshell process.",
+      "While dictating, the screensaver and idle dim wait so speaking never triggers idle lock mid-sentence.",
+      "When voxtype is not installed, none of these binds are registered."
+    ],
+    media: []
+  },
+  {
+    id: "agents",
+    title: "Agents and usage",
+    summary: "Agents, Usage, System, and Cleanup share one tabbed island strip (Alt+1 to Alt+4). Super+Shift+N opens Agents, listing kitty/kittymux panes, T3 Code threads, and desktop agents reporting through kuwai-agent-hook.",
+    details: [
+      "Waiting approvals get their own orange capsule beside the notch; Super+Ctrl+A jumps straight to the waiting pane or thread.",
+      "Claude Code, Codex (via kittymux PermissionRequest hooks), and T3 Code (via a separate operate token) can be allowed or denied from the notch without typing keystrokes into a terminal pane.",
+      "Usage tracks rate-limit windows across accounts (from T3 Code, local Devin profiles, or kittymux fallback) plus local token spend read from session logs on disk."
+    ],
+    media: [
+      {
+        src: "/media/tour/agents-typical.png",
+        alt: "Agents panel listing active sessions and a waiting approval with Allow and Deny buttons",
+        caption: "Agents section: active work and waiting approvals."
+      },
+      {
+        src: "/media/tour/usage-typical.png",
+        alt: "Usage panel showing remaining quota bars and reset countdowns across accounts",
+        caption: "Usage section: per-account limit bars and reset times."
+      }
+    ]
+  },
+  {
+    id: "updates",
+    title: "Updates with AUR review",
+    summary: "Software Update (Super+Ctrl+Shift+U or the island's update chip) upgrades official Arch packages together, reviews every AUR PKGBUILD diff before building as your user, and surfaces .pacnew config files afterwards.",
+    details: [
+      "Runs inside a detached systemd user unit (kuwai-update) with sleep inhibited, so a shell restart never interrupts an in-progress pacman transaction.",
+      "AUR packages build from the exact git commit you approved; if the upstream commit changes after review, the build stops.",
+      "After an upgrade, .pacnew files show a diff and save timestamped backups before replacing; critical account and disk files (passwd, shadow, group, gshadow, fstab, crypttab) are refused for automatic replacement and must be merged by hand."
+    ],
+    media: [
+      {
+        src: "/media/tour/updates-typical.png",
+        alt: "Software Update panel listing Arch repository updates and AUR packages awaiting review",
+        caption: "Software Update: repo updates and AUR review."
+      }
+    ]
+  },
+  {
+    id: "cleanup",
+    title: "Cleanup",
+    summary: "The Cleanup section (Alt+4) audits unused agent skills, recoverable developer caches, and (when sweep is installed) idle build directories.",
+    details: [
+      "Skills: measures how many prompt tokens your sessions spend listing skills under ~/.agents/skills, ~/.claude*/skills, ~/.codex/skills, and ~/.cursor/skills that were unused for 30, 90, or 180 days. Moving them uses the freedesktop Trash with a Put back action that restores symlinks too.",
+      "Caches: inspects tool caches that rebuild automatically (thumbnails, pip, uv, npm, bun, pnpm, go, yarn) and clears them with each tool's own clean command; pacman, paru, and Trash are marked check first and never cleared automatically.",
+      "Settings (Super+Ctrl+I) applies changes live against a validated schema, and Settings → Shortcuts rebinds any kuwai shortcut by pressing the new chord."
+    ],
+    media: [
+      {
+        src: "/media/tour/settings-shortcuts.png",
+        alt: "Settings panel on the Shortcuts page showing rebindable kuwai shortcuts",
+        caption: "Settings → Shortcuts: press a new chord to rebind, or reset any row."
+      }
+    ]
   }
 ];
 
-const shortcuts = [
-  { keys: ["Super", "A"], name: "Launcher, processes, and ports", detail: "Launch apps, math, timers, reminders, or type ! 3000 to inspect and stop a listening server." },
-  { keys: ["Super", "V"], name: "Clipboard island", detail: "Search copy history with fuzzy matching, Quick Look previews, inline editing, OCR, and automatic secret masking." },
-  { keys: ["Super", "N"], name: "Notification and control center", detail: "Grouped app notifications with undo clear, per-app audio mixer, Wi-Fi, Bluetooth, Night Shift, and Caffeine." },
-  { keys: ["Super", "Shift", "N"], name: "Agents overview", detail: "Every active kitty pane and T3 Code thread in one list, sorted with waiting approvals at the top." },
-  { keys: ["Super", "Ctrl", "Enter"], name: "Answer active island card", detail: "Act directly on a ringing alarm, due reminder, or waiting prompt without reaching for the pointer." },
-  { keys: ["Super", "Ctrl", "I"], name: "Live settings", detail: "Adjust appearance, motion, displays, power, privacy, and updates with instant apply and per-row reset." }
+const rootSurface = [
+  {
+    component: "system/session",
+    when: "Once during install (optional undo: sudo system/session --undo)",
+    why: "Installs /usr/local/bin/kuwai-session and /usr/share/wayland-sessions/kuwai.desktop so Kuwai appears as its own login session."
+  },
+  {
+    component: "kuwai auth pin",
+    when: "Once during install (optional undo: kuwai auth unpin)",
+    why: "Copies the standalone polkit password prompt (shell-auth/) into /usr/local/share/kuwai/shell-auth owned by root, so processes running as your user cannot edit the code that reads your password."
+  },
+  {
+    component: "kuwai-update-root",
+    when: "Installed once with kuwai update install-helper, started on demand through pkexec",
+    why: "Runs pacman, paccache, and validated /etc/*.pacnew actions under one prompt per operation. Operations are named in pkexec argv; AUR package files are copied into a root-only directory and verified by sha256 before pacman -U."
+  },
+  {
+    component: "greeter/install (optional)",
+    when: "Only if you replace your display manager with greetd (--undo restores the previous one)",
+    why: "Installs root-owned greeter code into /var/lib/kuwai-greeter from committed git files only. Your user can write only /var/lib/kuwai-greeter/home/ (wallpaper, colours, and plain monitor/keyboard data)."
+  },
+  {
+    component: "system/install (optional)",
+    when: "Only if you want alarms that wake a sleeping laptop (--undo removes it)",
+    why: "Installs /usr/local/libexec/kuwai-wake-root and a systemd path unit that reads one bounded Unix timestamp from /var/lib/kuwai-wake/at and writes /sys/class/rtc/rtc0/wakealarm."
+  }
+];
+
+const dataLocations = [
+  {
+    what: "Clipboard history",
+    defaultState: "Off by default (asked at install; kuwai collect clipboard on|off)",
+    where: "Stored locally by cliphist in your home directory; pins live under ~/.local/share/kuwai. Never sent over the network."
+  },
+  {
+    what: "GitHub and Gmail feeds",
+    defaultState: "Off by default (asked at install; kuwai collect feeds on|off)",
+    where: "GitHub uses your existing gh CLI login; Gmail uses an app password stored in your system keyring (secret-tool). Feed state stays in ~/.local/state/kuwai/feeds.json."
+  },
+  {
+    what: "Local assistant (Ollama)",
+    defaultState: "Off by default (Settings → Assistant)",
+    where: "Chats stay in ~/.local/state/kuwai. Secret-shaped text is redacted from clipboard and selection context; optional web search runs only when you enable it."
+  },
+  {
+    what: "Usage limits and spend",
+    defaultState: "Read-only local listeners",
+    where: "Reads T3 Code over localhost using a read-only token (mode 0600 or keyring), kittymux local state, or local Devin CLI profiles; spend reads local agent session logs."
+  },
+  {
+    what: "Shell state, notifications, settings",
+    defaultState: "Local only, no telemetry",
+    where: "~/.config/kuwai (settings, keys, feeds config), ~/.local/state/kuwai (mode 0700: notifications, reminders, alarms, logs), and ~/.cache/kuwai (mode 0700)."
+  }
 ];
 
 const homeSchema = {
@@ -49,7 +285,7 @@ const homeSchema = {
       "@id": `${siteUrl}/#website`,
       url: `${siteUrl}/`,
       name: "kuwai",
-      description: "Liquid-glass Hyprland desktop and Dynamic Island built for coding agents.",
+      description: "An Arch Linux desktop built from a Lua Hyprland 0.57 session and a Quickshell shell.",
       inLanguage: "en-US"
     },
     {
@@ -57,199 +293,244 @@ const homeSchema = {
       "@id": `${siteUrl}/#software`,
       name: "kuwai",
       applicationCategory: "DesktopEnvironment",
-      operatingSystem: "Linux (Arch Linux, Hyprland 0.57)",
+      operatingSystem: "Arch Linux (Hyprland 0.57+)",
       softwareVersion: "0.1.0",
       license: "https://www.gnu.org/licenses/gpl-3.0.en.html",
       url: `${siteUrl}/`,
       downloadUrl: "https://github.com/KitsuneKode/kuwai",
       codeRepository: "https://github.com/KitsuneKode/kuwai",
       screenshot: `${siteUrl}/og-image.png`,
-      author: {
-        "@type": "Person",
-        name: "KitsuneKode",
-        url: "https://github.com/KitsuneKode"
-      },
       offers: {
         "@type": "Offer",
         price: "0",
         priceCurrency: "USD"
       }
-    },
-    {
-      "@type": "FAQPage",
-      "@id": `${siteUrl}/#faq`,
-      mainEntity: faqs.map((item) => ({
-        "@type": "Question",
-        name: item.q,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: item.a
-        }
-      }))
     }
   ]
 };
 ---
 <BaseLayout
-  title="kuwai: Liquid-Glass Hyprland Desktop for Coding Agents"
-  description="kuwai is a liquid-glass Hyprland 0.57 desktop and Dynamic Island built for coding agents, native permission approvals, verified updates, and calm focus."
+  title="kuwai — Hyprland 0.57 desktop and Quickshell island for Arch Linux"
+  description="kuwai is an Arch Linux desktop built from a Lua Hyprland 0.57 session and a Quickshell shell around a top-edge island, notifications, controls, lock screen, and AUR-reviewed updates."
   canonicalPath="/"
   ogImage="/og-image.png"
-  ogVideo="/media/kuwai-launch-demo.mp4"
   schemaJson={homeSchema}
 >
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-backdrop" aria-hidden="true">
-        <img src="/assets/imageory/eclipse-halo.webp" alt="" class="hero-bg-img" fetchpriority="high">
-        <div class="hero-vignette"></div>
-      </div>
-
-      <div class="hero-content">
-        <h1 id="hero-title" class="hero-title">Your desktop knows which agent needs you</h1>
-        <p class="hero-lead">A liquid-glass Hyprland desktop and Dynamic Island built for coding agents, reviewed system updates, and calm focus.</p>
-        <div class="hero-actions">
-          <a href="#install" class="btn-primary">Install kuwai</a>
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <p class="hero-kicker tabular">v0.1.0 · Arch Linux · Hyprland 0.57+ · GPL-3.0-or-later</p>
+          <h1 id="hero-title" class="hero-title">A calm Hyprland desktop built around one island</h1>
+          <p class="hero-lead">
+            kuwai is a desktop environment for Arch Linux made of two halves: a Hyprland 0.57 session written in Lua and a Quickshell shell built around a top-edge island. The island holds the clock, workspaces, notifications, controls, launcher, clipboard, system updates, and coding-agent status in one dark glass grammar. It installs as its own login session in <code>~/.config/kuwai/hypr/</code> without overwriting your existing <code>~/.config/hypr</code>, and every file it changes is backed up for clean removal.
+          </p>
+          <div class="hero-actions">
+            <a href="#install" class="btn-primary">Install kuwai</a>
+            <a href="https://github.com/KitsuneKode/kuwai" target="_blank" rel="noopener noreferrer" class="btn-secondary">View on GitHub</a>
+            <a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/README.md" target="_blank" rel="noopener noreferrer" class="btn-quiet">Read the manual</a>
+          </div>
         </div>
-      </div>
 
-      <DynamicIslandStage client:load />
+        <figure class="hero-media media-frame">
+          <img
+            src="/media/clips/island-hover.webp"
+            alt="Recording of the kuwai island expanding on hover to show workspaces, clock, machine status, and agents"
+            fetchpriority="high"
+          >
+          <figcaption>Recorded live on a Hyprland 0.57 session (2560×1440 at 60 fps). Every image on this page comes from the running shell or its rehearsal suite.</figcaption>
+        </figure>
+      </div>
     </section>
 
-    <section class="section" id="island" aria-labelledby="island-title">
+    <section class="section" id="what-you-get" aria-labelledby="what-you-get-title">
       <div class="container">
-        <div class="split-editorial">
-          <div class="split-copy">
-            <h2 id="island-title">Approve agent work without switching windows</h2>
-            <p>When Claude Code, Codex, or T3 Code runs across multiple terminals, conventional status bars bury the one prompt waiting on you. kuwai splits attention into focused capsules around a centered clock so you read state in a single glance.</p>
-            <p>Waiting approvals surface in their own orange capsule beside the notch while active agents stay calm next to it. Decisions route through native permission hooks with zero synthetic keystrokes, falling back to your terminal prompt after 45 seconds if you stay focused elsewhere.</p>
-            <ul class="detail-list">
-              <li><strong>Dedicated approval capsule:</strong> orange attention halo for waiting prompts; click once to jump directly to the pane.</li>
-              <li><strong>Unified quota countdown:</strong> leads with whichever provider resets soonest across Claude, Codex, Antigravity, Cursor, Grok, Gemini, and multi-profile Devin accounts.</li>
-              <li><strong>Respectful interruption rules:</strong> critical approvals surface over fullscreen windows, while Focus and screen-share modes stay completely quiet.</li>
+        <div class="section-head">
+          <h2 id="what-you-get-title">What you get</h2>
+          <p class="section-intro">Every surface is drawn from one shared design-token file (<code>shell/config/Theme.qml</code>) and one set of UI primitives, with keyboard navigation across every panel.</p>
+        </div>
+
+        <div class="feature-toc" aria-label="Feature sections">
+          {features.map((f) => (
+            <a href={`#${f.id}`} class="toc-chip">{f.title}</a>
+          ))}
+        </div>
+
+        <div class="feature-stack">
+          {features.map((f) => (
+            <article class="feature-block" id={f.id}>
+              <div class="feature-copy">
+                <h3>{f.title}</h3>
+                <p class="feature-summary">{f.summary}</p>
+                <ul class="detail-list">
+                  {f.details.map((line) => <li>{line}</li>)}
+                </ul>
+              </div>
+
+              {f.media.length > 0 && (
+                <div class:list={["feature-media-grid", { "is-single": f.media.length === 1 }]}>
+                  {f.media.map((m) => (
+                    <figure class="media-frame">
+                      <img src={m.src} alt={m.alt} loading="lazy">
+                      <figcaption>{m.caption}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="requirements" aria-labelledby="requirements-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="requirements-title">Requirements</h2>
+          <p class="section-intro">kuwai targets Arch Linux and relies on packages available in the official repositories. Running <code>./install.sh --deps</code> checks what is missing and installs it with <code>pacman</code>.</p>
+        </div>
+
+        <div class="req-grid">
+          <div class="info-card">
+            <h3>Core</h3>
+            <ul class="plain-list">
+              <li><strong>Arch Linux</strong> with systemd user sessions</li>
+              <li><strong>Hyprland 0.57 or newer</strong> (Lua configuration; older versions are refused by <code>install.sh</code>)</li>
+              <li><strong>Quickshell</strong> with <code>qt6-multimedia</code></li>
+              <li><strong>PipeWire and WirePlumber</strong> (<code>pipewire-audio</code>, <code>pipewire-pulse</code>, <code>libpulse</code>)</li>
+              <li><strong>Desktop utilities</strong>: <code>awww</code>, <code>cliphist</code>, <code>wl-clipboard</code>, <code>grim</code>, <code>slurp</code>, <code>brightnessctl</code>, <code>hyprsunset</code>, <code>hyprpicker</code>, <code>playerctl</code>, <code>polkit</code>, <code>upower</code>, <code>pacman-contrib</code>, <code>jq</code>, <code>python</code>, <code>lua</code>, <code>nodejs</code>, <code>git</code>, <code>openssh</code></li>
+              <li><strong>Fonts</strong>: <code>inter-font</code> (default, OFL) and <code>ttf-nerd-fonts-symbols</code>; SF Pro is used automatically if you already have it installed</li>
             </ul>
           </div>
 
-          <div class="split-visual">
-            <figure class="media-frame">
-              <img src="/assets/kuwai/capsule-states.png" alt="Live kuwai island capsule states showing Working, Needs you, Hit a limit, and Error" loading="lazy">
-              <figcaption>Live shell captures: Working, Needs you, Hit a limit, and Error capsule states.</figcaption>
-            </figure>
-
-            <PermissionSandbox client:visible />
-          </div>
-        </div>
-
-        <div class="compat-strip">
-          <span class="compat-label">Built for your daily stack</span>
-          <div class="compat-names">
-            <span>Hyprland 0.57</span>
-            <span>Quickshell</span>
-            <span>Claude Code</span>
-            <span>OpenAI Codex</span>
-            <span>T3 Code</span>
-            <span>Devin CLI</span>
-            <span>kitty</span>
+          <div class="info-card">
+            <h3>Optional</h3>
+            <ul class="plain-list">
+              <li><strong>Screenshots and recording</strong>: <code>satty</code> (annotation), <code>tesseract</code> (OCR), <code>gpu-screen-recorder</code> or <code>wf-recorder</code>, <code>ffmpeg</code></li>
+              <li><strong>Displays and themes</strong>: <code>ddcutil</code> (external monitor brightness), <code>matugen</code> or <code>imagemagick</code> (wallpaper palettes), <code>mpv</code> / <code>mpvpaper</code> (live wallpapers)</li>
+              <li><strong>Network and controls</strong>: <code>networkmanager</code> (Wi-Fi), <code>bluez-utils</code> (Bluetooth), <code>python-gobject</code> (app idle inhibition)</li>
+              <li><strong>Feeds and agents</strong>: <code>github-cli</code> (GitHub feed), <code>libsecret</code> (keyring for Gmail and tokens), <code>ripgrep</code> (Cleanup panel), <code>kitty</code> / <code>kittymux</code>, <code>voxtype</code> (dictation), <code>ollama</code> (opt-in local assistant), <code>sweep</code> (idle project scan)</li>
+              <li><strong>Fallbacks</strong>: <code>waybar</code>, <code>hyprlock</code>, and <code>hypridle</code> if the shell is stopped or fails to load</li>
+            </ul>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section section-alt" id="upgrades" aria-labelledby="upgrades-title">
+    <section class="section" id="install" aria-labelledby="install-title">
       <div class="container">
         <div class="section-head">
-          <h2 id="upgrades-title">Engineered for daily-driver reliability</h2>
-          <p class="section-intro">Every milestone promoted to the stable channel passes automated unit, token, and visual regression gates. Browse the full <a href="/changelog/" class="inline-link">release changelog</a> or follow via <a href="/feed.xml" class="inline-link">RSS</a>.</p>
+          <h2 id="install-title">Install</h2>
+          <p class="section-intro">
+            kuwai writes its Hyprland entry to <code>~/.config/kuwai/hypr/</code> and runs your desktop from a separate <code>stable</code> checkout in <code>~/.local/share/kuwai</code>. Your existing <code>~/.config/hypr</code> and plain Hyprland session stay untouched.
+          </p>
         </div>
-
-        <UpgradeList client:visible />
-      </div>
-    </section>
-
-    <section class="section section-craft" id="craft" aria-labelledby="craft-title">
-      <div class="craft-backdrop" aria-hidden="true">
-        <img src="/assets/imageory/liquid-silk.webp" alt="" class="craft-bg-img" loading="lazy">
-        <div class="craft-overlay"></div>
-      </div>
-
-      <div class="container craft-inner">
-        <div class="section-head">
-          <h2 id="craft-title">Liquid glass built from one primitive per job</h2>
-          <p class="section-intro">Hyprland blurs live windows behind every translucent layer while Quickshell draws dark tint, specular rim lighting, and critically damped springs from one shared component grammar.</p>
-        </div>
-
-        <SurfaceShowcase client:visible />
-      </div>
-    </section>
-
-    <section class="section section-alt" id="shortcuts" aria-labelledby="shortcuts-title">
-      <div class="container">
-        <div class="section-head">
-          <h2 id="shortcuts-title">Every surface one keystroke away</h2>
-          <p class="section-intro">Global shortcuts route directly into the running shell with zero subprocess lag, and every panel shares consistent arrow, tab, and escape navigation.</p>
-        </div>
-
-        <div class="shortcut-grid">
-          {shortcuts.map((s) => (
-            <div class="shortcut-item">
-              <div class="shortcut-keys" aria-label={s.keys.join(" + ")}>
-                {s.keys.map((k) => <kbd class="keycap">{k}</kbd>)}
-              </div>
-              <div class="shortcut-copy">
-                <h3>{s.name}</h3>
-                <p>{s.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="improve" aria-labelledby="improve-title">
-      <div class="container">
-        <div class="section-head">
-          <h2 id="improve-title">How much faster and leaner we can go</h2>
-          <p class="section-intro">Measured resource headroom on real hardware alongside the next wave of features on our road to a zero-friction public release.</p>
-        </div>
-
-        <HeadroomExplorer client:visible />
-      </div>
-    </section>
-
-    <section class="section section-alt" id="faq" aria-labelledby="faq-title">
-      <div class="container">
-        <div class="section-head">
-          <h2 id="faq-title">Questions before you install</h2>
-          <p class="section-intro">Direct answers on session safety, fonts, privacy, and recovery.</p>
-        </div>
-
-        <div class="faq-list">
-          {faqs.map((item) => (
-            <details class="faq-item">
-              <summary class="faq-q">
-                <span>{item.q}</span>
-                <span class="faq-plus" aria-hidden="true">+</span>
-              </summary>
-              <p class="faq-a">{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="section section-install" id="install" aria-labelledby="install-title">
-      <div class="install-backdrop" aria-hidden="true">
-        <img src="/assets/imageory/monolith-portal.webp" alt="" class="install-bg-img" loading="lazy">
-        <div class="install-overlay"></div>
-      </div>
-
-      <div class="container install-inner">
-        <h2 id="install-title">Install kuwai beside your existing session</h2>
-        <p class="install-lead">kuwai installs its Hyprland configuration into <code>~/.config/kuwai/hypr/</code> as a separate login session, leaving your existing <code>~/.config/hypr</code> untouched. Every change is backed up and cleanly reversible.</p>
 
         <InstallBlock client:visible />
 
-        <p class="install-footnote">Optional: run <code>sudo greeter/install</code> for the unified greetd login screen and <code>sudo system/install</code> for wake-from-sleep alarms.</p>
+        <div class="install-notes">
+          <div class="info-card">
+            <h3>Optional system steps (sudo)</h3>
+            <ul class="plain-list">
+              <li><code>sudo greeter/install</code> — replace SDDM or another display manager with kuwai's greetd login screen (<code>--undo</code> puts the previous manager back).</li>
+              <li><code>sudo system/install</code> — install <code>kuwai-wake</code> so alarms can wake a sleeping laptop via RTC (<code>--undo</code> removes it).</li>
+              <li><code>kuwai update install-helper</code> — install the root-owned update helper so a system update asks for your password once per operation.</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <h3>Updating, checking, and uninstalling</h3>
+            <ul class="plain-list">
+              <li><code>kuwai doctor</code> — checks Hyprland config, notification ownership, DND state, user services, and shell health.</li>
+              <li><code>kuwai update-self</code> — updates <code>stable</code> to the newest signed release tag (verified against <code>release-signers</code>), runs migrations, and rolls back automatically if the shell fails to load.</li>
+              <li><code>./install.sh --uninstall</code> — restores every user file and systemd unit state recorded in <code>~/.local/state/kuwai/original/</code> before the first install.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="security" aria-labelledby="security-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="security-title">Privacy and security</h2>
+          <p class="section-intro">kuwai runs as your user session and sends no telemetry. Privileged actions are split into narrow root-owned helpers, and background data collection is off until you opt in.</p>
+        </div>
+
+        <h3 class="subhead">What runs as root and why</h3>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>When it runs</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rootSurface.map((row) => (
+                <tr>
+                  <td><code>{row.component}</code></td>
+                  <td>{row.when}</td>
+                  <td>{row.why}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="subhead">What is collected and where it stays</h3>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Default</th>
+                <th>Storage and boundary</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dataLocations.map((row) => (
+                <tr>
+                  <td><strong>{row.what}</strong></td>
+                  <td>{row.defaultState}</td>
+                  <td>{row.where}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p class="section-footnote">
+          Release tags are verified against SSH/PGP keys listed in <code>release-signers</code>, and tags that move after first sight are refused. For full details and known limitations, read <a href="https://github.com/KitsuneKode/kuwai/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" class="inline-link">SECURITY.md</a> and <a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/security.md" target="_blank" rel="noopener noreferrer" class="inline-link">docs/manual/security.md</a>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="credits" aria-labelledby="credits-title">
+      <div class="container">
+        <div class="section-head">
+          <h2 id="credits-title">Credits and licence</h2>
+          <p class="section-intro">kuwai is free software under the <strong>GNU General Public License v3.0 or later</strong> (<a href="https://github.com/KitsuneKode/kuwai/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="inline-link">LICENSE</a>).</p>
+        </div>
+
+        <div class="req-grid">
+          <div class="info-card">
+            <h3>Wallpapers and themes</h3>
+            <p class="card-p">
+              kuwai does not ship third-party wallpapers in its repository. Each theme under <code>themes/*/</code> lists wallpaper URLs and checksums in <code>wallpapers.tsv</code> and credits every photographer, artist, and licence in <code>themes/*/CREDITS.txt</code>. Running <code>kuwai-theme install</code> downloads them directly to your machine for personal use and copies <code>CREDITS.txt</code> beside them.
+            </p>
+          </div>
+
+          <div class="info-card">
+            <h3>Fonts, icons, and trademarks</h3>
+            <ul class="plain-list">
+              <li><strong>Inter</strong> (SIL OFL) is the default UI typeface; Apple's SF Pro is never shipped and is only used if already installed on your machine.</li>
+              <li><strong>Phosphor icons</strong> (MIT) live in <code>shell/assets/phosphor/</code>; Nerd Font glyph names (MIT) and Unicode emoji data (Unicode License v3) power the launcher pickers.</li>
+              <li>Agent and tool marks in <code>shell/assets/brands/</code> remain trademarks of their respective owners; full attributions live in <a href="https://github.com/KitsuneKode/kuwai/blob/main/NOTICE.md" target="_blank" rel="noopener noreferrer" class="inline-link">NOTICE.md</a>.</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   </main>

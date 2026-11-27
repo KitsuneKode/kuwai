@@ -8,8 +8,8 @@ export async function GET(context: APIContext) {
   );
 
   return rss({
-    title: "kuwai Releases and Engineering Notes",
-    description: "Release history and design-system milestones for kuwai, the liquid-glass Hyprland desktop built for coding agents.",
+    title: "kuwai Releases",
+    description: "Release notes for kuwai, an Arch Linux Hyprland 0.57 desktop and Quickshell shell.",
     site: context.site ?? "https://kuwai.kitsunekode.in",
     trailingSlash: false,
     items: releases.map((entry) => ({
