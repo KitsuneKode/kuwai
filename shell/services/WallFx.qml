@@ -48,7 +48,7 @@ Singleton {
     property var startFn: null
     property double startedAt: 0
     property string lastRun: ""          // stats: "revealed 1.42 s" / "fallback: …"
-    property string mode: "glass"        // what this change plays: glass | shards | subject
+    property string mode: "glass"        // what this change plays: glass | shards | contour | subject
     property string mapPath: ""          // the picture's subject map, when already made
     property int turn: 0                 // auto alternates pieces and glass
     property real seed: 0
@@ -120,10 +120,10 @@ Singleton {
     }
     function pick() {
         const want = Settings.wallTransition;
-        if (want === "glass" || want === "shards") return want;
+        if (want === "glass" || want === "shards" || want === "contour") return want;
         if (mapPath !== "") return "subject";
         turn += 1;
-        return turn % 2 ? "shards" : "glass";
+        return ["shards", "contour", "glass"][turn % 3];
     }
 
     onReadyChanged: if (phase === "loading" && ready >= Quickshell.screens.length) cover()
@@ -273,7 +273,7 @@ Singleton {
                     property vector2d origin: Qt.vector2d(width / 2, -12)
                     property real t: root.t
                     // A map that hasn't loaded on this screen: pieces instead.
-                    property real mode: root.mode === "subject" && om.status === Image.Ready ? 1 : 0
+                    property real mode: root.mode === "contour" ? 2 : root.mode === "subject" && om.status === Image.Ready ? 1 : 0
                     property real seed: root.seed
                     fragmentShader: Qt.resolvedUrl("../shaders/wallcut.frag.qsb")
                 }

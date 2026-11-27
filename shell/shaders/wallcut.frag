@@ -27,7 +27,7 @@ layout(std140, binding = 0) uniform buf {
     vec2 size;      // px
     vec2 origin;    // px, the notch
     float t;        // 0..1
-    float mode;     // 0 shards, 1 subject
+    float mode;     // 0 shards, 1 subject, 2 contour
     float seed;     // a new one every change: the pieces never repeat
 };
 layout(binding = 1) uniform sampler2D before;
@@ -91,6 +91,34 @@ void main() {
         float near = exp(-abs(t - start - 0.07) * 9.0);
         float cut = (1.0 - smoothstep(0.6, 1.6, edge)) * max(moving, 0.6 * near);
         c.rgb = mix(c.rgb, vec3(1.0), 0.42 * cut * env);
+        fragColor = c * qt_Opacity;
+    } else if (mode > 1.5) {
+        vec2 o1 = 1.0 / size;
+        vec3 W = vec3(0.2126, 0.7152, 0.0722);
+        float tl = dot(texture(after, uv + o1 * vec2(-1.0, -1.0)).rgb, W);
+        float tc = dot(texture(after, uv + o1 * vec2(0.0, -1.0)).rgb, W);
+        float tr = dot(texture(after, uv + o1 * vec2(1.0, -1.0)).rgb, W);
+        float ml = dot(texture(after, uv + o1 * vec2(-1.0, 0.0)).rgb, W);
+        float mr = dot(texture(after, uv + o1 * vec2(1.0, 0.0)).rgb, W);
+        float bl = dot(texture(after, uv + o1 * vec2(-1.0, 1.0)).rgb, W);
+        float bc = dot(texture(after, uv + o1 * vec2(0.0, 1.0)).rgb, W);
+        float br = dot(texture(after, uv + o1 * vec2(1.0, 1.0)).rgb, W);
+        float gx = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl);
+        float gy = (bl + 2.0 * bc + br) - (tl + 2.0 * tc + tr);
+        float e = length(vec2(gx, gy));
+        vec4 n = texture(after, uv);
+        float lum = dot(n.rgb, W);
+        float far = length(max(origin, size - origin));
+        float dist = clamp(length(px - origin) / far, 0.0, 1.0);
+        float sketch = mix(-0.05, 1.12, clamp(t / 0.55, 0.0, 1.0));
+        float drawn = smoothstep(sketch, sketch - 0.10, dist);
+        float edge = smoothstep(0.16, 0.40, e) * drawn;
+        float wob = (hash1(floor(px / 4.0)) - 0.5) * 0.02;
+        float ord = 0.60 * dist + 0.25 * (1.0 - lum) + 0.15 * (1.0 - clamp(e * 3.0, 0.0, 1.0));
+        float front = mix(-0.08, 1.08, clamp((t - 0.18) / 0.82, 0.0, 1.0));
+        float k = smoothstep(front + 0.03, front - 0.03, ord + wob);
+        vec4 c = mix(texture(before, uv), n, k);
+        c.rgb = mix(c.rgb, vec3(1.0), 0.5 * edge * (1.0 - k) * env);
         fragColor = c * qt_Opacity;
     } else {
         // ── subject ─────────────────────────────────────────────────────

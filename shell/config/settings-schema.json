@@ -933,6 +933,7 @@
       "enum": [
         "auto",
         "shards",
+        "contour",
         "glass"
       ],
       "maxLength": 512,

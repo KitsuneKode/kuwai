@@ -1123,9 +1123,10 @@ FocusScope {
                     label: "Wallpaper change"
                     detail: Settings.wallTransition === "shards" ? "The new picture arrives in cut pieces, spreading from the island"
                           : Settings.wallTransition === "glass" ? "The new picture grows from the island behind a lens of glass"
+                          : Settings.wallTransition === "contour" ? "The new picture's lines draw in from the island, then it fills in behind them"
                           : "Its subject first when it has been cut out (kuwai-wallmap --install), otherwise pieces or glass in turn"
                     Segmented {
-                        options: [{ id: "auto", label: "Auto" }, { id: "shards", label: "Pieces" }, { id: "glass", label: "Glass" }]
+                        options: [{ id: "auto", label: "Auto" }, { id: "shards", label: "Pieces" }, { id: "contour", label: "Lines" }, { id: "glass", label: "Glass" }]
                         current: Settings.wallTransition
                         onPicked: id => Settings.set("wallTransition", id)
                     }
