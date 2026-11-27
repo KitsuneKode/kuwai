@@ -10,8 +10,8 @@ export function statusNotice(n) {
     const app = text(n.app || n.appName);
     const title = text(n.summary || n.title);
     if (/live wallpaper/i.test(app)) return true;
-    if (/^hyde alert$/i.test(app) && (IMAGE.test(title) || /set for/i.test(title))) return true;
-    if (/^(hyde notify|brightness)$/i.test(app) && LEVEL.test(title)) return true;
+    if (actionless(n) && (IMAGE.test(title) || /^wallpaper set for/i.test(title))) return true;
+    if (actionless(n) && LEVEL.test(title) && title.length <= 24) return true;
     const sync = String(hint(n, "x-canonical-private-synchronous") || hint(n, "x-dunst-stack-tag") || "");
     if (/^(brightness|volume|audio|sink|mic)$/i.test(sync)) return true;
     return hint(n, "value") !== undefined && actionless(n);
