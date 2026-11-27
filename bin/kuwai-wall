@@ -161,6 +161,14 @@ case "${1:-list}" in
     add)    shift; add "$@" ;;
     import) shift; import "$@" ;;
     list)   find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V ;;
+    poster) f=${2:?usage: kuwai-wall poster NAME|FILE}; [ -f "$f" ] || f=$(find "$LIB" -maxdepth 1 -iname "*$f*" | sort -V | head -1)
+            [ -f "$f" ] || { echo "kuwai-wall: no wallpaper matches $2" >&2; exit 1; }
+            dir="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-posters"; mkdir -p "$dir"
+            b=$(basename "${f%.*}"); p="$dir/$b.png"
+            if [ ! -s "$p" ] || [ "$f" -nt "$p" ]; then
+                ffmpeg -nostdin -v error -y -i "$f" -frames:v 1 "$p.tmp.png" && mv -f -- "$p.tmp.png" "$p" || { rm -f -- "$p.tmp.png"; exit 1; }
+            fi
+            printf '%s\n' "$p" ;;
     play)   f=${2:?usage: kuwai-wall play NAME|FILE}; [ -f "$f" ] || f=$(find "$LIB" -maxdepth 1 -iname "*$f*" | sort -V | head -1)
             [ -f "$f" ] || { echo "kuwai-wall: no wallpaper matches $2" >&2; exit 1; }
             "$SCRIPT" play "$f" ;;

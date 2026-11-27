@@ -215,6 +215,22 @@ fallback_stop() {
     rm -f "$FALLBACK_PIDF" "$WATCH_PIDF" "$SOCK_PREFIX.sock"
 }
 
+freeze() {
+    local s out shot
+    for s in "$SOCK_DIR"/mpvpaper-*.sock; do
+        [ -S "$s" ] || continue
+        out=${s##*/mpvpaper-}; out=${out%.sock}
+        out_pid "$out" >/dev/null || continue
+        shot="$SOCK_DIR/frozen-$out.png"
+        rm -f "$shot"
+        out_cmd "$out" '{ "command": ["set_property", "pause", true] }'
+        jq -cn --arg f "$shot" '{command: ["screenshot-to-file", $f, "video"]}' | socat - "$s" >/dev/null 2>&1
+        for _ in $(seq 20); do [ -s "$shot" ] && break; sleep 0.02; done
+        [ -s "$shot" ] && printf '%s %s\n' "$out" "$shot"
+    done
+    return 0
+}
+
 out_play() {
     local out="$1" file="$2" paused="${3:-}" pid cur pause_now=false opts
     [ "$paused" = paused ] && pause_now=true
@@ -270,6 +286,7 @@ case "${1:-toggle}" in
     status)  is_running && echo "playing in: $(library)" || echo "off" ;;
     can-play) command -v mpvpaper >/dev/null && command -v socat >/dev/null && command -v jq >/dev/null ;;
     out-play)  out_play "${2:?screen}" "${3:?file}" "${4:-}" ;;
+    freeze)    freeze ;;
     out-pause) out_cmd "${2:?screen}" "{ \"command\": [\"set_property\", \"pause\", ${3:-true}] }" ;;
     out-stop)  out_stop "${2:?screen}" ;;
     *)       echo "usage: $0 {toggle|next|play <file>|resume|stop|status|playable <file>}" ;;

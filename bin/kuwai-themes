@@ -242,7 +242,8 @@ def main(argv):
     elif cmd == "theme" and len(argv) == 2 and os.path.isdir(os.path.join(THEMES, argv[1])):
         return bar_after(launch([os.path.join(LIB, "theme.switch.sh"), "-s", argv[1]], wait), wait)
     elif cmd == "wallpaper" and len(argv) == 2 and os.path.isfile(argv[1]):
-        return launch([os.path.join(LIB, "wallpaper.sh"), "-s", argv[1], "--global"], wait)
+        lock = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or os.path.join(HOME, ".cache"), "kuwai-wallpaper.lock")
+        return launch(["flock", lock, os.path.join(LIB, "wallpaper.sh"), "-s", argv[1], "--global"], wait)
     elif cmd == "colormode" and len(argv) == 2 and argv[1] in MODES:
         script = 'eval "$(hyde-shell init)"; set_conf enableWallDcol "$1"; "$LIB_DIR/hyde/theme.switch.sh"'
         return bar_after(launch(["bash", "-c", script, "kuwai-themes", str(MODES.index(argv[1]))], wait), wait)
