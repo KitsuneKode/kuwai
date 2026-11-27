@@ -27,6 +27,8 @@ import qs.services
 FocusScope {
     id: sys
     property bool inStrip: false
+    property string tab: "overview"
+    readonly property bool overview: tab === "overview"
     readonly property string headerMeta: uptime + (SystemStats.load ? " · load " + SystemStats.load.split(" ")[0] : "")
     focus: true
     implicitWidth: Theme.panelM
@@ -34,6 +36,9 @@ FocusScope {
 
     Component.onCompleted: { SystemStats.watch(); gameProbe.running = true; }
     Component.onDestruction: SystemStats.unwatch()
+    Keys.onPressed: e => {
+        if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) { tab = overview ? "activity" : "overview"; e.accepted = true; }
+    }
 
     // Memory by what holds it: PSS, so a browser's twenty processes count once.
     property var memApps: []
@@ -42,7 +47,7 @@ FocusScope {
         command: [Paths.bin + "/kuwai-procs", "--by-app"]
         stdout: StdioCollector { onStreamFinished: { try { sys.memApps = JSON.parse(text); } catch (e) {} } }
     }
-    Timer { interval: Theme.panelPollMs; repeat: true; running: true; triggeredOnStart: true; onTriggered: memProbe.running = true }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: sys.overview; triggeredOnStart: true; onTriggered: memProbe.running = true }
 
     // Game mode: HyDE's when it's installed, else kuwai's own gaming mode (the
     // same as Super+Alt+G); both turn animations off, which is what's read.
@@ -76,8 +81,10 @@ FocusScope {
     readonly property bool hasNvidia: SystemStats.gpuState !== ""
     readonly property bool hasIntel: SystemStats.igpuMax > 0
     readonly property real ceiling: Math.min(640, Theme.screenSize(Screen, "height", 1080) - 24) - 40 - Theme.sp(34)
-    readonly property real room: Math.max(120, ceiling - 40 - head.height - cpuCard.height - tiles.height
-        - (SystemStats.updates > 0 ? upd.height + col.spacing : 0) - col.spacing * 3)
+    readonly property real room: Math.max(120, ceiling - 40 - head.height - tabs.height - cpuCard.height - tiles.height
+        - (SystemStats.updates > 0 ? upd.height + col.spacing : 0) - col.spacing * 4)
+    readonly property real activityRoom: Math.min(ceiling, Theme.panelMaxH - (inStrip ? Theme.sp(34) : 0) - 40)
+        - (inStrip ? 0 : head.height + col.spacing) - tabs.height - col.spacing
 
     Column {
         id: col
@@ -97,9 +104,27 @@ FocusScope {
             }
         }
 
+        Segmented {
+            id: tabs
+            width: implicitWidth
+            options: [{ id: "overview", label: "Overview" }, { id: "activity", label: "Activity" }]
+            current: sys.tab
+            onPicked: id => sys.tab = id
+        }
+
+        Loader {
+            id: activityTab
+            width: parent.width
+            active: !sys.overview
+            visible: active
+            focus: active
+            sourceComponent: ActivityView { maxHeight: sys.activityRoom }
+        }
+
         // ── CPU ──────────────────────────────────────────────────────────
         Card {
             id: cpuCard
+            visible: sys.overview
             Row {
                 spacing: 18
                 Column {
@@ -157,6 +182,7 @@ FocusScope {
         // column taller than the island's ceiling: on a 1080-high screen the
         // four switches were cut off at the bottom edge, seen 2026-11-17.)
         Item {
+          visible: sys.overview
           width: parent.width
           height: readings.height
         Flickable {
@@ -240,6 +266,7 @@ FocusScope {
         // ── Game mode, and the rest of the switches where they live ──────
         Grid {
             id: tiles
+            visible: sys.overview
             width: parent.width
             columnSpacing: 8; rowSpacing: 8
             columns: 2
@@ -250,7 +277,7 @@ FocusScope {
         Item {
             id: upd
             width: parent.width; height: 34
-            visible: SystemStats.updates > 0
+            visible: sys.overview && SystemStats.updates > 0
             readonly property real radius: 12           // FocusRing follows it
             function go() { Island.open("updates", Island.screen, updArea.containsMouse ? "pointer" : "key", "island"); }
             activeFocusOnTab: true

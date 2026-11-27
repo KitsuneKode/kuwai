@@ -79,6 +79,7 @@ def test_unit_names_give_the_launcher_and_the_application(procs):
         "app-Hyprland-zen\\x2dbrowser-2345.scope": ("Hyprland", "zen-browser"),
         "app-org.mozilla.firefox@autostart.service": ("", "org.mozilla.firefox"),
         "app-flatpak-org.foo.Bar-99.scope": ("flatpak", "org.foo.Bar"),
+        "run-p123-i124.service": ("", ""),
     }
     for name, want in cases.items():
         assert procs.unit_app(name) == want, name
@@ -236,6 +237,13 @@ def test_slices_are_searched_but_the_sessions_are_not(activity, world):
     world.unit("app-nested-2.scope", 0, [10], slice="app.slice/app-t3code.slice/app-t3code-agents.slice")
     names = sorted(by_unit(world.sampler(activity).sample(now=0.0)))
     assert names == ["app-mpv-1.scope", "app-nested-2.scope"]
+
+
+def test_an_app_the_shell_opened_is_named_by_its_main_process(activity, world):
+    world.process(10, "mpv", cmd="/usr/bin/mpv --x")
+    world.unit("run-p10-i11.service", 0, [10])
+    row = by_unit(world.sampler(activity).sample(now=0.0))["run-p10-i11.service"]
+    assert row["id"] == "mpv" and row["label"] == "Mpv" and row["launcher"] == ""
 
 
 def test_plain_services_are_not_apps(activity, world):

@@ -156,14 +156,17 @@ def apps(hits, allp, cpu, pm):
 
 
 USER_CGROUP = "/sys/fs/cgroup/user.slice/user-%d.slice/user@%d.service" % (ME, ME)
-UNIT = re.compile(r"app-[^/\x00]+\.(scope|service)")
+UNIT = re.compile(r"(app|run)-[^/\x00]+\.(scope|service)")
 SKIP_SLICES = ("session", "background")
 
 
 def unit_app(name):
-    """(launcher, application id) from an app-*.scope / app-*.service name, as systemd's
+    """(launcher, application id) from an app-*.scope / app-*.service name (a run-*.service
+    that the shell opened has none: its main process names it), as systemd's
     XDG naming has it: app[-launcher]-ID[@random].service, app[-launcher]-ID-random.scope,
     a dash inside the ID written \\x2d."""
+    if name.startswith("run-"):
+        return "", ""
     base = re.sub(r"\.(scope|service)$", "", name)[4:]
     base = re.sub(r"@[^@]*$", "", base) if name.endswith(".service") else re.sub(r"-\d+$", "", base)
     parts = [re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), p) for p in base.split("-")]
@@ -173,7 +176,7 @@ def unit_app(name):
 
 
 def find_units(root=None):
-    """{unit name: cgroup directory} for the app-*.scope and app-*.service units of this user's
+    """{unit name: cgroup directory} for the app-*.scope, app-*.service and run-*.service units of this user's
     manager, looking inside its slices (app.slice, uwsm's app-graphical.slice…), never the session's."""
     out = {}
     top = root or USER_CGROUP
