@@ -31,3 +31,5 @@ upower:upower
 sqlite3:sqlite
 :pipewire-pulse
 cmp:diffutils
+:sound-theme-freedesktop
+kitty:kitty

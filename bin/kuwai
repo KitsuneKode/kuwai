@@ -472,8 +472,13 @@ cmd_rescue() {
     local rt="${XDG_RUNTIME_DIR:-/run/user/$UID}/kuwai"
     systemctl --user reset-failed kuwai-auth.service kuwai-clipboard.service kuwai-feeds.service 2>/dev/null
     systemctl --user restart kuwai-auth.service && echo "  ✓ password prompt restarted"
-    systemctl --user restart kuwai-clipboard.service && echo "  ✓ clipboard history watchers restarted"
-    systemctl --user restart kuwai-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
+    local consent="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/collect.conf"
+    if grep -qx clipboard=on "$consent" 2>/dev/null; then
+        systemctl --user restart kuwai-clipboard.service && echo "  ✓ clipboard history watchers restarted"
+    else echo "  • clipboard history is off (kuwai collect clipboard on)"; fi
+    if grep -qx feeds=on "$consent" 2>/dev/null; then
+        systemctl --user restart kuwai-feeds.service && echo "  ✓ GitHub and Gmail notifications restarted"
+    else echo "  • GitHub and Gmail notifications are off (kuwai collect feeds on)"; fi
     : > "$rt/auth-pending" 2>/dev/null
     "$ROOT/bin/kuwai-shell" >/dev/null 2>&1 && echo "  ✓ island shell restarted"
     echo "  • idle ownership is reconciled by the shell (see Power & Idle for errors)"

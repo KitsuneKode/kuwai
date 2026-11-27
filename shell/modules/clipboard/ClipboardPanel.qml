@@ -1278,6 +1278,8 @@ Scope {
             }
             // Empty / no results
             Column {
+                id: emptyNote
+                readonly property bool off: !root.query && root.filter !== "pinned" && !Welcome.collecting("clipboard")
                 visible: Clipboard.loaded && root.entries.length === 0
                 anchors.centerIn: shelf
                 spacing: 6
@@ -1291,16 +1293,23 @@ Scope {
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.query ? "No matches" : root.filter === "pinned" ? "No pins yet" : "Nothing here yet"
+                    text: root.query ? "No matches" : root.filter === "pinned" ? "No pins yet" : emptyNote.off ? "Clipboard history is off" : "Nothing here yet"
                     size: Theme.tCallout
                     weight: Theme.wSemibold
                     color: Theme.textSecondary
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "⌃P pins the selected card." : "Copy something and it lands here."
+                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "⌃P pins the selected card." : emptyNote.off ? "Turn it on to keep what you copy here, on this computer only." : "Copy something and it lands here."
                     size: Theme.tSub
                     color: Theme.textTertiary
+                }
+                Item { width: 1; height: Theme.s2; visible: emptyNote.off }
+                Ui.Button {
+                    visible: emptyNote.off
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    height: Theme.sp(30); size: Theme.tSub; kind: "primary"; text: "Turn on"
+                    onClicked: Welcome.setCollecting("clipboard", true)
                 }
             }
 

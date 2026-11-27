@@ -20,7 +20,7 @@ hl.on("hyprland.start", function()
 		unit("kuwai-wallpaper.service"),
 	}
 	local collect = xdg ~= "" and (K.read(xdg .. "/kuwai/collect.conf") or "") or ""
-	if not collect:find("clipboard=off", 1, true) then
+	if collect:find("clipboard=on", 1, true) then
 		units[#units + 1] = unit("kuwai-clipboard.service")
 	end
 	if os.getenv("KUWAI_FEEDS") == "1" or collect:find("feeds=on", 1, true) then

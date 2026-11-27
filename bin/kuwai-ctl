@@ -61,8 +61,12 @@ collect() {
     case $state in on|off) ;; *) echo "usage: kuwai collect $what on|off" >&2; return 2 ;; esac
     mkdir -p "$(dirname "$COLLECT")"
     { grep -v "^$what=" "$COLLECT" 2>/dev/null; echo "$what=$state"; } >"$COLLECT.new" && mv -- "$COLLECT.new" "$COLLECT"
-    if [ "$state" = on ]; then systemctl --user enable --now "$unit" 2>/dev/null
-    else systemctl --user disable --now "$unit" 2>/dev/null; fi
+    if [ "$state" = on ]; then
+        systemctl --user enable --now "$unit" 2>/dev/null || { echo "kuwai: $what is on, but it didn't start (kuwai doctor)" >&2; return 1; }
+    else
+        systemctl --user disable --now "$unit" 2>/dev/null
+        if systemctl --user -q is-active "$unit" 2>/dev/null; then echo "kuwai: $what is set off, but it is still running" >&2; return 1; fi
+    fi
     echo "$what: $state"
 }
 

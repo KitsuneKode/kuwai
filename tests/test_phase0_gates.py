@@ -33,6 +33,8 @@ def test_package_manifests_exist_and_parse():
     assert "awww:awww" in core, "kuwai-wallpaper.service runs awww-daemon: without it there is no wallpaper"
     assert "cmp:diffutils" in core, "install.sh and system/session compare files with cmp; diffutils isn't in base"
     assert any("matugen" in l for l in opt)
+    assert ":sound-theme-freedesktop" in core, "timers, alarms and notifications play freedesktop sounds: without them they are silent"
+    assert "kitty:kitty" in core, "the terminal keys, the drop-down terminal and kittymux open kitty"
     assert any("inter-font" in l for l in fonts)
 
 

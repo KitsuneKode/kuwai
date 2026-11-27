@@ -9,6 +9,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
+ExecCondition=/bin/sh -c '[ "${KUWAI_FEEDS:-}" = 1 ] || grep -qx feeds=on "${XDG_CONFIG_HOME:-%h/.config}/kuwai/collect.conf"'
 ExecStart=/bin/sh -c 'exec "${KUWAI_ROOT:-%h/.local/share/kuwai}/bin/kuwai-feeds"'
 Restart=always
 RestartSec=10
