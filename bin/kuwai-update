@@ -1541,7 +1541,9 @@ def run_locked(args):
             if rc == PLAN_CHANGED:
                 phase_done("repo", False, transaction=root.transaction)
                 R.emit(e="error", msg="Arch's packages changed between the password prompt and the update, so nothing was "
-                                      "installed: what you approved is what runs, or nothing does. Check for updates again.")
+                                      "installed: what you approved is what runs, or nothing does. Check for updates again and update in full: "
+                                      "the package databases are synced now, so installing one package on its own first "
+                                      "would be a partial upgrade.")
                 R.emit(e="done", **{**result, "repo": False, "ok": False})
                 return 1
             upgraded = want_repo and rc in (0, DEPS_FAILED)

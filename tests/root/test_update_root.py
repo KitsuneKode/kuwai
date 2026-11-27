@@ -296,6 +296,12 @@ def test_a_plan_pacman_couldnt_resolve_is_never_an_empty_one(ur, monkeypatch, fa
     assert "nothing was installed" in log
 
 
+def test_a_refused_upgrade_says_the_databases_are_synced_now(ur, monkeypatch):
+    ran, rcs, log = run_main(ur, monkeypatch, [f"upgrade={ur.plan_token(PLAN)}"], [{"op": "upgrade"}], plan=PLAN[:1])
+    assert rcs == [ur.PLAN_CHANGED]
+    assert "already synced" in log and "partial upgrade" in log
+
+
 @pytest.mark.parametrize("argv, requests", [
     (["deps=meson"], [{"op": "upgrade"}]),
     (["deps=meson"], [{"op": "deps", "deps": ["meson", "evil"]}]),

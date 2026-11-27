@@ -72,6 +72,8 @@ NAME = re.compile(r"^[a-z0-9@_+][a-z0-9@._+-]*$")
 PLAN_LINE = re.compile(r"^\S+ \S+$")
 PLAN_TOKEN = re.compile(r"\d{1,4}:[0-9a-f]{64}")
 PLAN_CHANGED = 92
+SYNCED_NOTE = ("The package databases are already synced to the newer state, so installing one package now "
+               "(pacman -S NAME) before the next full update would be a partial upgrade: update again in full.")
 PKGFILE = re.compile(r"\.pkg\.tar(\.[a-z0-9]+)?$")
 ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C", "PACMAN_COLOR": "never", "HOME": "/root"}
 
@@ -400,6 +402,8 @@ def main():
                     elif plan_token(plan) != named:
                         say(log="kuwai-update-root: refused: Arch's packages changed after the password prompt named them; nothing was installed")
                         rc = PLAN_CHANGED
+                    if rc == PLAN_CHANGED:
+                        say(log=SYNCED_NOTE)
                     else:
                         rc = pacman(["-Su", "--noconfirm", "--needed", *ignore])
                 if rc == 0 and deps:
