@@ -13,6 +13,7 @@ Rectangle {
     property string detail
     property color tone: Theme.orange
     property string action: ""
+    property int detailLines: 2
     signal acted()
     readonly property bool stacked: act.visible && n.width - Theme.sp(42) - act.implicitWidth - 24 < Theme.sp(180)
 
@@ -29,7 +30,7 @@ Rectangle {
         width: n.width - x - (act.visible && !n.stacked ? act.width + 24 : 14)
         spacing: 2
         Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: n.title; size: Theme.tBody; weight: Theme.wSemibold }
-        Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; text: n.detail; size: Theme.tFootnote; color: Theme.textSecondary; visible: text !== "" }
+        Label { width: parent.width; wrapMode: Text.Wrap; maximumLineCount: n.detailLines; elide: Text.ElideRight; text: n.detail; size: Theme.tFootnote; color: Theme.textSecondary; visible: text !== "" }
     }
     Button {
         id: act

@@ -95,7 +95,8 @@ EVENTS = os.path.join(RUNTIME, "update.jsonl")
 LOCK = os.path.join(RUNTIME, "update.lock")
 UNIT = "kuwai-update"
 HELPER = "/usr/local/lib/kuwai/kuwai-update-root"
-RELEASE_VERIFY = "/usr/local/lib/kuwai/current/bin/kuwai-verify"
+RELEASE = "/usr/local/lib/kuwai/current"
+RELEASE_VERIFY = RELEASE + "/bin/kuwai-verify"
 HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-update-root")
 FLATPAK_TARGET = re.compile(r"^(?:(user|system):)?([A-Za-z0-9][A-Za-z0-9._/-]*)$")
 NAME_OK = re.compile(r"^[a-z0-9@._+-]+$")
@@ -758,6 +759,15 @@ def helper_ok():
         return False
 
 
+def helper_how():
+    """How to put kuwai-update-root in place from here."""
+    if os.path.lexists(RELEASE):
+        return "Run `kuwai update install-helper` once to install it from root's checked copy of kuwai."
+    return ("Root has no checked copy of a signed kuwai release yet (kuwai setup makes one); until then, run "
+            "`kuwai update install-helper --trust-clone` once, which installs the helper from your own copy of kuwai "
+            "as it is, trusting every file in that copy.")
+
+
 def agent_missing():
     """No polkit agent in this session: pkexec fails at once and looks like a
     cancel. Start one (kuwai's, else KDE's) and say so."""
@@ -813,10 +823,10 @@ class Root:
         if self.stale:
             self.stale = False
             self.R.emit(e="log", line="kuwai-update-root is missing or out of date, so each step asks for the password. "
-                                      "Run `kuwai update install-helper` once to review and install it.")
+                                      + helper_how())
         if not self.helper and op == "install":
             self.R.emit(e="log", line="Built packages are installed only through kuwai-update-root, which copies and checks "
-                                      "each file first. Run `kuwai update install-helper` once, then update again.")
+                                      "each file first. " + helper_how() + " Then update again.")
             return 1
         if not self.helper:
             self.prompts += 1
@@ -1692,7 +1702,9 @@ def main(argv):
                 return 0
             if argv[1:] != ["--trust-clone"]:
                 if not os.path.isfile(RELEASE_VERIFY):
-                    print(json.dumps({"error": "Root has no checked copy of a signed kuwai release yet: kuwai setup puts one in place."}))
+                    print(json.dumps({"error": "Root has no checked copy of a signed kuwai release yet (kuwai setup makes one). "
+                                               "Until then, in a terminal, kuwai update install-helper --trust-clone installs "
+                                               "the helper from your own copy of kuwai as it is, trusting every file in it."}))
                     return 1
                 r = subprocess.run(["pkexec", "/usr/bin/python3", "-I", RELEASE_VERIFY, "place", "update-helper"],
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True)

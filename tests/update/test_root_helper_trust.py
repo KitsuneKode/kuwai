@@ -1,5 +1,6 @@
 """An update never installs or runs a root helper copied from the user's checkout."""
 import importlib.machinery
+import json
 import io
 import importlib.util
 from pathlib import Path
@@ -124,3 +125,35 @@ def test_the_helper_is_installed_only_from_roots_checked_release(updater, monkey
     assert ran == [['pkexec', '/usr/bin/python3', '-I', m.RELEASE_VERIFY, 'place', 'update-helper']]
     assert all(m.HELPER_SRC not in ' '.join(c) for c in ran), "never the checkout's copy"
     assert m.main(['install-helper', '--anything']) == 2
+
+
+def test_without_roots_release_every_hint_names_the_way_that_works(updater, monkeypatch, capsys, tmp_path):
+    m = updater
+    monkeypatch.setattr(m, 'RELEASE', str(tmp_path / 'current'))
+    monkeypatch.setattr(m, 'helper_ok', lambda: False)
+    R = FakeRun()
+    root = m.Root(R)
+    root.run('upgrade')
+    root.run('install', files=['/x.pkg.tar.zst'])
+    hints = [str(e.get('line', '')) for e in R.events]
+    assert len(hints) == 2 and all('kuwai update install-helper --trust-clone' in h and 'trust' in h.split('--trust-clone', 1)[1]
+                                   for h in hints), hints
+    assert m.main(['install-helper']) == 1
+    error = json.loads(capsys.readouterr().out)['error']
+    assert 'kuwai update install-helper --trust-clone' in error and 'kuwai setup' in error
+    (tmp_path / 'current').symlink_to('releases/v1.0.0')
+    R = FakeRun()
+    m.Root(R).run('upgrade')
+    assert '--trust-clone' not in R.events[0]['line'] and 'kuwai update install-helper' in R.events[0]['line']
+
+
+def test_pacnew_names_the_way_to_the_helper_that_works(monkeypatch, tmp_path, capsys):
+    loader = importlib.machinery.SourceFileLoader('pacnew_helper', str(ROOT / 'bin/kuwai-pacnew'))
+    spec = importlib.util.spec_from_loader('pacnew_helper', loader)
+    p = importlib.util.module_from_spec(spec)
+    loader.exec_module(p)
+    monkeypatch.setattr(p, 'RELEASE', str(tmp_path / 'current'))
+    monkeypatch.setattr(p, 'find', lambda: ['/etc/x.conf'])
+    monkeypatch.setattr(p, 'helper_cmd', lambda: None)
+    assert p.apply(json.dumps([{'path': '/etc/x.conf', 'action': 'keep'}])) == 1
+    assert 'kuwai update install-helper --trust-clone' in json.loads(capsys.readouterr().out)['log'][0]
