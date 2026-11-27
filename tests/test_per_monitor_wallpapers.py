@@ -191,3 +191,36 @@ def test_variant_changes_only_outputs_inheriting_the_default(tmp_path):
     assert run_look(env, "apply-variant", str(dawn), "--boundary", "2026-11-28:day").returncode == 0
     assert not awww_log.exists()
     assert (tmp_path / "state/kuwai/wallpaper").resolve() == custom
+
+
+def test_focus_uses_wallpaper_mode_after_a_secondary_only_change(tmp_path):
+    monitors = [
+        {"name": "DP-1", "description": "External panel", "focused": True},
+        {"name": "eDP-1", "description": "Laptop panel", "focused": False},
+    ]
+    env, monitor_file, _ = make_env(tmp_path, monitors)
+    custom = paint(tmp_path / "custom.png", (50, 90, 180))
+    assert run_look(env, "theme", "earthlight", "--no-apply").returncode == 0
+    assert run_look(env, "set-wallpaper", str(custom), "--mode", "light", "--output", "eDP-1").returncode == 0
+    monitors[0]["focused"], monitors[1]["focused"] = False, True
+    monitor_file.write_text(json.dumps(monitors))
+    assert run_look(env, "focus-wallpaper", "--no-apply").returncode == 0
+    status = json.loads(run_look(env, "status").stdout)
+    assert status["state"]["mode"] == "light"
+    assert status["wallpaper"] == str(custom)
+
+
+def test_backend_record_replaces_overrides_without_applying_awww_again(tmp_path):
+    env, _, awww_log = make_env(tmp_path, [
+        {"name": "DP-1", "description": "External panel", "focused": True},
+    ])
+    one = paint(tmp_path / "one.png", (20, 50, 80))
+    shared = paint(tmp_path / "shared.png", (80, 50, 20))
+    assert run_look(env, "set-wallpaper", str(one), "--output", "DP-1").returncode == 0
+    awww_log.unlink()
+    assert run_look(env, "record-wallpaper", str(shared), "--mode", "dark", "--no-apply").returncode == 0
+    status = json.loads(run_look(env, "status").stdout)
+    assert status["state"]["wallpaper"] == str(shared)
+    saved = json.loads((tmp_path / "state/kuwai/wallpapers.json").read_text())
+    assert saved["default"] == str(shared) and not saved["screens"]
+    assert not awww_log.exists()

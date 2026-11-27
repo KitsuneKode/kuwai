@@ -94,7 +94,9 @@ def load_screen_walls(state_home):
         if isinstance(k, str) and k.strip() and isinstance(v, str) and v.strip()
     }
     boundary = raw.get("sunBoundary") if isinstance(raw.get("sunBoundary"), str) else ""
-    return {"schema": 1, "default": default_wall, "screens": screens, "sunBoundary": boundary}
+    mode = raw.get("colorMode")
+    return {"schema": 1, "default": default_wall, "screens": screens, "sunBoundary": boundary,
+            "colorMode": mode if mode in ("theme", "auto", "dark", "light") else ""}
 
 
 def save_screen_walls(state_home, data):
@@ -106,6 +108,7 @@ def save_screen_walls(state_home, data):
         "default": str(data.get("default") or ""),
         "screens": dict(data.get("screens") or {}),
         "sunBoundary": data.get("sunBoundary") or "",
+        "colorMode": data.get("colorMode") or "",
     }
     tmp = os.path.join(parent, f".wallpapers-{os.getpid()}-{time.time_ns()}.tmp")
     with open(tmp, "w", encoding="utf-8") as f:
@@ -118,11 +121,11 @@ def save_screen_walls(state_home, data):
 def set_global_wall(state_home, image_path):
     real = os.path.realpath(image_path) if image_path else ""
     data = load_screen_walls(state_home)
-    data.update(default=real, screens={})
+    data.update(default=real, screens={}, colorMode="")
     return save_screen_walls(state_home, data)
 
 
-def set_screen_wall(state_home, output_id, image_path, fallback_wall=""):
+def set_screen_wall(state_home, output_id, image_path, fallback_wall="", mode=""):
     data = load_screen_walls(state_home)
     real = os.path.realpath(image_path)
     ident = str(output_id or "").strip()
@@ -130,6 +133,7 @@ def set_screen_wall(state_home, output_id, image_path, fallback_wall=""):
         data["default"] = fallback_wall
     if ident:
         data["screens"][ident] = real
+    data["colorMode"] = mode
     return save_screen_walls(state_home, data)
 
 
