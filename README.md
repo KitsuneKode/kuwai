@@ -4,7 +4,7 @@
 
 ## A look around
 
-Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live on a 2560×1440 session at 60 fps:
+Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live at 60 fps on a 2560×1440 laptop screen at 133 % scale, with no pointer and nothing personal on it:
 
 <table>
 <tr>
@@ -29,26 +29,26 @@ Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, samp
 </tr>
 </table>
 
-In motion (each clip at its recorded size, one per row so none is scaled down):
+In motion (recorded at 133 %, shown smaller, so every clip stays sharp on any screen):
 
 <table>
 <tr>
-<td align="center"><img src="docs/media/clips/island-hover.webp" alt="Hovering the island opens the glance row" width="840"></td>
+<td align="center"><img src="docs/media/clips/island-hover.webp" alt="Resting on the island opens it: the app, workspaces, time, machine and agents at a glance" width="880"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/launcher.webp" alt="Launcher calculating inline" width="840"></td>
+<td align="center"><img src="docs/media/clips/launcher.webp" alt="The launcher answers math as you type" width="690"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/themes.webp" alt="Switching themes from the island" width="780"></td>
+<td align="center"><img src="docs/media/clips/themes.webp" alt="Themes: each theme's wallpapers with their colours" width="880"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="Wallpaper transition growing out of the notch" width="720"></td>
+<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper drawn in by its own lines, from the island" width="880"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/sound.webp" alt="Sound mixer and device switching" width="600"></td>
+<td align="center"><img src="docs/media/clips/sound.webp" alt="Sound: every app and device, the microphone as it hears you" width="510"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/island-timer.webp" alt="Running timer inside the island" width="800"></td>
+<td align="center"><img src="docs/media/clips/island-timer.webp" alt="A timer lives in the island as a ring" width="414"></td>
 </tr>
 </table>
 
