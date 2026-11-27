@@ -5,6 +5,64 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## RELEASE REVIEW (2026-11-27, night) — Astra 6.2, Grok 4.7 xhigh, Neon 4 high, Fable 5.2
+
+Verdict of all four: not ready to announce yet; nothing is a cross-user or root
+break in normal use. A `v0.1.0` tag is already public (2026-11-25, `778c67c`,
+unsigned, 139 commits behind): never move it. The presentable release is a
+signed **v0.2.0** cut after the "Blocks the release" list below and one
+fresh-VM pass (install, first login, lock, suspend/resume, greeter, uninstall).
+
+Landed tonight: PAM answers only the prompt it asked (a code or PIN prompt is
+shown, never handed the password); fingerprint through PAM (no side channel);
+lockout countdown on lock and login; kuwai-sleepguard (sleep waits for a
+confirmed lock, re-held on wake); the failure unit relocks with hyprlock;
+triage keeps real news and can't be spoofed by a level hint; history reload
+looser rule fixed; lock art local/cached only; a hidden lock card shows no
+status or picture; Night Shift single request; ssh/gpg agents and portals never
+ended; clipboard and feeds strictly opt-in (login, units, rescue, consent
+errors) with "history is off · Turn on"; kitty and the freedesktop sounds in
+core; installer stops on a failed backup; greeter rests on the desktop
+wallpaper, 2× clock clamp; AMD GPU named AMD, CPU core temp no longer the GPU's;
+fleeting updates never overwrite a kept card; Warmth handle, Settings icons,
+"replaced by" row, TB sizes, confirmations disarm and Stop binds to its start
+time; qt/ssh env guarded, any AC name, VA-API guard; screenshot/OCR say what to
+install; launcher hides absent tools; Qt JS lint (object spread broke the login
+screen once); portal.frag openings (unlock doors, login iris, saver veil);
+kuwai secrets; docs and site rewritten for strangers (Neon, merged).
+
+Blocks the release:
+- [ ] Release provenance (Astra P0): kuwai-setup verifies a signed tag in a clean
+      staging dir before running anything; README installs the same artifact.
+- [ ] Root never runs checkout code (Astra P0): system/session, system/install,
+      greeter staging and the update helper install from a verified release, not
+      the user's clone.
+- [ ] Fresh install themes (Neon P0): `kuwai-look list` includes the downloaded
+      Kuwai Night wallpaper; theme cards have thumbnails or say "downloads on
+      first use"; applying a theme keeps Colours on Theme; drop or credit the
+      10 unlicensed wallhaven sets; the default wallpaper gets a digest (Grok).
+- [ ] README media (Fable P0): re-shoot tour images from healthy scenes (no
+      error notice, no red CPU, the new Now Playing); clips at 1:1 crops;
+      login/lock/goodbye media current or cut.
+- [ ] Update prompt binds to one transaction (Astra P1); greeter --undo needs a
+      root-owned receipt (Astra P1); a failed forward-rollback migration returns
+      failure before activation (Astra P1).
+- [ ] Relocated XDG dirs keep the assistant's denied paths (Astra P1).
+- [ ] Display presets work with an empty monitors.lua (Neon P0); a desktop's
+      first monitor gets workspaces 1–10, two identical monitors don't collide.
+
+Before announcing (P1/P2):
+- [ ] Key caps say Super/Ctrl/Alt on PC keyboards (Fable); Welcome copy and 2×.
+- [ ] One spelling (UK or US) and one brand casing; CHANGELOG has one 0.2.0.
+- [ ] Usage/Updates/Agents/Cleanup: one state each (Fable 13–15); orange only
+      for "needs you"; lock and login share one token set (Fable 12); farewell
+      marks all drawn as Shapes (Fable 11).
+- [ ] AUR updates with yay or no helper (Neon); kittymux path from PATH.
+- [ ] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
+      text (Grok P2); Agents Stop can force and says "on this network".
+- [ ] Voxtype: clear stale cancelled takes at daemon start (Astra P2).
+- [ ] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups.
+
 ## VISUALS + HEX PASS (2026-11-27, evening) — six reviews
 
 Reviews: Grok 4.7 (lock/login), Composer 2.5 (screensavers), Neon 4 medium
@@ -19,11 +77,11 @@ saver settles; shuush: browser site → profile by title, rules never touch
 code/links/paths/vocabulary.
 
 Next, by severity then value:
-- [ ] P1 lock: logind suspend releases its inhibitor only on a confirmed lock and
+- [x] P1 lock: logind suspend releases its inhibitor only on a confirmed lock and
       reacquires on PrepareForSleep(false) (Sol 1); a crash while locked always
       has a locker (marker written before the lock; standalone locker in the
       failure unit) (Sol 2).
-- [ ] P1 login: first PAM question may not be the password (fingerprint): show
+- [x] P1 login: first PAM question may not be the password (fingerprint): show
       the real prompt, submit only to a password prompt (Grok 1); lockout
       countdown on the lock (faillock, from shell-auth) (Grok 2).
 - [ ] Lock: a sampled plate behind media and notifications (Grok 3); next event
@@ -46,7 +104,7 @@ Next, by severity then value:
       adaptive release tail + warm mic with pre-roll; queued dictations with
       ordered delivery; per-entry audio + 'Re-clean' in Studio; 'my clipboard' /
       'rewrite this' / 'stop dictation' phrases; usage rollup with real WPM.
-- [ ] Earlier: Activity tab; API keys → keyring; Docker/journald in Caches.
+- [ ] Earlier: Activity tab; Docker/journald in Caches. (API keys → keyring: done, kuwai secrets.)
 - [ ] Boot: a minimal Plymouth theme (black, one accent ring) (Sonnet 8).
 
 ## INSPIRATION PASS (2026-11-27) — Clove and pocket-dots, with Neon 4 and Sol 6.2
@@ -65,7 +123,7 @@ Next, in order (both reviews agree):
 - [ ] Activity tab in System: apps grouped by systemd scope (app-*.scope) with
       desktop icons, CPU per logical CPU from cgroup cpu.stat deltas while open,
       PSS on a slower beat, Stop/Force quit through kuwai-procs.
-- [ ] API keys in shell rc files → Secret Service: scan named files only (name,
+- [x] API keys in shell rc files → Secret Service: scan named files only (name,
       file:line, never the value), store via secret-tool on stdin, verify, then
       rewrite atomically; a per-tool launcher loads it. Never print or log a value.
 - [ ] Caches: Docker images and journald as "check first" with their commands.
