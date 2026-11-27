@@ -504,7 +504,7 @@ local function schedule(kind, ms, fn)
 	ticket = ticket + 1
 	local mine = ticket
 	hl.timer(function()
-		if mine ~= ticket then
+		if K.shutting_down or mine ~= ticket then
 			return
 		end
 		pending = nil
@@ -528,7 +528,7 @@ local function front(hint)
 end
 
 function D.reconcile(gone, hint)
-	if not K.feature("auto_display") or D.choice() ~= "everyday" then
+	if K.shutting_down or not K.feature("auto_display") or D.choice() ~= "everyday" then
 		return
 	end
 	local colour = find_colour(gone)
@@ -625,6 +625,9 @@ hl.on("window.update_rules", function(w)
 	end
 end)
 hl.on("window.destroy", function(w)
+	if K.shutting_down or not w then
+		return
+	end
 	D.reconcile(w)
 end)
 K.defer(function()

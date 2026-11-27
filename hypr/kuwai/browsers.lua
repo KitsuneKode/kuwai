@@ -143,6 +143,9 @@ hl.on("window.open", function(w)
 	decide(w)
 	if pending[addr] then
 		hl.timer(function()
+			if K.shutting_down then
+				return
+			end
 			if not pending[addr] then
 				return
 			end
@@ -162,6 +165,9 @@ hl.on("window.title", function(w)
 end)
 
 hl.on("window.destroy", function(w)
+	if K.shutting_down then
+		return
+	end
 	if w then
 		pending[w.address] = nil
 	end

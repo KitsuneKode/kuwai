@@ -207,6 +207,9 @@ if K.feature("auto_game") then
 	end
 	hl.on("window.fullscreen", sync)
 	hl.on("window.destroy", function(w)
+		if K.shutting_down then
+			return
+		end
 		if gaming and is_game(w) then
 			sync(nil)
 		end

@@ -189,6 +189,10 @@ local function run_deferred()
 		end
 	end
 end
+K.shutting_down = false
+hl.on("hyprland.shutdown", function()
+	K.shutting_down = true
+end)
 hl.on("hyprland.start", run_deferred)
 hl.on("config.reloaded", run_deferred)
 
