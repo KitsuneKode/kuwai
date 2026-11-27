@@ -27,6 +27,7 @@ import qs.config
 import qs.services
 import qs.modules.lock
 import "services/pamTurn.mjs" as PamTurn
+import "services/faillock.mjs" as Faillock
 
 ShellRoot {
     id: root
@@ -57,12 +58,25 @@ ShellRoot {
     property int failures: 0
     property string farewell: ""      // suspend | reboot | poweroff: the goodbye showing
 
+    property real lockedUntil: 0
+    property real now: Date.now()
+    readonly property int lockLeft: Math.max(0, Math.ceil((lockedUntil - now) / 1000))
+    Timer {
+        interval: 1000; repeat: true
+        running: root.lockedUntil > root.now
+        onTriggered: {
+            root.now = Date.now();
+            if (root.lockLeft > 0) root.error = Faillock.lockedWords(root.lockLeft);
+            else { root.lockedUntil = 0; root.error = ""; }
+        }
+    }
     property string challenge: ""
     property string note: ""
     property string held: ""
     property bool named: false
     function submit() {
         if (leaving || password === "") return;
+        if (lockLeft > 0) { password = ""; failures++; return; }
         if (challenge !== "") {
             const answer = password;
             password = ""; challenge = ""; checking = true;
@@ -91,7 +105,7 @@ ShellRoot {
         leaving = false;
         checking = false;
         password = "";
-        error = message;
+        error = lockLeft > 0 ? Faillock.lockedWords(lockLeft) : message;
         failures++;
         if (Greetd.state !== GreetdState.Inactive) Greetd.cancelSession();
     }
@@ -113,7 +127,12 @@ ShellRoot {
     Connections {
         target: Greetd
         function onAuthMessage(message, error, responseRequired, echoResponse) {
-            if (!responseRequired) { if (error) root.error = message; else root.note = PamTurn.note(message); return; }
+            if (!responseRequired) {
+                const mins = PamTurn.lockedMinutes(message);
+                if (mins >= 0) { root.now = Date.now(); root.lockedUntil = root.now + mins * 60000; }
+                if (error) root.error = message; else root.note = PamTurn.note(message);
+                return;
+            }
             root.note = "";
             const k = PamTurn.kind(message, echoResponse);
             if (k === "user" && !root.named) { root.named = true; Greetd.respond(root.user); return; }

@@ -58,7 +58,7 @@ Item {
         x: 13; anchors.verticalCenter: parent.verticalCenter
         width: 50; height: 50; radius: Theme.r2
         color: Theme.wash(2)
-        Image { anchors.fill: parent; source: { const u = media.player ? (media.player.trackArtUrl || "") : ""; return /^[a-z]+:\/\//i.test(u) && !/^file:/i.test(u) ? (Media.art === u ? Media.artLocal : "") : u; } sourceSize: Qt.size(100, 100); fillMode: Image.PreserveAspectCrop; asynchronous: true }
+        Image { anchors.fill: parent; source: { const u = media.player ? (media.player.trackArtUrl || "") : ""; return /^file:\/\//i.test(u) ? u : Media.art === u ? Media.safeArt : ""; } sourceSize: Qt.size(100, 100); fillMode: Image.PreserveAspectCrop; asynchronous: true }
     }
     Column {
         anchors { left: art.right; leftMargin: 14; right: trail.left; rightMargin: 12; verticalCenter: parent.verticalCenter }

@@ -59,3 +59,17 @@ def test_a_process_that_ignores_the_request_is_reported_as_still_running():
 def test_the_launcher_that_asked_is_never_ended():
     out = subprocess.run(["sh", "-c", f'"{PROCS}" --end $$'], capture_output=True, text=True, timeout=10)
     assert json.loads(out.stdout) == {"ok": False, "why": "it runs this launcher"}
+
+
+def test_the_key_agents_and_a_long_portal_name_are_kept(tmp_path):
+    for name in ("ssh-agent", "xdg-desktop-portal-gtk"):
+        fake = tmp_path / name
+        fake.write_bytes(Path("/usr/bin/sleep").read_bytes())
+        fake.chmod(0o755)
+        p = subprocess.Popen([str(fake), "30"])
+        try:
+            out = end(str(p.pid), "--force")
+            assert out["ok"] is False and "session" in out["why"], name
+            assert p.poll() is None
+        finally:
+            p.kill()

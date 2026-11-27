@@ -10,7 +10,8 @@ FRIENDLY = [(r"zen-bin", "Zen"), (r"firefox", "Firefox"), (r"chrome|chromium", "
 
 
 SESSION = re.compile(r"(Hyprland|start-hyprland|uwsm|systemd|\(sd-pam\)|dbus-broker(-launch)?|dbus-daemon|pipewire(-pulse)?|wireplumber"
-                     r"|xdg-desktop-portal.*|polkitd|gnome-keyring-d.*|kwalletd.*|awww-daemon|hypridle|hyprlock|greetd|agreety|sshd|NetworkManager|Xwayland)")
+                     r"|xdg-desktop-portal.*|xdg-desktop-por|xdg-document-portal|xdg-permission-store|polkitd|gnome-keyring-d.*|kwalletd.*|awww-daemon|hypridle|hyprlock"
+                     r"|greetd|agreety|sshd|ssh-agent|gcr-ssh-agent|gpg-agent|NetworkManager|Xwayland)")
 SESSION_UNITS = ("kuwai-shell.service", "kuwai-auth.service", "kuwai-wallpaper.service")
 
 
@@ -39,6 +40,14 @@ def ancestors():
     return out
 
 
+def full_name(name, cmd):
+    if len(name) == 15:
+        first = os.path.basename(cmd.split()[0]) if cmd.split() else ""
+        if first.startswith(name.split()[0]):
+            return first
+    return name
+
+
 def procs():
     out = {}
     for d in os.listdir("/proc"):
@@ -61,10 +70,7 @@ def procs():
             continue
         if not cmd:
             continue
-        if len(name) == 15:
-            first = os.path.basename(cmd.split()[0]) if cmd.split() else ""
-            if first.startswith(name.split()[0]):
-                name = first
+        name = full_name(name, cmd)
         out[int(d)] = {"pid": int(d), "ppid": ppid, "name": name, "cmd": cmd[:300], "uid": uid, "ticks": ticks, "rss": rss, "start": start}
     return out
 
@@ -173,7 +179,13 @@ def end(pid, force, start=None):
             return {"ok": False, "why": "that process has ended; the number now belongs to another one"}
         with open("/proc/%d/stat" % pid) as f:
             st = f.read()
-        if protected(pid, st[st.index("(") + 1:st.rindex(")")]):
+        try:
+            with open("/proc/%d/cmdline" % pid, "rb") as f:
+                cmd = f.read().replace(b"\0", b" ").decode(errors="replace").strip()
+        except OSError:
+            cmd = ""
+        name = st[st.index("(") + 1:st.rindex(")")]
+        if protected(pid, name) or protected(pid, full_name(name, cmd)):
             return {"ok": False, "why": "your session needs it"}
         signal.pidfd_send_signal(fd, signal.SIGKILL if force else signal.SIGTERM)
         waiter = select.poll()

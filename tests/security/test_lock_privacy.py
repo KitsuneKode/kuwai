@@ -11,10 +11,19 @@ def test_a_hidden_message_hides_its_title_too():
     assert 'if (Notifs.lockHidden(i)) return i.app || "Message";' in heading, "a chat app's title is often the message"
 
 
+def test_a_hidden_message_shows_no_status_or_picture_of_its_own():
+    src = (ROOT / "shell/modules/lock/LockNotifs.qml").read_text()
+    assert "visible: !!card.item.status && !Notifs.lockHidden(card.item)" in src
+    assert 'Notifs.lockHidden(card.item) ? NotifAdapters.iconForApp(card.item.app || "")' in src
+
+
 def test_lock_art_is_never_fetched_from_the_web():
-    src = (ROOT / "shell/modules/lock/LockMedia.qml").read_text()
-    assert "Media.artLocal" in src
-    assert not re.search(r'source:\s*media\.player \? \(media\.player\.trackArtUrl', src)
+    media = (ROOT / "shell/services/Media.qml").read_text()
+    assert 'readonly property string safeArt: /^file:\\/\\//i.test(art) ? art : artRemote ? artLocal : ""' in media
+    for f in ("LockMedia.qml", "LockView.qml"):
+        src = (ROOT / "shell/modules/lock" / f).read_text()
+        assert "Media.safeArt" in src, f"{f}: only local or already-cached art on the lock"
+        assert "Media.art :" not in src and "Media.art)" not in src
 
 
 def test_the_login_screen_never_shows_greetds_own_error_text():

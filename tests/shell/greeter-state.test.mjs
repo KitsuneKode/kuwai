@@ -4,7 +4,7 @@ test('launch failure restores greeter presentation and permits another login', (
   let stopped=0, quitStopped=0, ackStopped=0, retried=0;
   const s=functions('shell/greeter.qml',['fail','submit'], {
     locked:false, leaving:true, checking:true,password:'synthetic',error:'',failures:0,
-    handoff:{stop(){stopped++;}},quitAnyway:{stop(){quitStopped++;}},launchAck:{stop(){ackStopped++;}},user:'fixture',GreetdState:{Inactive:0},
+    handoff:{stop(){stopped++;}},quitAnyway:{stop(){quitStopped++;}},launchAck:{stop(){ackStopped++;}},user:'fixture',GreetdState:{Inactive:0},lockLeft:0,
     trace(){},Greetd:{available:true,state:0,cancelSession(){},createSession(){retried++;}},
   });
   s.fail('Synthetic launch failure');

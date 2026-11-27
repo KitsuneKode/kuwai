@@ -5,7 +5,7 @@ const read = p => readFileSync(new URL("../../" + p, import.meta.url), "utf8");
 
 test("the lock gives the password only to a password prompt, and asks any other", () => {
   const src = read("shell/modules/lock/Lock.qml");
-  expect(src).toMatch(/PamTurn\.kind\(message, responseVisible\) === "password" && root\.held !== ""/);
+  expect(src).toMatch(/PamTurn\.kind\(message, responseVisible\) === "password"\) \{\s*if \(root\.held === ""\) \{ root\.asked = true/);
   expect(src).toMatch(/root\.challenge = PamTurn\.label\(message\)/);
   expect(src).toMatch(/if \(challenge !== ""\) \{[\s\S]*?pam\.respond\(answer\);/);
   expect(src).not.toMatch(/answers\+\+ === 0/);

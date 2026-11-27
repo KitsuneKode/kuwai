@@ -945,7 +945,7 @@ Singleton {
                 if (/^image:\/\/qsimage\/|\/tmp\//.test(h.icon || "")) h.icon = "";
             let dropped = 0;
             const restored = (data.history || []).map(h => itemComp.createObject(root, h)).filter(i => {
-                if (!Otp.secretForHistory(i) && !(i.severity !== "critical" && Triage.statusNotice({ app: i.app, summary: i.title, body: i.body }))) return true;
+                if (!Otp.secretForHistory(i) && !(i.severity !== "critical" && Triage.storedStatus({ app: i.app, title: i.title }))) return true;
                 i.destroy();
                 dropped++;
                 return false;

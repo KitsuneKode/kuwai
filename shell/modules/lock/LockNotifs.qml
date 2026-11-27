@@ -153,7 +153,7 @@ Column {
                         radius: 10
                         color: "transparent"
                         visible: icon.status === Image.Ready
-                        Image { id: icon; anchors.fill: parent; source: NotifAdapters.resolveIcon(card.item); sourceSize: Qt.size(76, 76); fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
+                        Image { id: icon; anchors.fill: parent; source: Notifs.lockHidden(card.item) ? NotifAdapters.iconForApp(card.item.app || "") : NotifAdapters.resolveIcon(card.item); sourceSize: Qt.size(76, 76); fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
                     }
                     Rectangle {
                         anchors.fill: parent
@@ -221,7 +221,7 @@ Column {
                     }
                     Row {
                         id: statusRow
-                        visible: !!card.item.status
+                        visible: !!card.item.status && !Notifs.lockHidden(card.item)
                         topPadding: 2
                         spacing: 5
                         Text {

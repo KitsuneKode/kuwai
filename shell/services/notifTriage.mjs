@@ -1,6 +1,6 @@
 const IMAGE = /\.(jpe?g|png|webp|gif|bmp|avif|mp4|webm|mkv|mov)$/i;
 const LEVEL = /^\s*(?:(?:volume|brightness|mic(?:rophone)?)\s*:?\s*)?(?:\d{1,3}\s*%|muted|unmuted)\s*$|^\s*(?:volume|brightness|muted|unmuted)\s*$/i;
-const STATUS_SENDER = /^$|wall|theme|alert|notify|swww|awww|waypaper|variety|notify-send/i;
+const STATUS_SENDER = /^(?:|notify-send|swww|awww|waypaper|variety|kuwai|(?:\S+\s)?(?:alert|notify)|.*\bwallpapers?\b.*|(?:volume|brightness|sound|audio|osd|mic(?:rophone)?|swayosd|wireplumber|pamixer))$/i;
 const FAILURE = /\b(fail(ed|ure)?|error|not (found|installed)|unavailable|couldn'?t|can'?t)\b/i;
 
 function text(v) { return String(v || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(); }
@@ -14,10 +14,20 @@ export function statusNotice(n) {
     if (actionless(n) && /^wallpaper set for/i.test(title)) return true;
     if (actionless(n) && IMAGE.test(title) && !/\s/.test(title) && STATUS_SENDER.test(app)) return true;
     if (actionless(n) && LEVEL.test(title)) return true;
+    if (!STATUS_SENDER.test(app)) return false;
     const sync = String(hint(n, "x-canonical-private-synchronous") || hint(n, "x-dunst-stack-tag") || "");
     if (/^(brightness|volume|audio|sink|mic)$/i.test(sync)) return true;
     return hint(n, "value") !== undefined && actionless(n);
 }
+
+export function storedStatus(i) {
+    const app = text(i.app);
+    const title = text(i.summary || i.title);
+    if (/live wallpaper/i.test(app) || /^wallpaper set for/i.test(title)) return true;
+    return IMAGE.test(title) && !/\s/.test(title) && STATUS_SENDER.test(app);
+}
+
+function escaped(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
 export function kittyCommandDone(n) {
     const app = text(n.app || n.appName).toLowerCase();
@@ -32,7 +42,8 @@ export function fromFocused(n, focused) {
     if (!from.some(f => names.some(x => x === f || x.endsWith("." + f) || f.endsWith("." + x)))) return false;
     const title = text(n.summary || n.title).toLowerCase();
     const window = String(focused.title || "").toLowerCase();
-    return !title || window.includes(title) || kittyCommandDone(n);
+    if (kittyCommandDone(n)) return true;
+    return title.length >= 3 && new RegExp("(^|[^\\p{L}\\p{N}])" + escaped(title) + "($|[^\\p{L}\\p{N}])", "u").test(window);
 }
 
 export function authAsk(i) {

@@ -101,7 +101,7 @@ Item {
             Image {
                 id: lockArt
                 anchors.fill: parent
-                source: Media.playing ? (Media.artRemote ? Media.artLocal : Media.art) : ""
+                source: Media.playing ? Media.safeArt : ""
                 sourceSize: Qt.size(256, 256)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true

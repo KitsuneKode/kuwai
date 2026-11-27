@@ -23,6 +23,24 @@ test("real news that starts with a number or names a picture stays", () => {
     expect(triage(n({ app: "notify-send", summary: "wall-07.png" }))).toBe("drop");
 });
 
+test("an app can't hide its own news behind a level hint, and a short title isn't 'what you're looking at'", () => {
+    expect(triage(n({ app: "notify-send", summary: "x", hints: { "x-dunst-stack-tag": "volume" } }))).toBe("drop");
+    expect(triage(n({ app: "Firefox", summary: "New sign-in", body: "from a new device", hints: { value: 1 } }))).toBe("keep");
+    expect(triage(n({ app: "Firefox", summary: "Downloading", hints: { value: 40 } }))).toBe("keep");
+    expect(triage(n({ app: "Bank", summary: "Code 4411", hints: { "x-dunst-stack-tag": "volume" } }))).toBe("keep");
+    expect(triage(n({ app: "kitty", summary: "a", body: "x" }), kitty)).toBe("keep");
+    expect(triage(n({ app: "kitty", summary: "", body: "x" }), kitty)).toBe("keep");
+    expect(triage(n({ app: "kitty", summary: "rice", body: "x" }), kitty)).toBe("drop");
+});
+
+test("history keeps rows that only look like status", async () => {
+    const { storedStatus } = await import("../../shell/services/notifTriage.mjs");
+    expect(storedStatus({ app: "Signal", title: "muted" })).toBe(false);
+    expect(storedStatus({ app: "Wallet", title: "receipt.png" })).toBe(false);
+    expect(storedStatus({ app: "󰸉 Live Wallpaper", title: "▶ 27.mp4" })).toBe(true);
+    expect(storedStatus({ app: "HyDE Alert", title: "01-kami.jpg" })).toBe(true);
+});
+
 test("a failure in that status still shows once, and isn't kept", () => {
     expect(triage(n({ app: "HyDE Alert", summary: "Wallpaper not found" }))).toBe("keep");
     expect(triage(n({ app: "󰸉 Live Wallpaper", summary: "mpvpaper not installed" }))).toBe("toast");

@@ -58,7 +58,6 @@ Scope {
         openAfter = null;
         missed = false;
         recount();
-        fingerTries = 0;
         enrolled.running = true;
         mark.command = ["sh", "-c", 'mkdir -p "$(dirname "$1")" && : > "$1"', "sh", flag];
         mark.running = true;
@@ -69,7 +68,6 @@ Scope {
     }
     function unlocked() {
         fingerAgain.stop();
-        finger.running = false;
         mark.command = ["rm", "-f", flag];
         mark.running = true;
         locked = false;
@@ -89,7 +87,7 @@ Scope {
     property bool missed: false
     onLockLeftChanged: {
         if (lockLeft > 0) error = Faillock.lockedWords(lockLeft);
-        else if (lockedUntil > 0) { lockedUntil = 0; fails = 0; error = ""; }
+        else if (lockedUntil > 0) { lockedUntil = 0; fails = 0; error = ""; listen(); }
     }
     Timer { interval: 1000; repeat: true; running: root.locked && root.lockedUntil > root.now; onTriggered: root.now = Date.now() }
     FileView {
@@ -113,30 +111,21 @@ Scope {
     }
     function recount() { tally.running = false; tally.running = true; }
     property bool fingers: false
-    property int fingerTries: 0
-    readonly property bool fingerReady: fingers && finger.running && !leaving
+    property bool talking: false
+    property bool asked: false
+    readonly property bool fingerReady: fingers && talking && !asked && !checking && !leaving
     Process {
         id: enrolled
-        command: ["sh", "-c", 'command -v fprintd-verify >/dev/null && fprintd-list "$1" 2>/dev/null | grep -q "#[0-9]"', "sh", Quickshell.env("USER") || ""]
+        command: ["sh", "-c", 'command -v fprintd-list >/dev/null && fprintd-list "$1" 2>/dev/null | grep -q "#[0-9]" && grep -qs pam_fprintd /etc/pam.d/login /etc/pam.d/system-login /etc/pam.d/system-local-login /etc/pam.d/system-auth', "sh", Quickshell.env("USER") || ""]
         onExited: code => { root.fingers = code === 0; root.listen(); }
     }
-    Process {
-        id: finger
-        command: ["setpriv", "--pdeathsig", "TERM", "fprintd-verify"]
-        stdout: StdioCollector { id: fingerSaid }
-        onExited: code => {
-            if (!root.locked || root.leaving) return;
-            if (code === 0 && /verify-match/.test(fingerSaid.text)) {
-                root.password = ""; root.error = ""; root.held = "";
-                if (root.checking) pam.abort();
-                root.checking = false;
-                root.leaving = true;
-                release.restart();
-            } else if (root.fingerTries++ < 5) fingerAgain.restart();
-        }
-    }
     Timer { id: fingerAgain; interval: 1500; onTriggered: root.listen() }
-    function listen() { if (fingers && locked && !leaving && lockLeft === 0 && !finger.running) finger.running = true; }
+    function listen() {
+        if (!fingers || !locked || leaving || lockLeft > 0 || talking) return;
+        held = ""; asked = false; note = "";
+        talking = true;
+        pam.start();
+    }
     property string challenge: ""
     property string note: ""
     property string held: ""
@@ -152,9 +141,17 @@ Scope {
         if (checking) return;
         error = "";
         missed = false;
-        note = "";
+        if (asked) {
+            const answer = password;
+            asked = false; checking = true;
+            pam.respond(answer);
+            return;
+        }
         held = password;
         checking = true;
+        if (talking) return;
+        note = "";
+        talking = true;
         pam.start();
     }
 
@@ -166,7 +163,8 @@ Scope {
         onPamMessage: {
             if (!responseRequired) { root.note = PamTurn.note(message); return; }
             root.note = "";
-            if (PamTurn.kind(message, responseVisible) === "password" && root.held !== "") {
+            if (PamTurn.kind(message, responseVisible) === "password") {
+                if (root.held === "") { root.asked = true; root.checking = false; return; }
                 const p = root.held;
                 root.held = "";
                 respond(p);
@@ -177,6 +175,8 @@ Scope {
             root.challenge = PamTurn.label(message);
         }
         onCompleted: result => {
+            root.talking = false;
+            root.asked = false;
             root.checking = false;
             root.challenge = "";
             root.held = "";
@@ -192,9 +192,12 @@ Scope {
                 root.missed = true;
                 root.failures++;
                 root.recount();
+                fingerAgain.restart();
             }
         }
         onError: err => {
+            root.talking = false;
+            root.asked = false;
             root.checking = false;
             root.challenge = "";
             root.held = "";

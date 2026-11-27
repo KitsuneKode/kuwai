@@ -96,6 +96,7 @@ Singleton {
     // back to white. Those are fetched once into ~/.cache/kuwai/art (https
     // only, 6 MB and 6 s at most, a week kept) and quantized from there.
     readonly property bool artRemote: /^https:\/\//.test(art)
+    readonly property string safeArt: /^file:\/\//i.test(art) ? art : artRemote ? artLocal : ""
     readonly property string artCache: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/kuwai/art"
     property string artLocal: ""
     onArtChanged: fetchArt()
