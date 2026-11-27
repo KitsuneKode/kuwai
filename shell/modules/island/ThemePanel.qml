@@ -72,10 +72,12 @@ FocusScope {
         // Dusk is drawn, so its picture ships with it (it looked in your films'
         // folder, where none was: a blank card).
         return [{ name: "Dusk", style: "dusk", thumb: Quickshell.shellDir + "/assets/screensaver/dusk.jpg", current: st === "dusk" },
-                { name: "Borealis", style: "borealis", thumb: Quickshell.shellDir + "/assets/screensaver/borealis.jpg", current: st === "borealis" }]
+                { name: "Borealis", style: "borealis", thumb: Quickshell.shellDir + "/assets/screensaver/borealis.jpg", current: st === "borealis" },
+                { name: "Flow", style: "flow", thumb: Quickshell.shellDir + "/assets/screensaver/flow.jpg", current: st === "flow" }]
             .concat(clips.map(c => ({ name: "Night · " + clipName(c), style: "night", clip: c, thumb: saverDir + "/" + c + ".jpg", current: st === "night" && clip === c })))
             .concat([{ name: "Live wallpaper", style: "live", thumb: liveThumb, current: st === "live" },
-                     { name: "Still wallpaper", style: "still", thumb: Hyde.wallpaper, current: st === "still" }]);
+                     { name: "Still wallpaper", style: "still", thumb: Hyde.wallpaper, current: st === "still" },
+                     { name: "Photos", style: "photos", thumb: Quickshell.shellDir + "/assets/screensaver/photos.jpg", current: st === "photos" }]);
     }
     // What the preview pane can play for the one you're on: a live wallpaper's
     // loop, a screensaver's film, or a drawn scene (Dusk, Borealis) run small.
@@ -86,7 +88,7 @@ FocusScope {
     readonly property string previewPath: !onIt ? "" : mode === "live" ? (onIt.path || "")
         : mode !== "saver" ? "" : onIt.clip ? saverDir + "/" + onIt.clip + ".mp4"
         : onIt.style === "live" ? ((live.find(x => x.current) || {}).path || "") : ""
-    readonly property string previewScene: mode === "saver" && onIt && (onIt.style === "dusk" || onIt.style === "borealis") ? onIt.style : ""
+    readonly property string previewScene: mode === "saver" && onIt && (onIt.style === "dusk" || onIt.style === "borealis" || onIt.style === "flow") ? onIt.style : ""
     readonly property bool canPreview: previewPath !== "" || previewScene !== ""
     // P: use the one you're on, then show it full screen (it shows what is
     // set, so it is set first; it used to show the old one).
@@ -406,10 +408,11 @@ FocusScope {
             Loader {
                 anchors.fill: parent
                 active: picker.visible && picker.previewScene !== "" && previewDwell.ready && picker.previewPlaying
-                sourceComponent: picker.previewScene === "borealis" ? borealisPreview : duskPreview
+                sourceComponent: picker.previewScene === "borealis" ? borealisPreview : picker.previewScene === "flow" ? flowPreview : duskPreview
             }
             Component { id: duskPreview; DuskScene { running: true } }
             Component { id: borealisPreview; BorealisScene { running: true } }
+            Component { id: flowPreview; FlowScene { running: true } }
             Row {
                 visible: picker.canPreview
                 anchors { right: parent.right; bottom: parent.bottom; margins: 10 }

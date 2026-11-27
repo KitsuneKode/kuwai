@@ -261,7 +261,7 @@ test('mpv plays the saver film once for every screen, refusing what it could not
   expect(src).not.toMatch(/pkill/);
   expect(src).toMatch(/exec setpriv --pdeathsig KILL mpvpaper/);
   // It starts once the screen is dark; the black over it lifts once it plays.
-  expect(src).toMatch(/wantedFilm: showing && darkened \? film : ""/);
+  expect(src).toMatch(/wantedFilm: showing && darkened && !longDark \? film : ""/);
   expect(src).toMatch(/input-ipc-server=" \+ ipcPath/);
   expect(src).toMatch(/observe_property",1,"playback-time"/);
   expect(src).toMatch(/m\.name === "playback-time" && typeof m\.data === "number" && m\.data > 0\) \{\s*root\.reveal\(\)/);

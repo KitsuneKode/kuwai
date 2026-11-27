@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=kuwai
+Description=Black, one accent ring that turns slowly, and the lock screen's password pill
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/kuwai
+ScriptFile=/usr/share/plymouth/themes/kuwai/kuwai.script

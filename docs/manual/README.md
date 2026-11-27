@@ -11,6 +11,7 @@ One page per area. Every keybinding, path, and command below reflects the curren
 | [notifications.md](notifications.md) | Toasts, notch peeks, Notification Centre, sensitive-app privacy, DND, GitHub/Gmail feeds |
 | [updates.md](updates.md) | Software Update panel, AUR `PKGBUILD` review, `kuwai-update-root`, `.pacnew`, cache cleanup |
 | [looks.md](looks.md) | 13 themes, `kuwai look`, wallpapers, live wallpapers, screensavers, optional HyDE support |
+| [boot.md](boot.md) | The Plymouth boot splash: a black screen, one turning accent ring, the lock screen's passphrase pill; install, preview, undo |
 | [display.md](display.md) | Display presets, automatic switching, HDR, 10-bit, calibration, Night Shift |
 | [audio.md](audio.md) | Sound panel, PipeWire/EasyEffects routing, custom device cards (`devices.json`) |
 | [assistant.md](assistant.md) | Opt-in local Ollama assistant, tools, secret redaction, crash diagnosis |

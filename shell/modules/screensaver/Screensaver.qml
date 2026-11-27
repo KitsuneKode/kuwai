@@ -21,6 +21,7 @@ import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
 import qs.services
+import "saverPhotos.mjs" as Photos
 
 Scope {
     id: root
@@ -81,7 +82,7 @@ Scope {
         onLoadFailed: root.video = ""
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
-    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night"
+    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night" · "photos" · "flow"
     // Night: a dark film from ~/.local/share/kuwai-data/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
     readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai-data/screensavers"
@@ -107,11 +108,28 @@ Scope {
     property string mainScreen: ""
     property bool dimmedHere: false
     onShowingChanged: {
-        if (showing) { mainScreen = Screens.focusedName; filmFresh(); }
+        if (showing) { mainScreen = Screens.focusedName; filmFresh(); longFade.stop(); longLevel = 0; }
+        else longBlack = false;
         Saver.showing = showing;
         if (!showing && dimmedHere) { dimmedHere = false; if (Dim.wanted) Dim.up(); }
     }
     readonly property string still: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""   // none: black
+    property var photoPaths: []
+    property bool photosListed: false
+    readonly property var photoSet: photoPaths.length ? photoPaths : (Hyde.wallpaper ? [Hyde.wallpaper] : [])
+    Process {
+        running: root.showing && root.style === "photos"
+        command: [Paths.bin + "/kuwai-saver-photos", Settings.screensaverFolder]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let got = [];
+                try { got = JSON.parse(text); } catch (e) {}
+                if (!Array.isArray(got)) got = [];
+                if (got.join("\n") !== root.photoPaths.join("\n")) root.photoPaths = got;
+                root.photosListed = true;
+            }
+        }
+    }
 
     // ── The film (Night, Live) plays in its own process ──────────────────
     // A player inside the shell kept ~110 MB for good after it stopped
@@ -135,7 +153,7 @@ Scope {
     // The film starts once the screen has gone dark (the black over it fades
     // out once it plays, below), so it never cuts in over the desktop.
     readonly property bool darkened: level >= 0.999
-    readonly property string wantedFilm: showing && darkened ? film : ""
+    readonly property string wantedFilm: showing && darkened && !longDark ? film : ""
     property real filmCover: 1
     property bool filmShown: false
     onActiveFilmChanged: if (activeFilm === "") { coverOut.stop(); filmCover = 1; filmShown = false; firstFrame.stop(); mpvIpc.connected = false; }
@@ -244,6 +262,16 @@ Scope {
             : ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
         onExited: (exitCode, exitStatus) => root.filmExited(exitCode)
     }
+    property bool longBlack: false
+    property real longLevel: 0
+    readonly property bool longDark: longLevel >= 0.999
+    Timer {
+        interval: Idle.saverLongAfter * 1000
+        running: root.showing && Idle.saverLongAfter > 0 && !root.longBlack
+        onTriggered: root.longBlack = true
+    }
+    onLongBlackChanged: if (longBlack) longFade.restart()
+    NumberAnimation { id: longFade; target: root; property: "longLevel"; to: 1; duration: Theme.saverLongFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
     // ── Dim after a while: "Dim the screen" in, every screen down (services/Dim),
     // back where it was on wake.
     Timer {
@@ -309,6 +337,8 @@ Scope {
                     // What fills the screen: the Dusk scene (default, drawn live,
                     // nothing to decode), your live wallpaper, or the still one.
                     readonly property bool stillHere: root.style === "still"
+                    readonly property bool photosHere: root.style === "photos"
+                    readonly property bool flowHere: root.style === "flow"
                     // Night and Live: the film on every screen (the saver process).
                     // The drawn scenes are ambient: clouds that cross the sky in
                     // minutes, stars, petals. Drawn at the screen's own rate they
@@ -321,7 +351,7 @@ Scope {
                     Loader {
                         id: sceneLoader
                         anchors.fill: parent
-                        active: !stage.filmHere && !stage.stillHere
+                        active: !stage.filmHere && !stage.stillHere && !stage.photosHere && !stage.flowHere && !root.longDark
                         sourceComponent: root.style === "borealis" ? borealisC : duskC
                         onLoaded: sceneFrame.scheduleUpdate()
                         onWidthChanged: sceneFrame.scheduleUpdate()
@@ -343,10 +373,24 @@ Scope {
                     }
                     Component { id: duskC; DuskScene { running: root.showing } }
                     Component { id: borealisC; BorealisScene { running: root.showing } }
+                    Loader {
+                        anchors.fill: parent
+                        active: stage.flowHere && !root.longDark
+                        sourceComponent: FlowScene { running: root.showing && !root.longBlack }
+                    }
+                    Loader {
+                        anchors.fill: parent
+                        active: stage.photosHere && root.photosListed && !root.longDark
+                        sourceComponent: PhotoShuffle {
+                            paths: root.photoSet
+                            running: root.showing && !root.longBlack
+                            holdMs: Photos.holdMs(Settings.screensaverPhotoMins)
+                        }
+                    }
                     Image {
                         visible: stage.stillHere
                         anchors.fill: parent
-                        source: stage.stillHere ? root.still : ""
+                        source: stage.stillHere && !root.longDark ? root.still : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         // Decoded once at a sensible size (and cached): it was
@@ -354,7 +398,7 @@ Scope {
                         sourceSize: Qt.size(Math.min(win.width, 1920), Math.min(win.height, 1080))
                         scale: 1.06
                         NumberAnimation on scale {
-                            running: stage.stillHere && root.showing && !Theme.reduceMotion
+                            running: stage.stillHere && root.showing && !root.longBlack && !Theme.reduceMotion
                             from: 1.06; to: 1.12; duration: Theme.saverZoomMs
                             easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
                         }
@@ -369,10 +413,13 @@ Scope {
                         }
                     }
 
+                    Rectangle { anchors.fill: parent; color: "black"; opacity: root.longLevel; visible: opacity > 0.001 }
+
                     // The clock: large, light, and somewhere new each minute.
                     Column {
                         id: face
                         spacing: 2
+                        opacity: 1 - root.longLevel * (1 - Theme.saverLongDim)
                         property date now: new Date()
                         onVisibleChanged: if (visible) now = new Date()
                         Connections {
@@ -410,7 +457,8 @@ Scope {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            visible: Weather.ok
+                            visible: Weather.ok && !root.longDark
+                            opacity: 1 - root.longLevel
                             text: Weather.glyph + "  " + Weather.temp + "°" + (Weather.desc ? " · " + Weather.desc : "")
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.017)
@@ -421,7 +469,8 @@ Scope {
                             readonly property var next: Calendar.nextAfter(face.now.getTime(), 12 * 3600000)
                             readonly property bool named: Settings.notifPrivacy === "never" && !Notifs.sharing
                             textFormat: Text.PlainText
-                            visible: !!next
+                            visible: !!next && !root.longDark
+                            opacity: 1 - root.longLevel
                             text: next ? "\u{f00f0}  " + (named ? Dates.time(next.start) + " · " + next.title : "Next event at " + Dates.time(next.start)) : ""
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, win.width * 0.4)
@@ -432,7 +481,8 @@ Scope {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            visible: Media.playing && !!Media.active
+                            visible: Media.playing && !!Media.active && !root.longDark && !Settings.screensaverPulse
+                            opacity: 1 - root.longLevel
                             text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, win.width * 0.4)
@@ -440,6 +490,14 @@ Scope {
                             font.pixelSize: Math.round(win.height * 0.017)
                             color: Qt.rgba(1, 1, 1, 0.6)
                             leftPadding: 6; topPadding: 10
+                        }
+                        MediaPulse {
+                            visible: Settings.screensaverPulse && Media.playing && !!Media.active && !root.longDark
+                            opacity: 1 - root.longLevel
+                            active: visible && root.showing
+                            title: Media.active ? Media.title(Media.active) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
+                            size: Math.round(win.height * 0.017)
+                            maxWidth: win.width * 0.4
                         }
                         // Bottom-left third at first, then a new place each minute.
                         x: win.width * 0.07; y: win.height * 0.62
