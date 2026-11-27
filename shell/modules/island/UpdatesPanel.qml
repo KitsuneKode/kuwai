@@ -40,6 +40,9 @@ FocusScope {
     property string view: Updates.running || (Updates.ownedRun && Updates.result) ? "run" : "list"
     property string pkg: ""                       // the package under review
     property bool showAllRepo: false
+    readonly property string checkTrouble: Updates.checkError || (Updates.data && typeof Updates.data.repoError === "string" ? Updates.data.repoError : "")
+    readonly property bool checkFailed: Updates.checkError !== "" || !!(Updates.data && Updates.data.repoError)
+    readonly property string phase: checkFailed && Updates.total <= 0 ? "error" : Updates.total < 0 ? "loading" : Updates.total === 0 ? "empty" : "content"
     property bool showLog: false
     property int fileIx: 0
     property string menuOf: ""                    // a package whose menu is open (the rehearsal stages it)
@@ -220,14 +223,17 @@ FocusScope {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - refresh.width - Theme.s3
                     spacing: 2
-                    Label { text: Updates.total === 0 ? "Up to date" : "Software Update"; size: Theme.tTitle3; weight: Theme.wSemibold }
+                    Label { text: up.phase === "empty" ? "Up to date" : "Software Update"; size: Theme.tTitle3; weight: Theme.wSemibold }
                     Label {
+                        visible: text !== ""
                         text: Updates.checking ? "Checking…"
+                            : up.phase === "error" ? ""
                             : Updates.total < 0 ? "Not checked yet"
+                            : up.checkFailed ? (up.checkTrouble && up.checkTrouble !== "Couldn't read the update check" ? up.checkTrouble : "The latest check didn't finish") + " · this is the one before"
                             : ([Updates.repoLive.length + " Arch", Updates.aurLive.length + " AUR", Updates.flatpak.length ? Updates.flatpak.length + " Flatpak" : "",
                                 Updates.heldCount ? Updates.heldCount + " held" : ""].filter(x => x).join(" · ") + " · checked " + Updates.ago(Updates.checkedAt))
-                        width: parent.width; elide: Text.ElideRight
-                        size: Theme.tSub; color: Theme.textTertiary
+                        width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
+                        size: Theme.tSub; color: !Updates.checking && Updates.total >= 0 && up.checkFailed ? Theme.orange : Theme.textTertiary
                     }
                 }
                 Button {
@@ -235,7 +241,7 @@ FocusScope {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     kind: "quiet"
                     glyph: "\u{f0450}"
-                    label: Updates.checking ? "Checking for updates" : "Check again (R)"
+                    label: Updates.checking ? "Checking for updates" : up.checkFailed ? "Retry the check (R)" : "Check again (R)"
                     busy: Updates.checking
                     onClicked: Updates.check()
                 }
@@ -281,12 +287,10 @@ FocusScope {
                 detail: "Restart when it's done, so the new kernel and drivers load together."
             }
             Notice {
-                visible: Updates.checkError !== "" || !!(Updates.data && Updates.data.repoError)
+                visible: up.phase === "error"
                 glyph: "\u{f0026}"; tone: Theme.red
-                readonly property bool hadOne: Updates.total >= 0
-                readonly property string why: Updates.checkError || (Updates.data && typeof Updates.data.repoError === "string" ? Updates.data.repoError : "")
-                title: hadOne ? "The latest check didn't finish" : "The check didn't finish"
-                detail: why && why !== "Couldn't read the update check" ? why : hadOne ? "This is what the one before found" : ""
+                title: "The check didn't finish"
+                detail: up.checkTrouble && up.checkTrouble !== "Couldn't read the update check" ? up.checkTrouble : ""
                 action: "Retry"
                 onActed: Updates.check()
             }
@@ -294,7 +298,7 @@ FocusScope {
             // Skeleton while the first check runs; not once it has failed (the
             // rows stayed under "The check didn't finish", promising a list).
             Repeater {
-                model: Updates.total < 0 && Updates.checkError === "" ? 3 : 0
+                model: up.phase === "loading" ? 3 : 0
                 Skeleton { width: listCol.width; height: 48; radius: 14 }
             }
 
@@ -380,7 +384,7 @@ FocusScope {
                                 spacing: 1
                                 Label { width: parent.width; elide: Text.ElideRight; text: modelData.name; size: Theme.tBody; weight: Theme.wMedium; color: repoRow.held ? Theme.textSecondary : Theme.textPrimary }
                                 Version { visible: !repoRow.held; from: modelData.old; to: modelData.new }
-                                Label { visible: repoRow.held; text: "Held at " + modelData.old; size: Theme.tFootnote; color: Theme.orange }
+                                Label { visible: repoRow.held; text: "Held at " + modelData.old; size: Theme.tFootnote; color: Theme.textSecondary }
                             }
                             Label { anchors.right: parent.right; text: modelData.repo; size: Theme.tCaption; color: Theme.textTertiary; visible: modelData.repo !== "" && modelData.repo !== "extra" }
                         }

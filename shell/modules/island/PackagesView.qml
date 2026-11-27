@@ -121,20 +121,20 @@ Item {
                 Label {
                     width: parent.width; elide: Text.ElideRight
                     text: (row.held ? "Held at " + (Updates.held[row.modelData.name].version || row.modelData.version) + " · " : "") + (row.modelData.desc || "")
-                    size: Theme.tFootnote; color: row.held ? Theme.orange : Theme.textSecondary
+                    size: Theme.tFootnote; color: Theme.textSecondary
                 }
             }
             Rectangle {
                 id: lock
                 anchors { right: parent.right; rightMargin: Theme.s3; top: parent.top; topMargin: Theme.s2 }
                 width: Theme.sp(30); height: width; radius: width / 2
-                color: row.held ? Qt.alpha(Theme.orange, Theme.tintChip) : lockHover.hovered ? Theme.pillHover : Theme.pill
+                color: row.held ? Theme.pillHover : lockHover.hovered ? Theme.pillHover : Theme.pill
                 Text {
                     anchors.centerIn: parent
                     textFormat: Text.PlainText
                     text: row.held ? "\u{f033e}" : "\u{f0fc6}"
                     font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphM
-                    color: row.held ? Theme.orange : Theme.textSecondary
+                    color: row.held ? Theme.textPrimary : Theme.textSecondary
                 }
                 HoverHandler { id: lockHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: Updates.setHeld(row.modelData.name, !row.held) }

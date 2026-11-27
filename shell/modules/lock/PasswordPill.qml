@@ -166,7 +166,7 @@ Column {
     }
     Label {
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(implicitWidth, 320)
+        width: Math.min(implicitWidth, Theme.sp(Theme.lockPillW))
         elide: Text.ElideRight
         text: entry.lock.checking ? (entry.lock.note || "Checking…") : entry.lock.error || (entry.capsLock ? "Caps Lock is on" : entry.lock.fingerReady ? "Or touch the fingerprint sensor" : " ")
         size: Theme.tSub; weight: entry.lock.error ? Theme.wMedium : Theme.wRegular

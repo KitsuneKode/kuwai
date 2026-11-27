@@ -20,7 +20,11 @@ Item {
         btn.fired();
     }
 
-    width: 64; height: 70
+    readonly property real labelW: Math.max(restW.advanceWidth, holdW.advanceWidth)
+    width: Math.max(64, Math.ceil(labelW))
+    height: disc.height + Theme.s2 + lbl.implicitHeight
+    TextMetrics { id: restW; font: lbl.font; text: btn.label }
+    TextMetrics { id: holdW; font: lbl.font; text: "Hold to " + btn.verb }
     property real held: 0
     property bool keyboardHolding: false
     readonly property bool holding: press.pressed || keyboardHolding
@@ -88,6 +92,7 @@ Item {
         }
     }
     Label {
+        id: lbl
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
         text: btn.holding || btn.held > 0 ? "Hold to " + btn.verb : btn.label
         size: Theme.tSub; weight: Theme.wMedium

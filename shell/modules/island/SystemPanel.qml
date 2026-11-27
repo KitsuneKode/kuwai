@@ -185,7 +185,7 @@ FocusScope {
                 total: SystemStats.memTotal / 1073741824
                 unit: " GB"
                 parts: {
-                    const pal = [Theme.orange, Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.yellow, Theme.red];
+                    const pal = [Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.mint, Theme.brown, Theme.pink];
                     const used = SystemStats.memUsed / 1073741824;
                     const top = sys.memApps.slice(0, 6).map((a, i) => ({ label: a.app, value: a.mb / 1024, color: pal[i],
                         detail: a.count + (a.count === 1 ? " process" : " processes") }));

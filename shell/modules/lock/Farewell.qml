@@ -8,7 +8,7 @@
 //   Restarting          Shutting Down        Sleeping             Logging Out
 //   See you in a moment Good night, Kit      Sweet dreams         See you soon, Kit
 //
-// The marks: a circular arrow that spins up, the power symbol drawing
+// The marks, all drawn as Shapes: a circular arrow that spins up, the power symbol drawing
 // itself and powering down, a moon breathing, a door closing. Reduced
 // motion: fades only.
 import QtQuick
@@ -136,24 +136,49 @@ Item {
             }
 
             // Sleep: a crescent, breathing.
-            Text {
+            Shape {
+                anchors.fill: parent
                 visible: bye.kind === "suspend"
-                anchors.centerIn: parent
-                text: "\u{f0594}"
-                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphFarewell
-                color: mark.ink
+                preferredRendererType: Shape.CurveRenderer
+                rotation: -20
                 scale: 0.9 + 0.1 * bye.tIn - 0.06 * Math.sin(bye.tMark * Math.PI) * bye.move
                 opacity: 1 - 0.35 * Math.sin(bye.tMark * Math.PI)
+                ShapePath {
+                    strokeWidth: 0; fillColor: mark.ink
+                    startX: 42; startY: 12
+                    PathArc { x: 42; y: 52; radiusX: 24; radiusY: 24; useLargeArc: true; direction: PathArc.Counterclockwise }
+                    PathArc { x: 42; y: 12; radiusX: 20; radiusY: 20; direction: PathArc.Clockwise }
+                }
             }
 
             // Log out: the door, swinging shut.
-            Text {
-                textFormat: Text.PlainText
+            Shape {
+                id: door
+                anchors.fill: parent
                 visible: bye.kind === "logout"
-                anchors.centerIn: parent
-                text: bye.tMark < 0.5 ? "\u{f081c}" : "\u{f081a}"
-                font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphFarewell
-                color: mark.ink
+                preferredRendererType: Shape.CurveRenderer
+                readonly property real shut: bye.move > 0 ? bye.tMark : 1
+                readonly property real leaf: 12 + 22 * shut
+                readonly property real skew: 9 * (1 - shut)
+                ShapePath {
+                    strokeColor: mark.ink; strokeWidth: 4; fillColor: "transparent"; capStyle: ShapePath.RoundCap; joinStyle: ShapePath.RoundJoin
+                    startX: 12; startY: 58
+                    PathLine { x: 12; y: 6 }
+                    PathLine { x: 52; y: 6 }
+                    PathLine { x: 52; y: 58 }
+                }
+                ShapePath {
+                    strokeWidth: 0; fillColor: mark.ink
+                    startX: 12; startY: 6
+                    PathLine { x: 12 + door.leaf; y: 6 + door.skew }
+                    PathLine { x: 12 + door.leaf; y: 58 - door.skew }
+                    PathLine { x: 12; y: 58 }
+                }
+                ShapePath {
+                    strokeWidth: 0; fillColor: Qt.rgba(0, 0, 0, 0.55 * door.shut)
+                    startX: 12 + door.leaf - 9; startY: 29
+                    PathAngleArc { centerX: 12 + door.leaf - 9; centerY: 32; radiusX: 3; radiusY: 3; startAngle: -90; sweepAngle: 360 }
+                }
             }
         }
 

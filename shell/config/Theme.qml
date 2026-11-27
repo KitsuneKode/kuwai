@@ -115,12 +115,18 @@ Singleton {
     readonly property int tLockInitial: 36     // the initial that stands in for a missing picture (login)
     readonly property int tLockName: 21        // your name under your picture (login)
     readonly property int tLockBody: 17        // a line on these screens: the unlock hint, the track playing, the farewell's line
+    readonly property int tLockLine: tTitle3
+    readonly property real lockClockTop: 0.11
+    readonly property int lockClockGap: s1
+    readonly property real lockHintAlpha: 0.85
+    readonly property int lockPillW: 320
+    function lockTint(accent) { return Qt.tint(Qt.rgba(1, 1, 1, 0.9), Qt.alpha(accent, 0.35)); }
+    function lockClockSize(screenH) { return Math.min(tLockClock, Math.floor(screenH * 0.2 / textScale)); }
     // Glyph sizes (Symbols Nerd Font, Icon): a glyph is sized by its place.
     readonly property int glyphS: 16       // on a control or inline with a line: buttons, chevrons, nav arrows, a status mark (Icon's default)
     readonly property int glyphM: 18       // the mark that leads a row, a notice or a card, or sits in a status disc
     readonly property int glyphL: 22       // standing in for a picture: a cover with no art, a theme with no preview, a tile's "+", an empty list's mark
     readonly property int glyphXL: 28      // the mark of a large tile, an empty panel or a device card (in place of its photo)
-    readonly property int glyphFarewell: 54   // the farewell's mark (moon, door)
     readonly property int glyphPlay: 32       // play/pause between the skip buttons (Now Playing; the skips take tTitle1)
     // A list row (components/ListRow): every list's rows line up on these.
     readonly property int rowInset: 10   // the row's edge to its mark, and its right edge to its state

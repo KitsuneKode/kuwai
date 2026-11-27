@@ -31,7 +31,7 @@ Item {
     property bool preview: false
 
     readonly property color accent: view.lock.accent || Theme.accent
-    readonly property color tint: Qt.tint(Qt.rgba(1, 1, 1, 0.92), Qt.alpha(accent, 0.22))
+    readonly property color tint: Theme.lockTint(accent)
     readonly property real move: Theme.reduceMotion ? 0 : 1
     property date now: new Date()
     // The clock wakes on the minute, not every second (it shows minutes), as LockView's.
@@ -171,29 +171,29 @@ Item {
     Column {
         id: clock
         anchors.horizontalCenter: parent.horizontalCenter
-        y: Math.round(view.height * 0.075)
+        y: Math.round(view.height * Theme.lockClockTop)
         transformOrigin: Item.Top
         scale: view.mix(1, 0.9, view.fp)
         opacity: view.shown(view.tClock) * view.mix(1, 0.85, view.f)
         transform: Translate { y: view.lift(view.tClock) }
-        spacing: Theme.s2
+        spacing: Theme.lockClockGap
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Dates.longDate(view.now)
-            size: Theme.tTitle1; weight: Theme.wSemibold
-            color: Qt.alpha(view.tint, 0.88)
+            size: Theme.tLockDate; weight: Theme.wSemibold
+            color: view.tint
         }
         TextMorph {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Dates.clock(view.now)
-            size: Math.min(Theme.tLockClock, Math.floor(view.height * 0.2 / Theme.textScale)); weight: Theme.wBold; rounded: true
+            size: Theme.lockClockSize(view.height); weight: Theme.wBold; rounded: true
             color: view.tint
             duration: Theme.breatheMs; stagger: 60
         }
         Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: view.greeting
-            size: Theme.tTitle2; weight: Theme.wMedium
+            size: Theme.tLockLine; weight: Theme.wMedium
             color: Qt.alpha(view.tint, 0.72)
             opacity: 1 - view.f
         }
@@ -272,14 +272,14 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             // Room for the pill and its line (Caps Lock, a wrong password)
             // underneath, so either showing moves nothing.
-            width: 320; height: 42 + 34
+            width: Theme.lockPillW; height: 42 + 34
             Label {
                 anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Math.round((42 - height) / 2) }
                 opacity: Math.max(0, 1 - view.f * 2.5)
                 visible: opacity > 0.01
                 text: "Press any key to log in"
-                size: Theme.tHeadline; weight: Theme.wMedium
-                color: Qt.alpha(view.tint, 0.78)
+                size: Theme.tLockBody; weight: Theme.wMedium
+                color: Qt.alpha(view.tint, Theme.lockHintAlpha)
             }
             PasswordPill {
                 id: entry

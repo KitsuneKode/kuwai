@@ -139,6 +139,7 @@ FocusScope {
 
     // ── One list: kittymux panes, then T3 threads, by how much they need you ─
     readonly property var sections: [...new Set(rows.map(r => r.section))]
+    readonly property string phase: rows.length > 0 ? "content" : Kittymux.available && !Kittymux.loaded ? "loading" : "empty"
     readonly property var rows: {
         const out = [];
         for (const x of Agents.sessions) {
@@ -308,8 +309,19 @@ FocusScope {
         }
 
         // ── Empty: say so, and how to start one ─────────────────────────
+        Skeleton {
+            visible: ap.phase === "loading"
+            width: parent.width; height: Theme.sp(64); radius: Theme.r3
+        }
+        Label {
+            visible: ap.phase === "loading"
+            width: parent.width
+            text: "Looking for your agents…"
+            size: Theme.tFootnote; color: Theme.textTertiary
+        }
+
         Ui.EmptyState {
-            visible: ap.rows.length === 0
+            visible: ap.phase === "empty"
             topPadding: 8; bottomPadding: 8
             glyph: "\u{f06a9}"
             title: "No agents running"
@@ -321,7 +333,7 @@ FocusScope {
 
         ListView {
             id: list
-            visible: ap.rows.length > 0
+            visible: ap.phase === "content"
             width: parent.width
             readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0)
                 + (keyHints.visible ? keyHints.height : 0) + (health.visible ? health.height + col.spacing : 0)
@@ -769,11 +781,12 @@ FocusScope {
             width: parent.width
             spacing: 8
             Button {
-                width: (parent.width - 8) / 2
+                width: ap.phase === "content" ? (parent.width - 8) / 2 : parent.width
                 text: "Usage"
                 onClicked: Island.open("usage", Island.screen, "pointer")
             }
             Button {
+                visible: ap.phase === "content"
                 width: (parent.width - 8) / 2
                 enabled: (Kittymux.attention || []).length > 0
                 text: (Kittymux.attention || []).length ? "Mark all read (" + Kittymux.attention.length + ")" : "All read"
