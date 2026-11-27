@@ -90,7 +90,7 @@ Singleton {
             const plan = preparedSun;
             preparedSun = null;
             const tool = Paths.bin + (Hyde.present ? "/kuwai-themes" : "/kuwai-look");
-            const start = () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", tool, "apply-variant", plan.path]);
+            const start = () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", tool, "apply-variant", plan.path, "--boundary", plan.boundary]);
             const guard = () => {
                 if (!Settings.wallDayNight || plan.boundary !== lastBoundary) return false;
                 if (!sunBlocked) return true;
@@ -105,6 +105,7 @@ Singleton {
             variantProc.command = Hyde.present
                 ? [Paths.bin + "/kuwai-themes", "variant", pendingSun.phase]
                 : [Paths.bin + "/kuwai-look", "variant", pendingSun.phase, "--fetch"];
+            variantProc.command = variantProc.command.concat(["--boundary", pendingSun.boundary]);
             pendingSun = null;
             variantProc.running = true;
         }

@@ -2598,6 +2598,23 @@
    ]
   },
   {
+   "id": "theme/packs-loading",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "loading"
+    ]
+   ]
+  },
+  {
    "id": "theme/packs-downloading",
    "name": "theme",
    "panel": "ThemePanel",

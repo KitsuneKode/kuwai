@@ -205,9 +205,7 @@ def find_named_wall(name, repo_dir, stem):
             cand = os.path.join(folder, stem + ext)
             if os.path.isfile(cand):
                 return os.path.realpath(cand)
-    return next((item["path"] for item in installed_walls(ROOT)
-                 if os.path.splitext(os.path.basename(item["path"]))[0] == stem
-                 and os.path.basename(os.path.dirname(item["path"])).startswith(name + "-")), "")
+    return ""
 
 
 def find_theme_wall(name, repo_dir):
@@ -290,9 +288,14 @@ def find_variant_wall(name, repo_dir, variant, fetch=False):
     want = str(variant or "").strip().lower()
     if want not in ("day", "night") or not repo_dir:
         return ""
-    matching = [row for row in tsv_rows(repo_dir) if row.get("variant") == want]
+    rows = tsv_rows(repo_dir)
+    if {row["variant"] for row in rows if row["variant"]} != {"day", "night"}:
+        return ""
+    matching = [row for row in rows if row["variant"] == want]
+    downloads = {os.path.splitext(os.path.basename(item["path"]))[0]: item["path"]
+                 for item in installed_walls(ROOT) if item["pack"] == name}
     for row in matching:
-        found = find_named_wall(name, repo_dir, row["name"])
+        found = find_named_wall(name, repo_dir, row["name"]) or downloads.get(row["name"])
         if found:
             return found
     if fetch and matching and not is_personal_theme(repo_dir):
@@ -737,7 +740,7 @@ def cmd_status():
     }
 
 
-def cmd_variant(variant, theme_name=None, fetch=False):
+def cmd_variant(variant, theme_name=None, fetch=False, boundary=None):
     want = str(variant or "").strip().lower()
     if want not in ("day", "night"):
         raise SystemExit(f"kuwai-look: variant must be day or night, got {variant!r}")
@@ -750,8 +753,9 @@ def cmd_variant(variant, theme_name=None, fetch=False):
         if slug in all_dirs:
             tname = slug
             repo_dir = all_dirs[slug]
-    path = find_variant_wall(tname, repo_dir, want, fetch=fetch) if repo_dir else ""
     state_walls = load_screen_walls(STATE_HOME)
+    handled = bool(boundary and state_walls["sunBoundary"] == boundary)
+    path = find_variant_wall(tname, repo_dir, want, fetch=fetch) if repo_dir and not handled else ""
     outputs = inherited_outputs(state_walls, query_monitors())
     return {"ok": True, "theme": tname, "variant": want, "path": path, "outputs": outputs,
             "current": path == (state_walls["default"] or current_wall())}
@@ -762,17 +766,21 @@ def inherited_outputs(state_walls, monitors):
             and output_identity(m) not in state_walls["screens"]]
 
 
-def cmd_apply_variant(path, apply_live=True, mode=None):
+def cmd_apply_variant(path, apply_live=True, mode=None, boundary=None):
     real = os.path.realpath(path)
     if not os.path.isfile(real):
         return 1
     data = load_screen_walls(STATE_HOME)
+    if boundary and data["sunBoundary"] == boundary:
+        return 0
     monitors = query_monitors()
     outputs = inherited_outputs(data, monitors)
     if apply_live and outputs:
         if not apply_awww(real, output=",".join(outputs)):
             return 1
     data["default"] = real
+    if boundary:
+        data["sunBoundary"] = boundary
     save_screen_walls(STATE_HOME, data)
     focused = primary_monitor(monitors)
     if focused is None or focused.get("name") in outputs:
@@ -853,7 +861,7 @@ def cmd_list(include_personal=False):
         path = os.path.realpath(item["path"])
         if path not in seen:
             seen.add(path)
-            walls.append({**item, "path": path, "thumb": path, "current": path == cur_wall,
+            walls.append({"name": item["name"], "path": path, "thumb": path, "current": path == cur_wall,
                           "variant": variant_map.get(os.path.splitext(os.path.basename(path))[0], ""),
                           "palette": []})
     if cur_wall and os.path.isfile(cur_wall) and cur_wall not in seen:
@@ -900,6 +908,13 @@ def main(argv):
             raise SystemExit("kuwai-look: --output needs a value")
         output = args[idx + 1]
         args = args[:idx] + args[idx + 2:]
+    boundary = None
+    if "--boundary" in args:
+        idx = args.index("--boundary")
+        if idx + 1 >= len(args) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}:(day|night)", args[idx + 1]):
+            raise SystemExit("kuwai-look: invalid sunrise boundary")
+        boundary = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
     fetch_variant = "--fetch" in args
     args = [a for a in args if a != "--fetch"]
     theme_arg = None
@@ -922,9 +937,9 @@ def main(argv):
         with_lock(lambda: cmd_focus_wallpaper(apply_live))
         return 0
     if cmd == "apply-variant" and len(args) == 1:
-        return with_lock(lambda: cmd_apply_variant(args[0], apply_live, mode if "--mode" in rest else None))
+        return with_lock(lambda: cmd_apply_variant(args[0], apply_live, mode if "--mode" in rest else None, boundary))
     if cmd == "variant" and len(args) == 1:
-        res = cmd_variant(args[0], theme_name=theme_arg, fetch=fetch_variant)
+        res = cmd_variant(args[0], theme_name=theme_arg, fetch=fetch_variant, boundary=boundary)
         print(json.dumps(res))
         return 0
     if cmd == "theme" and len(args) == 1:

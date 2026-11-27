@@ -28,7 +28,7 @@ test('each boundary is requested once, including the first observation', () => {
   expect(fx.variantProc.running).toBe(false);
   fx.Settings.wallDayNight = true;
   schedule('day', '2026-11-28');
-  expect(fx.variantProc.command.slice(-3)).toEqual(['variant', 'day', '--fetch']);
+  expect(fx.variantProc.command.slice(-5)).toEqual(['variant', 'day', '--fetch', '--boundary', '2026-11-28:day']);
   fx.variantProc.running = false;
   fx.applyVariantResult(JSON.stringify({ path: '/w/sunrise.jpg', outputs: ['DP-3'] }), fx.lastBoundary);
   fx.onDayNightReady();
@@ -36,7 +36,7 @@ test('each boundary is requested once, including the first observation', () => {
   schedule('day', '2026-11-28');
   expect(fx.variantProc.running).toBe(false);
   schedule('night', '2026-11-28');
-  expect(fx.variantProc.command.slice(-3)).toEqual(['variant', 'night', '--fetch']);
+  expect(fx.variantProc.command.slice(-5)).toEqual(['variant', 'night', '--fetch', '--boundary', '2026-11-28:night']);
 });
 
 test('busy and blocked states defer the latest boundary and guard the handoff', () => {
@@ -65,5 +65,5 @@ test('busy and blocked states defer the latest boundary and guard the handoff', 
   expect(played).toHaveLength(2);
   expect(played[1].guard()).toBe(true);
   played[1].start();
-  expect(commands[0].slice(-2)).toEqual(['apply-variant', '/w/sunrise.jpg']);
+  expect(commands[0].slice(-4)).toEqual(['apply-variant', '/w/sunrise.jpg', '--boundary', '2026-11-29:day']);
 });

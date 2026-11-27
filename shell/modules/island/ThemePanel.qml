@@ -55,6 +55,7 @@ FocusScope {
         return !!it.current;
     }
     readonly property var modes: ["themes", "wallpapers", "live", "saver"]
+    readonly property real galleryTop: mode === "wallpapers" ? head.y + head.height + Theme.s3 : 66
     // Live wallpapers (bin/kuwai-wall json), with "Off" first: back to the still one.
     property var live: []
     readonly property var liveItems: [{ name: "Off", path: "", thumb: "", off: true, current: !live.some(x => x.current) }].concat(live)
@@ -335,6 +336,8 @@ FocusScope {
         else if (k === Qt.Key_Space && canPreview) { previewPlaying = !previewPlaying; event.accepted = true; return; }
         else if (k === Qt.Key_Question || (k === Qt.Key_Slash && (event.modifiers & Qt.ShiftModifier))) { guide = !guide; event.accepted = true; return; }
         else if (k === Qt.Key_Escape && guide) { guide = false; event.accepted = true; return; }
+        else if (k === Qt.Key_G && mode === "wallpapers") { togglePacks(); event.accepted = true; return; }
+        else if (k === Qt.Key_S && mode === "wallpapers" && canTargetScreen) wallScope = wallScope === "this" ? "all" : "this";
         else if (k === Qt.Key_F) toggleFav(current);
         else return;
         grid.positionViewAtIndex(current, GridView.Contain);
@@ -344,8 +347,9 @@ FocusScope {
     Item {
         id: head
         x: 22; y: 18
-        width: parent.width - 44; height: 36
+        width: parent.width - 44; height: picker.mode === "wallpapers" ? Math.max(tabs.implicitHeight, guideBtn.height) : 36
         Segmented {
+            id: tabs
             anchors.verticalCenter: parent.verticalCenter
             options: [{ id: "themes", label: "Themes" }, { id: "wallpapers", label: "Wallpapers" }, { id: "live", label: "Live" }, { id: "saver", label: "Screensaver" }]
             current: picker.mode
@@ -388,7 +392,7 @@ FocusScope {
     Item {
         id: preview
         visible: !picker.showPacks
-        anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: 66 }
+        anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: picker.galleryTop }
         width: 310
         readonly property var it: picker.items[picker.current] || null
         ClippingRectangle {
@@ -493,7 +497,14 @@ FocusScope {
             visible: !previewSkeleton.visible
             anchors { top: big.bottom; topMargin: 14; left: parent.left; right: parent.right }
             spacing: 6
-            Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: Theme.tTitle3; weight: Theme.wSemibold }
+            Label {
+                width: parent.width
+                wrapMode: picker.mode === "wallpapers" ? Text.Wrap : Text.NoWrap
+                maximumLineCount: picker.mode === "wallpapers" ? 2 : 1
+                elide: Text.ElideRight
+                text: preview.it ? preview.it.name.replace(/-/g, " ") : ""
+                size: Theme.tTitle3; weight: Theme.wSemibold
+            }
             // The palette, as one strip: the theme's own colours (its terminal
             // palette), or the wallpaper's wallbash colours.
             Item {
@@ -650,7 +661,7 @@ FocusScope {
     GridView {
         id: grid
         visible: !picker.showPacks
-        x: 16; y: 66
+        x: 16; y: picker.galleryTop
         width: parent.width - 32 - 330
         height: parent.height - y - 40
         cellWidth: Math.floor(width / picker.cols)
@@ -832,6 +843,7 @@ FocusScope {
                 .concat(picker.canPreview ? [["space", picker.previewPlaying ? "Stop preview" : "Preview"]] : [])
                 .concat(picker.mode === "saver" ? [["P", "Use and show now"]] : [])
                 .concat(picker.mode === "themes" ? [["F", "Favourite"]] : [])
+                .concat(picker.mode === "wallpapers" ? [["G", "Get more"]] : [])
             Row {
                 required property var modelData
                 spacing: 6

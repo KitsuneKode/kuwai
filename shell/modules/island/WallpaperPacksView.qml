@@ -67,7 +67,7 @@ Item {
                                 wrapMode: Text.Wrap
                                 text: card.downloading
                                     ? "Downloading… " + view.done + " of " + view.total + " verified"
-                                    : card.failed ? "Download failed. Try again."
+                                    : card.failed ? "Download failed."
                                     : card.modelData.images.length + " wallpapers · "
                                         + (card.modelData.images.reduce((sum, image) => sum + image.bytes, 0) / 1000000).toFixed(1) + " MB"
                                 size: Theme.tSub

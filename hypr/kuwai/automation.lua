@@ -253,8 +253,7 @@ local function sun_date_key(t, previous)
 	return string.format("%04d-%02d-%02d", d.year, d.month, d.day)
 end
 
-local function sun_schedule(t)
-	t = t or os.time()
+local function sun_phase(t)
 	local now = os.date("*t", t)
 	local h = (now.hour or 0) + (now.min or 0) / 60 + (now.sec or 0) / 3600
 	local rise, set
@@ -265,15 +264,18 @@ local function sun_schedule(t)
 		rise = tonumber(K.night.stop) or 6
 	end
 	local night = rise and set and (set > rise and (h >= set or h < rise) or set < rise and h >= set and h < rise)
-	local p = night and "night" or "day"
-	local previous = rise and set and (set > rise and night and h < rise or set < rise and not night and h < set)
-	local dkey = sun_date_key(t, previous)
-	return { phase = p, rise = rise, set = set, boundary = dkey .. ":" .. p }
+	return night and "night" or "day", rise, set, h
+end
+K.sun_phase = sun_phase
+
+local function sun_schedule(t)
+	t = t or os.time()
+	local phase, rise, set, h = sun_phase(t)
+	local previous = rise and set and (set > rise and phase == "night" and h < rise
+		or set < rise and phase == "day" and h < set)
+	return { phase = phase, rise = rise, set = set, boundary = sun_date_key(t, previous) .. ":" .. phase }
 end
 K.sun_schedule = sun_schedule
-K.sun_phase = function(t)
-	return sun_schedule(t).phase
-end
 
 function kuwai.sun_schedule(t)
 	local s = sun_schedule(t)

@@ -93,7 +93,8 @@ def load_screen_walls(state_home):
         for k, v in screens_raw.items()
         if isinstance(k, str) and k.strip() and isinstance(v, str) and v.strip()
     }
-    return {"schema": 1, "default": default_wall, "screens": screens}
+    boundary = raw.get("sunBoundary") if isinstance(raw.get("sunBoundary"), str) else ""
+    return {"schema": 1, "default": default_wall, "screens": screens, "sunBoundary": boundary}
 
 
 def save_screen_walls(state_home, data):
@@ -104,6 +105,7 @@ def save_screen_walls(state_home, data):
         "schema": 1,
         "default": str(data.get("default") or ""),
         "screens": dict(data.get("screens") or {}),
+        "sunBoundary": data.get("sunBoundary") or "",
     }
     tmp = os.path.join(parent, f".wallpapers-{os.getpid()}-{time.time_ns()}.tmp")
     with open(tmp, "w", encoding="utf-8") as f:
@@ -115,7 +117,9 @@ def save_screen_walls(state_home, data):
 
 def set_global_wall(state_home, image_path):
     real = os.path.realpath(image_path) if image_path else ""
-    return save_screen_walls(state_home, {"schema": 1, "default": real, "screens": {}})
+    data = load_screen_walls(state_home)
+    data.update(default=real, screens={})
+    return save_screen_walls(state_home, data)
 
 
 def set_screen_wall(state_home, output_id, image_path, fallback_wall=""):

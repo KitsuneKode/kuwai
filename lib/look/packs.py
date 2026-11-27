@@ -84,7 +84,7 @@ def installed_walls(root):
     except (OSError, ValueError, KeyError, AttributeError, TypeError):
         return []
     return [
-        {"path": str(install_path(pack) / image["file"]), "name": image["name"]}
+        {"path": str(install_path(pack) / image["file"]), "name": image["name"], "pack": pack["id"]}
         for pack in packs if installed(pack) for image in pack["images"]
     ]
 
@@ -112,7 +112,18 @@ def install(pack, progress):
                 )
                 if path.stat().st_size != image["bytes"] or sha256_file(path) != image["sha256"]:
                     raise ValueError(f"{image['file']}: wallpaper verification failed")
-                credits.append(f"{image['name']} — {image['author']} ({image['licence']})\n{image['page']}")
-            (staging / "CREDITS.txt").write_text("\n\n".join(credits) + "\n", encoding="utf-8")
-            os.rename(staging, folder)
+                licence = image["licence"]
+                cc = re.search(r"CC-(BY(?:-SA)?)-([0-9.]+)$", licence)
+                link = f"\nhttps://creativecommons.org/licenses/{cc[1].lower()}/{cc[2]}/" if cc else ""
+                credits.append(f"{image['name']} — {image['author']} ({licence})\n{image['page']}{link}")
+            (staging / "CREDITS.txt").write_text("Unmodified original images.\n\n" + "\n\n".join(credits) + "\n", encoding="utf-8")
+            backup = Path(work) / "previous"
+            if os.path.lexists(folder):
+                os.rename(folder, backup)
+            try:
+                os.rename(staging, folder)
+            except BaseException:
+                if os.path.lexists(backup):
+                    os.rename(backup, folder)
+                raise
             progress(total, total)
