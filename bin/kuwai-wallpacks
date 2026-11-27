@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import json
+import signal
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+from look.packs import catalog, install, installed
+
+
+def stop(_signum, _frame):
+    raise SystemExit(1)
+
+
+def main(args):
+    try:
+        packs = catalog(ROOT)
+        if args == ["list"]:
+            for pack in packs:
+                pack["installed"] = installed(pack)
+            print(json.dumps(packs))
+            return 0
+        if len(args) == 2 and args[0] == "download":
+            pack = next((pack for pack in packs if pack["id"] == args[1]), None)
+            if pack is None:
+                return 2
+            signal.signal(signal.SIGTERM, stop)
+            install(pack, lambda done, total: print(json.dumps({"done": done, "total": total}), flush=True))
+            return 0
+        return 2
+    except (OSError, ValueError, KeyError, AttributeError, TypeError, subprocess.SubprocessError) as error:
+        print(error, file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

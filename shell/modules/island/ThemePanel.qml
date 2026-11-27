@@ -24,12 +24,38 @@ FocusScope {
     focus: true
     implicitWidth: Theme.panelXL
     // Exactly three rows of cards between the header and the key hints.
-    implicitHeight: 66 + 3 * (Math.round(Math.floor((Theme.panelXL - 32 - 330) / 4) * 0.5625) + 40) + 40
+    implicitHeight: showPacks && packLoader.item
+        ? packLoader.y + packLoader.item.implicitHeight + Theme.s4
+        : Math.min(Theme.panelMaxH, 66 + 3 * (Math.round(Math.floor((Theme.panelXL - 32 - 330) / 4) * 0.5625) + 40)
+            + 40 + (Theme.textScale > 1.5 ? 80 : Theme.textScale > 1.1 ? 30 : 0))
 
     property bool previewPlaying: false
     onCurrentChanged: previewPlaying = false
     property string mode: Island.themeMode || "themes"      // themes | wallpapers | live | saver
+    property string wallScope: "all"
+    property bool showPacks: false
+    function togglePacks() {
+        guide = false;
+        showPacks = !showPacks;
+        if (showPacks) WallpaperPacks.refresh();
+    }
+    Connections {
+        target: WallpaperPacks
+        function onInstalled() { if (picker.listed) relist.restart(); }
+    }
+    readonly property string activeScreen: Island.screen || Screens.focusedName || ""
+    readonly property bool canTargetScreen: (info.monitors || []).some(m => m.name === activeScreen && m.identity)
+    function isItemCurrent(it) {
+        if (!it) return false;
+        if (mode === "wallpapers" && info.screenWallpapers) {
+            if (wallScope === "this") return it.path === info.screenWallpapers[activeScreen];
+            const paths = Object.values(info.screenWallpapers);
+            if (paths.length) return paths.every(path => path === it.path);
+        }
+        return !!it.current;
+    }
     readonly property var modes: ["themes", "wallpapers", "live", "saver"]
+    readonly property real galleryTop: mode === "wallpapers" ? head.y + head.height + Theme.s3 : 66
     // Live wallpapers (bin/kuwai-wall json), with "Off" first: back to the still one.
     property var live: []
     readonly property var liveItems: [{ name: "Off", path: "", thumb: "", off: true, current: !live.some(x => x.current) }].concat(live)
@@ -213,7 +239,8 @@ FocusScope {
         loops: Animation.Infinite
     }
     readonly property bool listed: mode === "themes" || mode === "wallpapers"     // what kuwai-themes lists
-    onModeChanged: { previewPlaying = false; current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
+    onCanTargetScreenChanged: if (!canTargetScreen) wallScope = "all"
+    onModeChanged: { showPacks = false; previewPlaying = false; current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
 
     function apply(i) {
         const it = items[i];
@@ -248,8 +275,9 @@ FocusScope {
         }
         // A wallpaper: the shell plays the change (services/WallFx: the new
         // picture grows out of the island); awww's own transition is off.
-        const path = it.path;
-        WallFx.play(path, () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", bin, useLook ? "set-wallpaper" : "wallpaper", path]));
+        if (wallScope === "this" && !canTargetScreen) return;
+        WallFx.playWallpaper(it.path, wallScope === "this" ? activeScreen : "");
+        relist.restart();
     }
     // What an apply did, said where you are looking: which one is being
     // applied (and a turning mark on its card), that it landed, or why it
@@ -293,6 +321,10 @@ FocusScope {
     readonly property int cols: Theme.textScale > 1.5 ? 2 : 4
     Keys.onPressed: event => {
         const k = event.key, cols = picker.cols;
+        if (showPacks) {
+            if (k === Qt.Key_Escape) { togglePacks(); event.accepted = true; }
+            return;
+        }
         if ([Qt.Key_Right, Qt.Key_Left, Qt.Key_Down, Qt.Key_Up].indexOf(k) >= 0) touched = true;
         if (k === Qt.Key_Right) current = Math.min(items.length - 1, current + 1);
         else if (k === Qt.Key_Left) current = Math.max(0, current - 1);
@@ -304,6 +336,8 @@ FocusScope {
         else if (k === Qt.Key_Space && canPreview) { previewPlaying = !previewPlaying; event.accepted = true; return; }
         else if (k === Qt.Key_Question || (k === Qt.Key_Slash && (event.modifiers & Qt.ShiftModifier))) { guide = !guide; event.accepted = true; return; }
         else if (k === Qt.Key_Escape && guide) { guide = false; event.accepted = true; return; }
+        else if (k === Qt.Key_G && mode === "wallpapers") { togglePacks(); event.accepted = true; return; }
+        else if (k === Qt.Key_S && mode === "wallpapers" && canTargetScreen) wallScope = wallScope === "this" ? "all" : "this";
         else if (k === Qt.Key_F) toggleFav(current);
         else return;
         grid.positionViewAtIndex(current, GridView.Contain);
@@ -313,8 +347,9 @@ FocusScope {
     Item {
         id: head
         x: 22; y: 18
-        width: parent.width - 44; height: 36
+        width: parent.width - 44; height: picker.mode === "wallpapers" ? Math.max(tabs.implicitHeight, guideBtn.height) : 36
         Segmented {
+            id: tabs
             anchors.verticalCenter: parent.verticalCenter
             options: [{ id: "themes", label: "Themes" }, { id: "wallpapers", label: "Wallpapers" }, { id: "live", label: "Live" }, { id: "saver", label: "Screensaver" }]
             current: picker.mode
@@ -322,12 +357,21 @@ FocusScope {
         }
         Ui.Button {
             id: guideBtn
+            visible: !picker.showPacks
             height: Theme.sp(30); size: Theme.tSub
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             text: picker.guide ? "Done" : "How to add"
             onClicked: picker.guide = !picker.guide
         }
+        Ui.Button {
+            visible: picker.mode === "wallpapers"
+            height: Theme.sp(30); size: Theme.tSub
+            anchors { right: picker.showPacks ? parent.right : guideBtn.left; rightMargin: picker.showPacks ? 0 : Theme.s2; verticalCenter: parent.verticalCenter }
+            text: picker.showPacks ? "Back to wallpapers" : "Get more"
+            onClicked: picker.togglePacks()
+        }
         Label {
+            visible: picker.mode !== "wallpapers"
             anchors { right: guideBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
             text: picker.mode === "saver" ? (Settings.screensaverWhen === "off" ? "Off · Settings → Screensaver"
                     : (Settings.screensaverWhen === "caffeine" ? "With Caffeine on" : "Before the lock") + " · after " + Idle.saverAfterText + " · P to see it")
@@ -336,7 +380,7 @@ FocusScope {
         }
         // Loading: the theme's name, in its own shape.
         Skeleton {
-            visible: picker.loading && picker.listed
+            visible: picker.loading && picker.mode === "themes"
             anchors { right: guideBtn.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
             width: 120; height: 12
             phase: picker.sheen
@@ -347,7 +391,8 @@ FocusScope {
     // theme's colours, and how to apply it.
     Item {
         id: preview
-        anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: 66 }
+        visible: !picker.showPacks
+        anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: picker.galleryTop }
         width: 310
         readonly property var it: picker.items[picker.current] || null
         ClippingRectangle {
@@ -452,7 +497,14 @@ FocusScope {
             visible: !previewSkeleton.visible
             anchors { top: big.bottom; topMargin: 14; left: parent.left; right: parent.right }
             spacing: 6
-            Label { width: parent.width; elide: Text.ElideRight; text: preview.it ? preview.it.name.replace(/-/g, " ") : ""; size: Theme.tTitle3; weight: Theme.wSemibold }
+            Label {
+                width: parent.width
+                wrapMode: picker.mode === "wallpapers" ? Text.Wrap : Text.NoWrap
+                maximumLineCount: picker.mode === "wallpapers" ? 2 : 1
+                elide: Text.ElideRight
+                text: preview.it ? preview.it.name.replace(/-/g, " ") : ""
+                size: Theme.tTitle3; weight: Theme.wSemibold
+            }
             // The palette, as one strip: the theme's own colours (its terminal
             // palette), or the wallpaper's wallbash colours.
             Item {
@@ -504,7 +556,7 @@ FocusScope {
                     color: picker.applyError !== "" && !applyLine.busy ? Theme.orange : Theme.textSecondary
                 }
             }
-            Label { visible: !applyLine.visible; text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: Theme.tSub; color: Theme.textSecondary }
+            Label { visible: !applyLine.visible; text: picker.isItemCurrent(preview.it) ? (picker.mode === "wallpapers" && picker.wallScope === "this" ? "In use on this screen" : "In use now") : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: Theme.tSub; color: Theme.textSecondary }
             Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: Theme.tFootnote; color: Theme.textTertiary }
             Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai saver add FILE.mp4 · guide: docs/manual/looks.md"; size: Theme.tFootnote; color: Theme.textTertiary }
         }
@@ -513,10 +565,28 @@ FocusScope {
     // Where colours come from, for every app at once (HyDE's wallbash mode):
     // the theme's own palette, or the wallpaper's (as it is, darkened, lightened).
     Column {
-        visible: picker.mode === "themes" || picker.mode === "wallpapers"
+        visible: !picker.showPacks && picker.listed
         anchors { right: parent.right; rightMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
         width: 310
-        spacing: 8
+        spacing: Theme.s2
+        Column {
+            visible: picker.mode === "wallpapers" && picker.canTargetScreen
+            width: parent.width
+            spacing: Theme.s1
+            Label {
+                visible: Theme.textScale <= 1.5
+                width: parent.width
+                elide: Text.ElideRight
+                text: "Apply to"
+                size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary
+            }
+            Segmented {
+                width: parent.width
+                options: [{ id: "all", label: "All screens" }, { id: "this", label: "This screen" }]
+                current: picker.wallScope
+                onPicked: id => picker.wallScope = id
+            }
+        }
         Label { text: "Colours"; size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary }
         Segmented {
             width: parent.width
@@ -564,7 +634,7 @@ FocusScope {
     }
     // Empty: listed, and nothing there.
     Column {
-        visible: !picker.loading && picker.listed && picker.items.length === 0
+        visible: !picker.showPacks && !picker.loading && picker.listed && picker.items.length === 0
         anchors.centerIn: grid
         width: grid.width - 40
         spacing: 6
@@ -584,13 +654,14 @@ FocusScope {
 
     // More that way: the rows fade, and a thumb shows while it scrolls.
 
-    ScrollFade { flickable: grid }
+    ScrollFade { flickable: grid; active: !picker.showPacks }
 
     ScrollHint { flickable: grid; inside: true }
 
     GridView {
         id: grid
-        x: 16; y: 66
+        visible: !picker.showPacks
+        x: 16; y: picker.galleryTop
         width: parent.width - 32 - 330
         height: parent.height - y - 40
         cellWidth: Math.floor(width / picker.cols)
@@ -607,7 +678,7 @@ FocusScope {
             required property var modelData
             required property int index
             readonly property bool on: index === picker.current
-            readonly property bool isCurrent: modelData.current
+            readonly property bool isCurrent: picker.isItemCurrent(modelData)
             width: grid.cellWidth; height: grid.cellHeight
 
             ClippingRectangle {
@@ -711,7 +782,9 @@ FocusScope {
                 spacing: 6
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 30
+                    width: parent.width - (picker.mode === "themes" ? Theme.sp(30) : 0)
+                    wrapMode: picker.mode === "wallpapers" ? Text.Wrap : Text.NoWrap
+                    maximumLineCount: picker.mode === "wallpapers" ? 2 : 1
                     elide: Text.ElideRight
                     text: card.modelData.name.replace(/-/g, " ")
                     size: Theme.tSub; weight: card.on ? Theme.wMedium : Theme.wRegular
@@ -759,7 +832,7 @@ FocusScope {
     Row {
         id: themeHints
         anchors { left: parent.left; leftMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
-        visible: picker.items.length > 0 && x + width <= preview.x - Theme.s2
+        visible: !picker.showPacks && picker.items.length > 0 && x + width <= preview.x - Theme.s2
         spacing: 14
         Repeater {
             // The keys that work on this tab. (It said "⇥ Themes" on Live, where
@@ -770,12 +843,29 @@ FocusScope {
                 .concat(picker.canPreview ? [["space", picker.previewPlaying ? "Stop preview" : "Preview"]] : [])
                 .concat(picker.mode === "saver" ? [["P", "Use and show now"]] : [])
                 .concat(picker.mode === "themes" ? [["F", "Favourite"]] : [])
+                .concat(picker.mode === "wallpapers" ? [["G", "Get more"]] : [])
             Row {
                 required property var modelData
                 spacing: 6
                 KeyCap { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0] }
                 Label { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; size: Theme.tFootnote; color: Theme.textTertiary }
             }
+        }
+    }
+
+    Loader {
+        id: packLoader
+        anchors { fill: parent; leftMargin: Theme.s4; rightMargin: Theme.s4; topMargin: head.y + head.height + Theme.s3 }
+        active: picker.showPacks
+        sourceComponent: WallpaperPacksView {
+            packs: WallpaperPacks.catalog
+            state: WallpaperPacks.catalogState
+            activePack: WallpaperPacks.activePack
+            failedPack: WallpaperPacks.failedPack
+            done: WallpaperPacks.done
+            total: WallpaperPacks.total
+            onDownload: pack => WallpaperPacks.download(pack)
+            onRefresh: WallpaperPacks.refresh()
         }
     }
 

@@ -1,0 +1,64 @@
+[
+  {
+    "id": "deep-field",
+    "name": "Deep Field",
+    "images": [
+      {
+        "file": "06-galactic-centre.jpg",
+        "name": "Galactic Centre",
+        "bytes": 18208443,
+        "sha256": "02bef1e230ec1a7be1b388b0e9cfe8352c3346287415ea4d9b99d28c30864733",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/0/00/Center_of_the_Milky_Way_Galaxy_IV_%E2%80%93_Composite.jpg",
+        "page": "https://commons.wikimedia.org/wiki/File:Center_of_the_Milky_Way_Galaxy_IV_%E2%80%93_Composite.jpg",
+        "licence": "PD",
+        "author": "NASA/JPL-Caltech/ESA/CXC/STScI"
+      },
+      {
+        "file": "08-w5-star-nursery.jpg",
+        "name": "W5 Star Nursery",
+        "bytes": 15276428,
+        "sha256": "e4482e9cab73bc2fac96680052187096f12bc1e2e3599dd13cf83a4c73459132",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/b/b9/W5_cropped.jpg",
+        "page": "https://commons.wikimedia.org/wiki/File:W5_cropped.jpg",
+        "licence": "PD",
+        "author": "NASA/JPL-Caltech"
+      },
+      {
+        "file": "10-whirlpool-galaxy.jpg",
+        "name": "Whirlpool Galaxy",
+        "bytes": 7720984,
+        "sha256": "93ebbea3dac198b330abde4da5c74119fc86ad5ebb324e53d9f29336aa3195dc",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Whirpool_galaxy.jpg",
+        "page": "https://commons.wikimedia.org/wiki/File:Whirpool_galaxy.jpg",
+        "licence": "CC-BY-4.0",
+        "author": "Taavi Niittee/Tõrva Astronoomiaklubi/Tõrva Astronomy Club"
+      }
+    ]
+  },
+  {
+    "id": "earthlight",
+    "name": "Earthlight",
+    "images": [
+      {
+        "file": "01-france-italy-border.jpg",
+        "name": "France–Italy Border at Night",
+        "bytes": 9295708,
+        "sha256": "1a3b2ab9968ca560530a2547e2414fd391968dd5038001e0611719052f0833af",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/6/69/City_Lights_at_Night_along_the_France-Italy_Border.JPG",
+        "page": "https://commons.wikimedia.org/wiki/File:City_Lights_at_Night_along_the_France-Italy_Border.JPG",
+        "licence": "PD",
+        "author": "NASA Expedition 23 crew"
+      },
+      {
+        "file": "11-sunrise-aurora-europe.jpg",
+        "name": "Sunrise over Northern Europe",
+        "bytes": 3402438,
+        "sha256": "3e888b37a8017f93ac3388bdaa27128bb6ad750bf9b43ccbbd144741c738c851",
+        "url": "https://upload.wikimedia.org/wikipedia/commons/c/c4/ISS-43_Earth_sunrise%2C_aurora_and_sparling_cities_in_northern_Europe.jpg",
+        "page": "https://commons.wikimedia.org/wiki/File:ISS-43_Earth_sunrise,_aurora_and_sparling_cities_in_northern_Europe.jpg",
+        "licence": "PD",
+        "author": "NASA"
+      }
+    ]
+  }
+]

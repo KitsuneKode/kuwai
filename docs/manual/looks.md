@@ -35,6 +35,10 @@ Every theme keeps kuwai's shared window geometry and motion curves (`hypr/kuwai/
 
 ## Wallpapers
 
+- Open **Themes → Wallpapers** on the display you want to change and choose **This screen** for a display-specific picture or **All screens** for a shared one. kuwai remembers a display by its hardware description when you reconnect it. Wallpaper-based colours follow the focused display.
+- Choose **Get more** to download Deep Field or Earthlight. The pictures appear in the wallpaper gallery once the full pack verifies. Each downloaded pack includes image credits and source links.
+- Enable **Settings → Screensaver → Day/night** to let a theme with paired pictures change the shared wallpaper at sunrise and sunset. kuwai keeps display-specific choices and waits until the screens are awake and unlocked.
+
 - Step through still wallpapers with **`Super+Alt+]`** (next) and **`Super+Alt+[`** (previous).
 - Set any image directly without HyDE: `kuwai-wall set ~/Pictures/image.jpg` (restored at login by `kuwai-wallpaper.service`).
 - Check whether a picture works well under the island and lock clock: `kuwai-wallcheck IMAGE`. Images with a dark, calm top 60 px strip keep the island legible.

@@ -100,6 +100,7 @@ Singleton {
     readonly property bool liveOnBattery: value("liveOnBattery")
     readonly property string fKeys: value("fKeys")
     readonly property string wallTransition: value("wallTransition")   // auto | shards | glass (services/WallFx)
+    readonly property bool wallDayNight: value("wallDayNight")
 
     function value(key) {
         if (root.values && Object.prototype.hasOwnProperty.call(root.values, key)) return root.values[key];

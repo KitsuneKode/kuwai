@@ -187,4 +187,32 @@ end
 L.apply_theme()
 L.apply_identity()
 
+if hl.on and K.bin and K.q then
+	local look = K.q(K.bin .. "/kuwai-look")
+	local focus_change = 0
+	hl.on("monitor.focused", function()
+		focus_change = focus_change + 1
+		local change = focus_change
+		hl.timer(function()
+			if change == focus_change then
+				hl.exec_cmd(look .. " focus-wallpaper")
+			end
+		end, { timeout = 180, type = "oneshot" })
+	end)
+	hl.on("monitor.added", function(m)
+		local name = type(m) == "table" and m.name or (type(m) == "string" and m or nil)
+		if not name or name == "" then
+			return
+		end
+		local cmd = look .. " restore --output " .. K.q(name)
+		if hl.timer then
+			hl.timer(function()
+				hl.exec_cmd(cmd)
+			end, { timeout = 300, type = "oneshot" })
+		else
+			hl.exec_cmd(cmd)
+		end
+	end)
+end
+
 return L

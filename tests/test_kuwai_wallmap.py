@@ -31,7 +31,15 @@ def test_first_map_on_a_fresh_cache(tmp_path):
     picture = tmp_path / "wall.png"
     Image.new("RGB", (1600, 900), (20, 20, 30)).save(picture)
 
-    env = {**os.environ, "XDG_DATA_HOME": str(data), "XDG_CACHE_HOME": str(cache), "KUWAI_WALLMAP_ROOM_KB": "0"}
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    scope = tools / "systemd-run"
+    scope.write_text('#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n')
+    scope.chmod(0o755)
+    run = tmp_path / "run"
+    run.mkdir()
+    env = {**os.environ, "PATH": f"{tools}:{os.environ['PATH']}", "XDG_RUNTIME_DIR": str(run),
+           "XDG_DATA_HOME": str(data), "XDG_CACHE_HOME": str(cache), "KUWAI_WALLMAP_ROOM_KB": "0"}
     r = subprocess.run([sys.executable, str(ROOT / "bin/kuwai-wallmap"), str(picture)], env=env, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stderr
     out = Path(r.stdout.strip())

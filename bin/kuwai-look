@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """kuwai-look: single flock-serialised writer for kuwai's wallpaper and palette contract.
 
-    kuwai-look set-wallpaper IMAGE [--mode auto|dark|light] [--no-apply]
+    kuwai-look set-wallpaper IMAGE [--mode auto|dark|light] [--output OUT] [--no-apply]
+    kuwai-look restore [--output OUT] [--no-apply]
+    kuwai-look focus-wallpaper [--no-apply]
+    kuwai-look variant day|night [--theme NAME] [--fetch]
     kuwai-look theme NAME [--mode theme|auto|dark|light] [--no-apply]
     kuwai-look mode theme|auto|dark|light [--no-apply]
     kuwai-look install REPO [SLUG]
@@ -28,8 +31,23 @@ if os.path.join(ROOT, "lib") not in sys.path:
     sys.path.insert(0, os.path.join(ROOT, "lib"))
 
 from look.extract import extract_image
+from look.packs import installed_walls
 from look.render import write_generation
 from look.roles import build_palette
+from look.screens import (
+    apply_awww_output,
+    connected_screen_walls,
+    load_screen_walls,
+    output_identity,
+    primary_monitor,
+    query_monitors,
+    resolve_output,
+    restore_screens,
+    save_screen_walls,
+    set_global_wall,
+    set_screen_wall,
+    wall_for_monitor,
+)
 
 HOME = os.path.expanduser("~")
 STATE_HOME = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local/state")
@@ -163,6 +181,8 @@ def tsv_rows(repo_dir):
             "name": name,
             "url": parts[1].strip(),
             "pin": parts[2].strip() if len(parts) > 2 else "",
+            "licence": parts[3].strip() if len(parts) > 3 else "",
+            "variant": parts[6].strip().lower() if len(parts) > 6 else "",
         })
     return rows
 
@@ -176,6 +196,18 @@ def theme_wall_dirs(name, repo_dir):
     return dirs
 
 
+def find_named_wall(name, repo_dir, stem):
+    search = list(theme_wall_dirs(name, repo_dir)) + [STATE_WALLS]
+    for folder in search:
+        if not os.path.isdir(folder):
+            continue
+        for ext in (".jpg", ".jpeg", ".png", ".webp", ".avif"):
+            cand = os.path.join(folder, stem + ext)
+            if os.path.isfile(cand):
+                return os.path.realpath(cand)
+    return ""
+
+
 def find_theme_wall(name, repo_dir):
     for d in theme_wall_dirs(name, repo_dir):
         img = first_image_in(d)
@@ -183,10 +215,9 @@ def find_theme_wall(name, repo_dir):
             return img
     if os.path.isdir(STATE_WALLS):
         for row in tsv_rows(repo_dir):
-            for ext in (".jpg", ".jpeg", ".png", ".webp", ".avif"):
-                cand = os.path.join(STATE_WALLS, row["name"] + ext)
-                if os.path.isfile(cand):
-                    return cand
+            found = find_named_wall(name, repo_dir, row["name"])
+            if found:
+                return found
     return ""
 
 
@@ -209,11 +240,12 @@ def image_ext_for_bytes(data):
     return ""
 
 
-def fetch_first_theme_wall(name, repo_dir):
-    rows = tsv_rows(repo_dir)
-    if not rows:
-        return ""
-    row = rows[0]
+class RejectRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch_tsv_row(name, repo_dir, row):
     url = row["url"]
     pin = row["pin"]
     if not url.startswith("https://") or not pin:
@@ -223,7 +255,7 @@ def fetch_first_theme_wall(name, repo_dir):
             url,
             headers={"User-Agent": "kuwai-look/1 (+https://github.com/KitsuneKode/kuwai)"},
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.build_opener(RejectRedirects()).open(req, timeout=30) as resp:
             data = resp.read(40 * 1024 * 1024 + 1)
     except Exception:
         return ""
@@ -243,6 +275,37 @@ def fetch_first_theme_wall(name, repo_dir):
     if os.path.isfile(credits):
         shutil.copyfile(credits, os.path.join(dest_dir, "CREDITS.txt"))
     return dest
+
+
+def fetch_first_theme_wall(name, repo_dir):
+    rows = tsv_rows(repo_dir)
+    if not rows:
+        return ""
+    return fetch_tsv_row(name, repo_dir, rows[0])
+
+
+def find_variant_wall(name, repo_dir, variant, fetch=False):
+    want = str(variant or "").strip().lower()
+    if want not in ("day", "night") or not repo_dir:
+        return ""
+    rows = tsv_rows(repo_dir)
+    if {row["variant"] for row in rows if row["variant"]} != {"day", "night"}:
+        return ""
+    matching = [row for row in rows if row["variant"] == want]
+    downloads = {os.path.splitext(os.path.basename(item["path"]))[0]: item["path"]
+                 for item in installed_walls(ROOT) if item["pack"] == name}
+    for row in matching:
+        found = find_named_wall(name, repo_dir, row["name"]) or downloads.get(row["name"])
+        if found:
+            return found
+    if fetch and matching and not is_personal_theme(repo_dir):
+        for row in matching:
+            if not row["pin"].startswith("sha256:") or row["licence"] not in {"PD", "CC0", "CC-BY-4.0", "CC-BY-SA-4.0"}:
+                continue
+            got = fetch_tsv_row(name, repo_dir, row)
+            if got:
+                return os.path.realpath(got)
+    return ""
 
 
 def theme_raw_from_dir(repo_dir):
@@ -314,28 +377,8 @@ def set_wall_symlink(image):
     os.replace(tmp, WALL_LINK)
 
 
-def apply_awww(image):
-    exe = shutil.which("awww")
-    if not exe or not image or not os.path.isfile(image):
-        return False
-    if subprocess.run([exe, "query"], stdin=subprocess.DEVNULL, capture_output=True).returncode != 0:
-        if shutil.which("awww-daemon"):
-            subprocess.Popen(
-                ["awww-daemon", "--format", "xrgb"],
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            for _ in range(40):
-                if subprocess.run([exe, "query"], stdin=subprocess.DEVNULL, capture_output=True).returncode == 0:
-                    break
-                time.sleep(0.05)
-    kind = os.environ.get("WALLPAPER_AWWW_TRANSITION_DEFAULT") or "fade"
-    how = ["--transition-type", "none"] if kind == "none" else ["--transition-type", "fade", "--transition-duration", "0.6"]
-    r = subprocess.run(
-        [exe, "img", image] + how,
-        stdin=subprocess.DEVNULL, capture_output=True,
-    )
-    return r.returncode == 0
+def apply_awww(image, output=None):
+    return apply_awww_output(image, output=output)
 
 
 def run_user_hooks(state):
@@ -362,11 +405,11 @@ def run_user_hooks(state):
     return errors
 
 
-def reload_consumers(image=None, mode="dark", state=None):
+def reload_consumers(image=None, mode="dark", state=None, output=None):
     errors = []
     if image:
         try:
-            apply_awww(image)
+            apply_awww(image, output=output)
         except OSError as ex:
             errors.append(f"awww: {ex}")
     if shutil.which("hyprctl") and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
@@ -407,26 +450,94 @@ def with_lock(fn):
         lock.close()
 
 
-def cmd_set_wallpaper(image, mode="dark", apply_live=True):
-    real = os.path.realpath(image)
-    if not os.path.isfile(real):
-        raise SystemExit(f"kuwai-look: no such image: {image}")
-    raw = extract_image(real, mode=mode, cache_dir=PALETTE_CACHE)
-    prev = load_json(os.path.join(LOOK_DIR, "state.json"), {})
-    gen = new_generation()
+def wallpaper_palette(image, mode, prev):
+    raw = extract_image(image, mode=mode, cache_dir=PALETTE_CACHE)
     palette = build_palette(
         raw,
-        source={"kind": "wallpaper", "name": prev.get("theme") or "", "wallpaper": real, "mode": mode},
-        generation=gen,
+        source={"kind": "wallpaper", "name": prev.get("theme") or "", "wallpaper": image, "mode": mode},
+        generation=new_generation(),
         mode=mode,
     )
     _, state = write_generation(LOOK_DIR, palette, custom_templates_dir=CUSTOM_TEMPLATES)
+    return state, palette
+
+
+def cmd_set_wallpaper(image, mode="dark", apply_live=True, output=None, fallback_wall=""):
+    real = os.path.realpath(image)
+    if not os.path.isfile(real):
+        raise SystemExit(f"kuwai-look: no such image: {image}")
+    prev = load_json(os.path.join(LOOK_DIR, "state.json"), {})
+    if output:
+        monitors = query_monitors()
+        connector, ident, monitor = resolve_output(output, monitors)
+        if monitor is None or not ident:
+            raise SystemExit("kuwai-look: screen identity unavailable")
+        if apply_live and not apply_awww(real, output=connector):
+            raise SystemExit("kuwai-look: could not apply the wallpaper")
+        set_screen_wall(STATE_HOME, ident, real, fallback_wall=fallback_wall or current_wall(), mode=mode)
+        focused = primary_monitor(monitors)
+        recolored = focused is not None and focused.get("name") == connector and mode != "theme"
+        state, palette, errors = prev, None, []
+        if recolored:
+            state, palette = wallpaper_palette(real, mode, prev)
+            if apply_live:
+                errors = reload_consumers(mode=palette["mode"], state=state)
+        if focused is not None and focused.get("name") == connector:
+            set_wall_symlink(real)
+        return {"ok": True, "output": connector, "outputId": ident, "wallpaper": real,
+                "recolored": recolored, "state": state, "palette": palette, "reloadErrors": errors}
+    state, palette = wallpaper_palette(real, mode, prev)
     set_wall_symlink(real)
-    reload_errors = reload_consumers(real, mode=palette["mode"], state=state) if apply_live else []
-    return {"ok": True, "state": state, "palette": palette, "reloadErrors": reload_errors}
+    set_global_wall(STATE_HOME, real)
+    errors = reload_consumers(real, mode=palette["mode"], state=state) if apply_live else []
+    return {"ok": True, "recolored": True, "state": state, "palette": palette, "reloadErrors": errors}
 
 
-def cmd_theme(name, mode="theme", apply_live=True):
+def current_wall():
+    return os.path.realpath(WALL_LINK) if os.path.isfile(WALL_LINK) else ""
+
+
+def cmd_focus_wallpaper(apply_live=True, wall=None, mode=None):
+    if wall is None:
+        data = load_screen_walls(STATE_HOME)
+        if not data["screens"]:
+            return
+        focused = primary_monitor(query_monitors())
+        if focused is None:
+            return
+        wall = wall_for_monitor(data, focused, current_wall())
+    if not wall:
+        return
+    if current_wall() != wall:
+        set_wall_symlink(wall)
+    prev = load_json(os.path.join(LOOK_DIR, "state.json"), {})
+    mode = mode or load_screen_walls(STATE_HOME)["colorMode"] or prev.get("mode")
+    if mode in ("auto", "dark", "light") and (prev.get("wallpaper") != wall or prev.get("mode") != mode):
+        state, palette = wallpaper_palette(wall, mode, prev)
+        if apply_live:
+            reload_consumers(mode=palette["mode"], state=state)
+
+
+def cmd_record_wallpaper(image, mode, apply_live=True):
+    real = os.path.realpath(image)
+    if not os.path.isfile(real):
+        return 1
+    data = load_screen_walls(STATE_HOME)
+    set_global_wall(STATE_HOME, real)
+    if data["screens"] or data["sunBoundary"]:
+        cmd_focus_wallpaper(apply_live, wall=real, mode=mode)
+    else:
+        set_wall_symlink(real)
+    return 0
+
+
+def cmd_restore(output=None, apply_live=True):
+    res = restore_screens(STATE_HOME, fallback_wall=current_wall(), target_output=output, apply_live=apply_live)
+    cmd_focus_wallpaper(apply_live, wall=res["primary"])
+    return {"ok": all(row["ok"] for row in res["restored"]), **res}
+
+
+def cmd_theme(name, mode="theme", apply_live=True, keep_wall=False):
     raw, _wall_dir = theme_raw(name)
     if raw is None:
         raise SystemExit(f"kuwai-look: unknown theme: {name}")
@@ -434,8 +545,8 @@ def cmd_theme(name, mode="theme", apply_live=True):
     meta = theme_meta(repo_dir) if repo_dir else {}
     if meta.get("mode"):
         raw = dict(raw, mode=meta["mode"])
-    wall = find_theme_wall(name, repo_dir) if repo_dir else ""
-    if not wall and apply_live and repo_dir and not is_personal_theme(repo_dir):
+    wall = current_wall() if keep_wall else find_theme_wall(name, repo_dir) if repo_dir else ""
+    if not wall and not keep_wall and apply_live and repo_dir and not is_personal_theme(repo_dir):
         wall = fetch_first_theme_wall(name, repo_dir)
     if not wall and os.path.exists(WALL_LINK):
         wall = os.path.realpath(WALL_LINK)
@@ -447,10 +558,11 @@ def cmd_theme(name, mode="theme", apply_live=True):
         mode=mode,
     )
     _, state = write_generation(LOOK_DIR, palette, custom_templates_dir=CUSTOM_TEMPLATES)
-    if wall and os.path.isfile(wall):
+    if wall and not keep_wall:
         set_wall_symlink(wall)
+        set_global_wall(STATE_HOME, wall)
     live_mode = meta.get("mode", "dark") if palette["mode"] == "theme" else palette["mode"]
-    reload_errors = reload_consumers(wall if wall and os.path.isfile(wall) else None, mode=live_mode, state=state) if apply_live else []
+    reload_errors = reload_consumers(wall if wall and not keep_wall else None, mode=live_mode, state=state) if apply_live else []
     return {"ok": True, "state": state, "palette": palette, "reloadErrors": reload_errors}
 
 
@@ -458,14 +570,20 @@ def cmd_mode(mode, apply_live=True):
     if mode not in MODES:
         raise SystemExit(f"kuwai-look: unknown mode: {mode}")
     cur = load_json(os.path.join(LOOK_DIR, "state.json"), {})
+    data = load_screen_walls(STATE_HOME)
+    if data["screens"]:
+        data["colorMode"] = mode
+        save_screen_walls(STATE_HOME, data)
     if mode == "theme":
         tname = cur.get("theme") or "kuwai-night"
         raw, _ = theme_raw(tname)
         if raw is not None:
-            return cmd_theme(tname, mode="theme", apply_live=apply_live)
-    wall = cur.get("wallpaper") or (os.path.realpath(WALL_LINK) if os.path.exists(WALL_LINK) else "")
+            return cmd_theme(tname, mode="theme", apply_live=apply_live, keep_wall=True)
+    wall = current_wall() or cur.get("wallpaper")
     if wall and os.path.isfile(wall):
-        return cmd_set_wallpaper(wall, mode=mode, apply_live=apply_live)
+        state, palette = wallpaper_palette(wall, mode, cur)
+        errors = reload_consumers(mode=palette["mode"], state=state) if apply_live else []
+        return {"ok": True, "state": state, "palette": palette, "reloadErrors": errors}
     return cmd_init(mode=mode, apply_live=apply_live, force=True)
 
 
@@ -587,6 +705,7 @@ def cmd_undo(apply_live=True):
     wall = (pal.get("source") or {}).get("wallpaper") or ""
     if wall and os.path.isfile(wall):
         set_wall_symlink(wall)
+        set_global_wall(STATE_HOME, wall)
     new_state = {
         "schema": 1,
         "generation": pal.get("generation") or prev.removeprefix("gen-"),
@@ -635,6 +754,54 @@ def cmd_status():
     }
 
 
+def cmd_variant(variant, theme_name=None, fetch=False, boundary=None):
+    want = str(variant or "").strip().lower()
+    if want not in ("day", "night"):
+        raise SystemExit(f"kuwai-look: variant must be day or night, got {variant!r}")
+    state = load_json(os.path.join(LOOK_DIR, "state.json"), {})
+    tname = theme_name or state.get("theme") or ""
+    all_dirs = theme_dirs(include_personal=True)
+    repo_dir = all_dirs.get(tname) or ""
+    if not repo_dir and tname:
+        slug = re.sub(r"[^a-z0-9]+", "-", tname.lower()).strip("-")
+        if slug in all_dirs:
+            tname = slug
+            repo_dir = all_dirs[slug]
+    state_walls = load_screen_walls(STATE_HOME)
+    handled = bool(boundary and state_walls["sunBoundary"] == boundary)
+    path = find_variant_wall(tname, repo_dir, want, fetch=fetch) if repo_dir and not handled else ""
+    outputs = inherited_outputs(state_walls, query_monitors())
+    return {"ok": True, "theme": tname, "variant": want, "path": path, "outputs": outputs,
+            "current": path == (state_walls["default"] or current_wall())}
+
+
+def inherited_outputs(state_walls, monitors):
+    return [m["name"] for m in monitors if isinstance(m, dict) and m.get("name")
+            and output_identity(m) not in state_walls["screens"]]
+
+
+def cmd_apply_variant(path, apply_live=True, mode=None, boundary=None):
+    real = os.path.realpath(path)
+    if not os.path.isfile(real):
+        return 1
+    data = load_screen_walls(STATE_HOME)
+    if boundary and data["sunBoundary"] == boundary:
+        return 0
+    monitors = query_monitors()
+    outputs = inherited_outputs(data, monitors)
+    if apply_live and outputs:
+        if not apply_awww(real, output=",".join(outputs)):
+            return 1
+    data["default"] = real
+    if boundary:
+        data["sunBoundary"] = boundary
+    save_screen_walls(STATE_HOME, data)
+    focused = primary_monitor(monitors)
+    if focused is None or focused.get("name") in outputs:
+        cmd_focus_wallpaper(apply_live, wall=real, mode=mode)
+    return 0
+
+
 def cmd_list(include_personal=False):
     state = load_json(os.path.join(LOOK_DIR, "state.json"), {})
     cur_theme = state.get("theme") or ""
@@ -677,7 +844,11 @@ def cmd_list(include_personal=False):
         os.path.join(HOME, "Pictures", "Wallpapers"),
         os.path.join(HOME, "Pictures", "wallpapers"),
     ]
+    variant_map = {}
     if cur_theme and cur_theme in all_dirs:
+        for row in tsv_rows(all_dirs[cur_theme]):
+            if row.get("variant"):
+                variant_map[row["name"]] = row["variant"]
         for d in reversed(theme_wall_dirs(cur_theme, all_dirs[cur_theme])):
             if d not in folders:
                 folders.insert(0, d)
@@ -691,13 +862,22 @@ def cmd_list(include_personal=False):
                     real = os.path.realpath(p)
                     if real not in seen:
                         seen.add(real)
+                        stem = os.path.splitext(fn)[0]
                         walls.append({
-                            "name": os.path.splitext(fn)[0],
+                            "name": stem,
                             "path": real,
                             "thumb": real,
                             "current": real == cur_wall,
+                            "variant": variant_map.get(stem, ""),
                             "palette": [],
                         })
+    for item in installed_walls(ROOT):
+        path = os.path.realpath(item["path"])
+        if path not in seen:
+            seen.add(path)
+            walls.append({"name": item["name"], "path": path, "thumb": path, "current": path == cur_wall,
+                          "variant": variant_map.get(os.path.splitext(os.path.basename(path))[0], ""),
+                          "palette": []})
     if cur_wall and os.path.isfile(cur_wall) and cur_wall not in seen:
         seen.add(cur_wall)
         walls.insert(0, {
@@ -707,6 +887,7 @@ def cmd_list(include_personal=False):
             "current": True,
             "palette": [],
         })
+    monitors, screen_walls = connected_screen_walls(STATE_HOME, fallback_wall=cur_wall)
     return {
         "schema": 1,
         "current": cur_theme,
@@ -714,6 +895,8 @@ def cmd_list(include_personal=False):
         "modes": MODES,
         "themes": themes,
         "wallpapers": walls,
+        "monitors": monitors,
+        "screenWallpapers": screen_walls,
     }
 
 
@@ -732,9 +915,54 @@ def main(argv):
             raise SystemExit("kuwai-look: --mode needs a value")
         mode = args[idx + 1]
         args = args[:idx] + args[idx + 2:]
+    output = None
+    if "--output" in args:
+        idx = args.index("--output")
+        if idx + 1 >= len(args):
+            raise SystemExit("kuwai-look: --output needs a value")
+        output = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+    fallback_wall = ""
+    if "--fallback-wall" in args:
+        idx = args.index("--fallback-wall")
+        if idx + 1 >= len(args):
+            raise SystemExit("kuwai-look: --fallback-wall needs a value")
+        fallback_wall = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+    boundary = None
+    if "--boundary" in args:
+        idx = args.index("--boundary")
+        if idx + 1 >= len(args) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}:(day|night)", args[idx + 1]):
+            raise SystemExit("kuwai-look: invalid sunrise boundary")
+        boundary = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+    fetch_variant = "--fetch" in args
+    args = [a for a in args if a != "--fetch"]
+    theme_arg = None
+    if "--theme" in args:
+        idx = args.index("--theme")
+        if idx + 1 >= len(args):
+            raise SystemExit("kuwai-look: --theme needs a value")
+        theme_arg = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
 
     if cmd == "set-wallpaper" and len(args) == 1:
-        res = with_lock(lambda: cmd_set_wallpaper(args[0], mode=mode, apply_live=apply_live))
+        res = with_lock(lambda: cmd_set_wallpaper(args[0], mode=mode, apply_live=apply_live, output=output, fallback_wall=fallback_wall))
+        print(json.dumps(res))
+        return 0
+    if cmd == "restore" and not args:
+        res = with_lock(lambda: cmd_restore(output=output, apply_live=apply_live))
+        print(json.dumps(res))
+        return 0 if res["ok"] else 1
+    if cmd == "record-wallpaper" and len(args) == 1:
+        return with_lock(lambda: cmd_record_wallpaper(args[0], mode, apply_live))
+    if cmd == "focus-wallpaper" and not args:
+        with_lock(lambda: cmd_focus_wallpaper(apply_live))
+        return 0
+    if cmd == "apply-variant" and len(args) == 1:
+        return with_lock(lambda: cmd_apply_variant(args[0], apply_live, mode if "--mode" in rest else None, boundary))
+    if cmd == "variant" and len(args) == 1:
+        res = cmd_variant(args[0], theme_name=theme_arg, fetch=fetch_variant, boundary=boundary)
         print(json.dumps(res))
         return 0
     if cmd == "theme" and len(args) == 1:

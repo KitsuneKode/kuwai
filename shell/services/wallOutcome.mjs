@@ -42,11 +42,13 @@ export function parseWanted(text) {
  * @param {Record<string, string>} before
  * @param {Record<string, string>} now
  * @param {string} wanted  the new picture, resolved
+ * @param {string[]} [targets]  optional subset of screen names to inspect
  * @returns {boolean}
  */
-export function unchanged(before, now, wanted) {
-    const keys = Object.keys(before || {});
-    const nowKeys = Object.keys(now || {});
+export function unchanged(before, now, wanted, targets) {
+    const scope = Array.isArray(targets) && targets.length ? targets : null;
+    const keys = scope ? scope.filter(k => Object.prototype.hasOwnProperty.call(before || {}, k)) : Object.keys(before || {});
+    const nowKeys = scope ? scope.filter(k => Object.prototype.hasOwnProperty.call(now || {}, k)) : Object.keys(now || {});
     if (!keys.length || !nowKeys.length) return false;
     const w = normalizePath(wanted);
     if (w && keys.every(k => normalizePath(before[k]) === w)) return false;

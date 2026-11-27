@@ -67,15 +67,18 @@ def remember(path):
 
 
 def still(step):
-    listed = run([os.path.join(BIN, "kuwai-themes"), "list"])
     walls, cur, themed = [], "", False
     try:
-        d = json.loads(listed.stdout)
-        walls = [w["path"] for w in d.get("wallpapers", [])]
-        cur = next((w["path"] for w in d.get("wallpapers", []) if w.get("current")), "")
-        themed = bool(walls)
-    except (ValueError, KeyError, TypeError, AttributeError):
+        listing = json.loads(run([os.path.join(BIN, "kuwai-themes"), "list"]).stdout)
+        themed = listing.get("backend") != "look"
+        if not themed:
+            listing = json.loads(run([os.path.join(BIN, "kuwai-look"), "list"]).stdout)
+        entries = listing.get("wallpapers", [])
+        walls = [wall["path"] for wall in entries]
+        cur = next((wall["path"] for wall in entries if wall.get("current")), "")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired):
         pass
+    themed = themed and bool(walls)
     if not walls:
         cur = os.path.realpath(os.path.join(STATE, "wallpaper"))
         folder = os.path.dirname(cur)

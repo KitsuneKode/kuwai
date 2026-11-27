@@ -2507,6 +2507,342 @@
    }
   },
   {
+   "id": "theme/this-screen",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "loading": false,
+    "mode": "wallpapers",
+    "info": {
+     "current": "earthlight",
+     "themes": [],
+     "wallpapers": [
+      {
+       "name": "Aurora from orbit",
+       "path": "/home/test/cover-sample.png",
+       "thumb": "/home/test/cover-sample.png",
+       "palette": []
+      }
+     ],
+     "monitors": [
+      {
+       "name": "DP-3",
+       "identity": "Acer XV272U V",
+       "wallpaper": "/home/test/cover-sample.png"
+      }
+     ],
+     "screenWallpapers": {
+      "DP-3": "/home/test/cover-sample.png"
+     }
+    },
+    "wallScope": "this"
+   },
+   "set": [
+    [
+     "Island",
+     "screen",
+     "DP-3"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-loading",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "loading"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-downloading",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ],
+    [
+     "WallpaperPacks",
+     "activePack",
+     "deep-field"
+    ],
+    [
+     "WallpaperPacks",
+     "done",
+     1
+    ],
+    [
+     "WallpaperPacks",
+     "total",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-failed",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ],
+    [
+     "WallpaperPacks",
+     "failedPack",
+     "earthlight"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-downloaded",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": true
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "ready"
+    ]
+   ]
+  },
+  {
+   "id": "theme/packs-unavailable",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "mode": "wallpapers",
+    "loading": false,
+    "showPacks": true
+   },
+   "set": [
+    [
+     "WallpaperPacks",
+     "catalog",
+     [
+      {
+       "id": "deep-field",
+       "name": "Deep Field",
+       "images": [
+        {
+         "bytes": 18208443
+        },
+        {
+         "bytes": 15276428
+        },
+        {
+         "bytes": 7720984
+        }
+       ],
+       "installed": false
+      },
+      {
+       "id": "earthlight",
+       "name": "Earthlight",
+       "images": [
+        {
+         "bytes": 9295708
+        },
+        {
+         "bytes": 3402438
+        }
+       ],
+       "installed": false
+      }
+     ]
+    ],
+    [
+     "WallpaperPacks",
+     "catalogState",
+     "error"
+    ]
+   ]
+  },
+  {
    "id": "usage/typical",
    "name": "usage",
    "panel": "UsagePanel",
@@ -14648,6 +14984,26 @@
     "loading": false,
     "error": "Couldn't look through your agents' skills"
    }
+  },
+  {
+   "id": "settings/day-night-wallpaper",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "props": {
+    "current": 12,
+    "searchText": "sunrise"
+   },
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "wallDayNight",
+      true
+     ]
+    ]
+   ]
   },
   {
    "id": "settings/saver",
