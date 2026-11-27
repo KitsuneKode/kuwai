@@ -24,12 +24,16 @@ keyed by the picture's path, size and time, so an edited picture gets a new one.
 """
 import hashlib
 import os
+import fcntl
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 HOME = Path.home()
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "kuwai" / "wallmaps"
+CUTOUT_MEMORY = os.environ.get("KUWAI_WALLMAP_MEMORY", "8G")
+CUTOUT_ROOM = 10 * 1024 * 1024
 VENV = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "kuwai-data" / "cutout" / "venv"
 MODEL = "birefnet-general-lite"
 WIDTH = 640
@@ -42,6 +46,17 @@ def key(picture: Path) -> Path:
     return CACHE / f"{h}.png"
 
 
+def available_kb() -> int:
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1])
+    except (OSError, ValueError):
+        pass
+    return 0
+
+
 def cutout(picture: Path):
     """The subject as a float mask in [0, 1], at WIDTH, or None."""
     py = VENV / "bin" / "python"
@@ -51,14 +66,30 @@ def cutout(picture: Path):
     out = CACHE / (key(picture).stem + ".mask.png")
     if not out.exists():
         script = (
-            "import sys; from rembg import new_session, remove; from PIL import Image;"
-            f"s = new_session('{MODEL}');"
+            "import sys, onnxruntime as ort; from rembg import new_session, remove; from PIL import Image;"
+            "o = ort.SessionOptions(); o.enable_cpu_mem_arena = False; o.enable_mem_pattern = False; o.intra_op_num_threads = 2;"
+            f"s = new_session('{MODEL}', sess_opts=o);"
             "im = Image.open(sys.argv[1]).convert('RGB'); im.thumbnail((1024, 1024));"
             "remove(im, session=s, only_mask=True).save(sys.argv[2])"
         )
-        r = subprocess.run([str(py), "-I", "-c", script, str(picture), str(out)],
-                           capture_output=True, timeout=180)
+        if available_kb() < CUTOUT_ROOM:
+            return None
+        run = os.environ.get("XDG_RUNTIME_DIR") or str(CACHE)
+        lock = open(os.path.join(run, "kuwai-wallmap.lock"), "w")
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return None
+        cmd = [str(py), "-I", "-c", script, str(picture), str(out)]
+        if shutil.which("systemd-run"):
+            cmd = ["systemd-run", "--user", "--scope", "--quiet", "--collect", "-p", "MemoryMax=" + CUTOUT_MEMORY, "-p", "MemorySwapMax=0",
+                   "-p", "CPUWeight=10", "--setenv=OMP_NUM_THREADS=2", "--setenv=ORT_NUM_THREADS=2", "--"] + cmd
+        try:
+            r = subprocess.run(cmd, capture_output=True, timeout=180)
+        finally:
+            lock.close()
         if r.returncode != 0 or not out.exists():
+            out.unlink(missing_ok=True)
             return None
     return load_mask(out)
 

@@ -22,13 +22,18 @@ float sdBox(vec2 p, vec2 b, float r) {
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
+float hist(int i) {
+    vec4 h = i < 4 ? hist0 : hist1;
+    int k = i < 4 ? i : i - 4;
+    return k == 0 ? h.x : k == 1 ? h.y : k == 2 ? h.z : h.w;
+}
+
 float level(float s) {
     float f = clamp(s, 0.0, 1.0) * 7.0;
     int i = int(floor(f));
     float t = f - float(i);
-    float v[8] = float[8](hist0.x, hist0.y, hist0.z, hist0.w, hist1.x, hist1.y, hist1.z, hist1.w);
-    float a = v[min(i, 7)];
-    float b = v[min(i + 1, 7)];
+    float a = hist(min(i, 7));
+    float b = hist(min(i + 1, 7));
     return mix(a, b, smoothstep(0.0, 1.0, t));
 }
 

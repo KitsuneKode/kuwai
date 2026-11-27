@@ -125,7 +125,7 @@ Scope {
                     border.width: 1; border.color: Theme.edge(1)
                     opacity: want ? 1 : 0
                     visible: opacity > 0.01
-                    Behavior on opacity { NumberAnimation { duration: want ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Behavior on opacity { NumberAnimation { duration: caption.want ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                     Label {
                         id: words
                         anchors.centerIn: parent

@@ -48,3 +48,11 @@ def test_without_the_model_a_miss_says_so_and_nothing_is_started(tmp_path):
     r = subprocess.run([sys.executable, str(ROOT / "bin/kuwai-wallmap"), "--cached", str(picture)], env=env, capture_output=True, text=True, timeout=60)
     assert r.returncode == 2, "WallFx starts a background map only on a miss with the model there (exit 1)"
     assert "if (code === 1 && root.phase" in (ROOT / "shell/services/WallFx.qml").read_text()
+
+
+def test_the_cut_out_runs_alone_in_its_own_capped_scope_and_only_with_room():
+    src = (Path(__file__).resolve().parents[1] / "bin/kuwai-wallmap").read_text()
+    assert "fcntl.LOCK_EX | fcntl.LOCK_NB" in src, "a second cut-out while one runs is skipped, never stacked (two filled 24 GB on 2026-11-27)"
+    assert '"systemd-run", "--user", "--scope"' in src and '"MemoryMax=" + CUTOUT_MEMORY' in src and '"MemorySwapMax=0"' in src
+    assert "if available_kb() < CUTOUT_ROOM:" in src
+    assert "o.enable_cpu_mem_arena = False" in src

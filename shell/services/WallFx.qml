@@ -78,7 +78,7 @@ Singleton {
         phase = "";
         startFn = null;
         loadLimit.stop(); watchdog.stop(); settleLimit.stop();
-        handOff.stop(); beginReveal.stop(); recheck.stop(); after.stop();
+        handOff.stop(); recheck.stop(); landed.stop(); after.stop();
         reveal.stop();
     }
     function bail(why) {
@@ -143,26 +143,26 @@ Singleton {
         phase = "covered";
         handOff.restart();
     }
-    // Two frames for the cover to be on screen before awww switches under it.
+    // Two frames for the cover to be on screen, then the reveal plays alone:
+    // the apply and the recolour wait under the finished cover.
     Timer {
         id: handOff
         interval: 50
-        onTriggered: {
-            if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
-            if (root.startFn) root.startFn();
-            root.startFn = null;
-            beginReveal.restart();
-        }
+        onTriggered: { root.mode = root.pick(); root.phase = "revealing"; reveal.restart(); }
     }
-    // HyDE recolours before awww switches; the reveal waits for neither (the
-    // cover holds), it just shouldn't start before the command has.
-    Timer { id: beginReveal; interval: 250; onTriggered: { root.mode = root.pick(); root.phase = "revealing"; reveal.restart(); } }
     NumberAnimation {
         id: reveal
         target: root; property: "t"; from: 0; to: 1
         duration: Theme.wallRevealMs
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeDrawer
-        onFinished: { root.phase = "settling"; settleLimit.restart(); check.running = true; }
+        onFinished: {
+            if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
+            if (root.startFn) root.startFn();
+            root.startFn = null;
+            root.phase = "settling";
+            settleLimit.restart();
+            check.running = true;
+        }
     }
 
     // At t = 1 the layer is the new picture; it may go once awww is too.
@@ -174,13 +174,14 @@ Singleton {
                 if (root.phase !== "settling") return;
                 const now = root.parse(text), want = root.next;
                 const done = Object.keys(now).length > 0 && Object.keys(now).every(k => now[k] === want || now[k].endsWith("/" + want.split("/").pop()));
-                if (done) root.finish("revealed");
+                if (done) landed.restart();
                 else recheck.restart();
             }
         }
     }
-    Timer { id: recheck; interval: 250; onTriggered: if (root.phase === "settling") check.running = true }
-    Timer { id: settleLimit; interval: 2000; onTriggered: if (root.phase === "settling") root.force("awww hadn't switched") }
+    Timer { id: recheck; interval: 120; onTriggered: if (root.phase === "settling") check.running = true }
+    Timer { id: landed; interval: 120; onTriggered: if (root.phase === "settling") root.finish("revealed") }
+    Timer { id: settleLimit; interval: 4000; onTriggered: if (root.phase === "settling") root.force("awww hadn't switched") }
 
     function force(why) {
         Quickshell.execDetached(["awww", "img", next, "--transition-type", "none"]);

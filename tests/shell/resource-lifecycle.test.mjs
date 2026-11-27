@@ -159,13 +159,13 @@ test('a new wallpaper selection cancels previous hand-off, reveal and fallback w
   const old = () => calls.push('old');
   const s = functions('shell/services/WallFx.qml', ['play','cancelTransition'], {
     phase:'covered', startFn:old,
-    ...Object.fromEntries(['loadLimit','watchdog','settleLimit','handOff','beginReveal','recheck','after','reveal']
+    ...Object.fromEntries(['loadLimit','watchdog','settleLimit','handOff','recheck','landed','after','reveal']
       .map(name => [name,{stop(){calls.push(name);}}])),
   });
   s.play('/latest.png', () => calls.push('new'));
   expect(s.phase).toBe('');
   expect(s.startFn).toBeNull();
-  expect(calls).toEqual(['loadLimit','watchdog','settleLimit','handOff','beginReveal','recheck','after','reveal','new']);
+  expect(calls).toEqual(['loadLimit','watchdog','settleLimit','handOff','recheck','landed','after','reveal','new']);
 });
 
 
