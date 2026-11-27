@@ -26,6 +26,7 @@ kuwai-setup: install kuwai from a signed release, never from the folder this run
   5. that release's install.sh, as you (INSTALL OPTIONS go to it: install.sh --help)
 
 Without a terminal for sudo, step 4 is printed for you to run later, and the rest goes on.
+When root refuses the release (older than root's, or changed since step 3), nothing is installed.
 KUWAI_USAGE
 }
 
@@ -94,7 +95,7 @@ if [ "$(readlink "$LIB/current" 2>/dev/null)" = "releases/$name" ]; then
     echo "Root's copy is $name already."
 elif [ -n "${KUWAI_SYSROOT:-}" ] || { [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; }; then
     echo "Copying $name for root (sudo, once): root checks its copy again and installs only that."
-    "${root_cmd[@]}" || { echo "kuwai-setup: root's copy wasn't made; nothing that needs root was changed." >&2; [ $MODE = system ] && exit 1; }
+    "${root_cmd[@]}" || { echo "kuwai-setup: root didn't take $name (its reason is above), so nothing was installed." >&2; exit 1; }
 else
     KEEP=1
     echo "Root's copy needs sudo and a terminal. Run this later (the checked copy stays until then):"

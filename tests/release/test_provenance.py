@@ -228,6 +228,22 @@ def test_root_checks_a_release_with_its_own_verifier_once_it_has_one(tmp_path, r
             assert "install" in log.read_text().split(), "a verifier others can write isn't root's"
 
 
+def test_setup_installs_nothing_after_root_refuses_the_release(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    k.git(repo, "commit", "-q", "--allow-empty", "-m", "next")
+    k.release(repo, "v1.1.0")
+    d = setup_dir(tmp_path, k, k.mine)
+    sysroot = tmp_path / "sys"
+    sysroot.mkdir()
+    assert run_setup(tmp_path, d, "--source", repo, "--system", sysroot=sysroot).returncode == 0
+    r = run_setup(tmp_path, d, "--source", repo, "--tag", "v1.0.0", sysroot=sysroot)
+    assert r.returncode != 0 and "older than root's v1.1.0" in r.stderr
+    assert "nothing was installed" in r.stderr
+    assert not (tmp_path / "ran").exists(), "your half never installs a release root refused"
+
+
 @pytest.mark.parametrize("signed_by", ["theirs", "nobody"])
 def test_setup_runs_nothing_from_a_release_it_cant_check(tmp_path, release_keys, signed_by):
     k = release_keys
