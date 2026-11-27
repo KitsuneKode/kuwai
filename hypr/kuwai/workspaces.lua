@@ -73,10 +73,13 @@ end
 local function has_internal(mons)
 	for _, o in ipairs(mons or hl.get_monitors() or {}) do
 		if is_internal(o) then
+			if K.state["wsinternal"] ~= "1" then
+				K.set_state("wsinternal", "1")
+			end
 			return true
 		end
 	end
-	return false
+	return K.state["wsinternal"] == "1"
 end
 
 function W.block(m)

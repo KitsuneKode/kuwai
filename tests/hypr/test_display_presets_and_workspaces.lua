@@ -337,6 +337,16 @@ do
 end
 
 do
+	local lid = { { name = "eDP-1", description = "Built-in Panel" } }
+	local _, seen = fresh_workspaces(lid)
+	local Wl = fresh_workspaces(lid, seen)
+	Wl.block(lid[1])
+	local docked = { { name = "HDMI-A-1", description = "LG 27GP850 NEW123" } }
+	local Wd = fresh_workspaces(docked, { wsinternal = "1" })
+	check(Wd.block(docked[1]) ~= 0, "laptop docked with the lid shut: a new monitor never takes the panel's workspaces 1-10")
+end
+
+do
 	local mons = {
 		{ name = "DP-1", make = "LG Electronics", model = "LG ULTRAGEAR", serial = "", description = "LG Electronics LG ULTRAGEAR" },
 		{ name = "DP-2", make = "LG Electronics", model = "LG ULTRAGEAR", serial = "", description = "LG Electronics LG ULTRAGEAR" },
