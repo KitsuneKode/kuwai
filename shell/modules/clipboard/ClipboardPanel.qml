@@ -20,7 +20,7 @@
 // fade out early, the shelf's cards rise in late, 22ms apart. Interruptible
 // both ways. Reduce Motion: it just appears.
 //
-// Keys: ←→ (or ↑↓) move · ↵ paste into the window you came from (named in
+// Keys: ↑↓ move (←→ too, search empty) · ↵ paste into the window you came from (named in
 // the footer) · ⇧↵ copy · ⌃↵ open with its app · Space/⌃Y Quick Look ·
 // ⌃K every action · ⌃E edit then paste · ⌃P pin · ⌃O text from an image ·
 // ⌃S save image · ⇧⌦/⌃X delete (⌃Z brings it back for a few seconds) ·
@@ -489,9 +489,9 @@ Scope {
             { k: ["⌃", "H"], t: "Show or hide a secret" },
             { k: ["⌃", "↵"], t: "Open it where it belongs (Cider, browser…)" } ] },
         { title: "Move", items: [
-            { k: ["←", "→"], t: "Previous or next card, always (also ↑ ↓)" },
-            { k: ["⌃", "← →"], t: "Move the search cursor by word (Home / End: its ends)" },
-            { k: ["⇧", "← →"], t: "Mark several (⌃-click one, ⇧-click a run, ⌃A all)" },
+            { k: ["↑", "↓"], t: "Previous or next card, always (← → too while the search is empty)" },
+            { k: ["←", "→"], t: "While you search: move in the text (⌃ by word, ⇧ selects, Home / End its ends)" },
+            { k: ["⇧", "← →"], t: "Search empty: mark several (⌃-click one, ⇧-click a run, ⌃A all)" },
             { k: ["PgUp", "PgDn"], t: "Five at a time" },
             { k: ["⌃", "Home"], t: "First or last (⌃End)" },
             { k: ["⇥"], t: "Next filter (⇧⇥ back)" },
@@ -1583,16 +1583,17 @@ Scope {
         else if (ctrl && !shift && k === Qt.Key_Z) { if (!undoDelete()) return; }
         else if (alt && k === Qt.Key_Left) backToLast();
         else if (shift && (k === Qt.Key_Right || k === Qt.Key_Left) && !ctrl) {
+            if (field && field.text !== "") return;
             const i = entries.findIndex(r => r.key === selKey);
             const j = Math.max(0, Math.min(entries.length - 1, i + (k === Qt.Key_Right ? 1 : -1)));
             if (i >= 0 && entries[j]) { mark(selKey, true); markRange(entries[j].key); }
         }
         else if (ctrl && k === Qt.Key_A && field && field.text === "") markAll();
-        // One rule, whatever is typed: ← → move between cards (the shelf is
-        // horizontal, as in macOS's Paste). The search keeps its editing keys:
-        // Backspace, Home / End, and Ctrl+← → to jump by word. (Switching ← →
-        // between caret and cards depending on the field felt like two tools.)
-        else if (ctrl && (k === Qt.Key_Left || k === Qt.Key_Right) && field && field.text !== "") return;
+        // While the search holds text, ← → (and ⇧, ⌃) are the text's: you can
+        // go back and fix a word. ↑ ↓ always move between cards. With nothing
+        // typed, ← → move between cards too (the shelf is horizontal). Taking
+        // ← → for cards mid-word made editing the search impossible.
+        else if ((k === Qt.Key_Left || k === Qt.Key_Right) && !alt && field && field.text !== "") return;
         // (⌃P is Pin: it was also "previous card" here, first, so pinning broke.)
         else if (k === Qt.Key_Right || k === Qt.Key_Down) move(1);
         else if (k === Qt.Key_Left || k === Qt.Key_Up) move(-1);
