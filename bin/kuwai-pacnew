@@ -24,6 +24,7 @@ import sys
 
 HELPER = "/usr/local/lib/kuwai/kuwai-update-root"
 HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-update-root")
+RELEASE = "/usr/local/lib/kuwai/current"
 KEEP = {"/etc/pacman.d/mirrorlist": "reflector keeps your mirror list fresh"}
 
 
@@ -168,6 +169,15 @@ def describe(path):
     return item
 
 
+def helper_how():
+    """How to put kuwai-update-root in place from here."""
+    if os.path.lexists(RELEASE):
+        return "Install it once with `kuwai update install-helper` (from root's checked copy of kuwai; it asks for the password)."
+    return ("Root has no checked copy of a signed kuwai release yet (kuwai setup makes one); until then, run "
+            "`kuwai update install-helper --trust-clone` once, which installs the helper from your own copy of kuwai "
+            "as it is, trusting every file in that copy.")
+
+
 def helper_cmd():
     """pkexec the installed root helper; None when it is missing or not this version's
     (installing it is its own reviewed step: kuwai update install-helper)."""
@@ -191,8 +201,7 @@ def apply(raw):
     cmd = helper_cmd()
     if not cmd:
         print(json.dumps({"ok": False, "done": 0, "log": [
-            "kuwai-update-root is missing or not this version's. Install it once with `kuwai update install-helper` "
-            "(it shows what it installs and asks for the password), then apply again."]}))
+            "kuwai-update-root is missing or not this version's. " + helper_how() + " Then apply again."]}))
         return 1
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     log, rc, results = [], 1, []

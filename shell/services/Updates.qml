@@ -646,9 +646,11 @@ Singleton {
     // One password per update: `kuwai update install-helper` puts kuwai-update-root
     // in place (root-owned; asks for the password this once).
     property string helperState: ""     // "", "working", "done", "failed"
+    property string helperError: ""
     function setupOnePrompt() {
         if (helperProc.running) return;
         helperState = "working";
+        helperError = "";
         helperProc.running = true;
     }
     Process {
@@ -656,8 +658,11 @@ Singleton {
         command: [root.bin, "install-helper"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.helperState = JSON.parse(text.trim().split("\n").pop()).installed ? "done" : "failed"; }
-                catch (e) { root.helperState = "failed"; }
+                try {
+                    const r = JSON.parse(text.trim().split("\n").pop());
+                    root.helperError = r.installed ? "" : String(r.error || "");
+                    root.helperState = r.installed ? "done" : "failed";
+                } catch (e) { root.helperState = "failed"; }
             }
         }
     }

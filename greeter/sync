@@ -5,7 +5,12 @@ KUWAI="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 H="$DEST/home"
 
 if [ "$(id -u)" -ne 0 ] && [ -O "$DEST" ] && [ -w "$DEST" ]; then
-    echo "kuwai greeter: the login screen's code is writable by you, so nothing is copied into it; run: sudo $KUWAI/greeter/install --code" >&2
+    LIB=${KUWAI_SYSROOT:-}/usr/local/lib/kuwai
+    if [ -e "$LIB/current" ] || [ -L "$LIB/current" ]; then
+        echo "kuwai greeter: the login screen's code is writable by you, so nothing is copied into it; run: sudo $LIB/current/greeter/install --code" >&2
+    else
+        echo "kuwai greeter: the login screen's code is writable by you, so nothing is copied into it. Root has no checked copy of a signed kuwai release yet (kuwai setup makes one); until then: sudo $KUWAI/greeter/install --code --trust-clone (installs this copy's code as it is, trusting it)" >&2
+    fi
     exit 0
 fi
 [ -d "$H" ] && [ -w "$H" ] || exit 0

@@ -5,6 +5,8 @@ no file is read, changed or removed.
 """
 import importlib.machinery
 import importlib.util
+import io
+import json
 import os
 from pathlib import Path
 
@@ -201,7 +203,7 @@ def test_held_names_are_package_names_only(ur, hold):
 def test_held_packages_stay_out_of_the_plan_and_the_upgrade(ur, monkeypatch):
     ran, printed = [], []
     monkeypatch.setattr(ur, "pacman", lambda args: ran.append(args) or 0)
-    monkeypatch.setattr(ur.subprocess, "run", lambda cmd, **kw: printed.append(cmd) or type("R", (), {"stdout": "linux 7.3-1\n"})())
+    monkeypatch.setattr(ur.subprocess, "run", lambda cmd, **kw: printed.append(cmd) or type("R", (), {"returncode": 0, "stdout": "linux 7.3-1\n"})())
     monkeypatch.setattr(ur, "say", lambda **kw: None)
     ignore = ["--ignore", ",".join(ur.names({"hold": ["nvidia-dkms", "linux"]}, "hold"))]
     assert ur.resolved(ignore) == ["linux 7.3-1"]
@@ -218,13 +220,108 @@ def test_pacnew_never_takes_accounts_or_disks(ur, etc, name):
     assert (d / name).read_text() == "yours"
 
 
-def test_the_helper_does_only_what_the_prompt_named(ur):
-    assert ur.allowed_ops(["upgrade", "install"]) == {"upgrade", "install"}
-    assert ur.allowed_ops([]) is None, "nothing named: nothing allowed"
-    assert ur.allowed_ops(["upgrade", "rm"]) is None, "an unknown operation refuses the run"
-    src = (ROOT / "bin" / "kuwai-update-root").read_text()
-    assert "wasn't named at the password prompt" in src
-    assert 'pacman(["-Syu", "--noconfirm", "--needed", *ignore])' in src, "the upgrade itself is one -Syu"
+PLAN = ["linux 7.3-1", "mesa 26.1-1"]
+
+
+def test_the_prompt_names_the_whole_transaction(ur):
+    tok = ur.plan_token(PLAN)
+    assert ur.prompt_terms([f"upgrade={tok}", "hold=b,a", "deps=meson", "install=foo", "clean-cache=2"]) == \
+        {"upgrade": tok, "hold": ["a", "b"], "deps": ["meson"], "install": ["foo"], "clean-cache": 2}
+    assert ur.prompt_terms(["pacnew"]) == {"pacnew": True}
+    for bad in ([], ["hold=a"], ["upgrade"], ["upgrade=1:abc"], [f"upgrade={tok}", f"upgrade={tok}"], ["deps="],
+                ["deps=a;rm"], ["install=../x"], ["clean-cache=9"], ["pacnew=x"], ["rm"], ["upgrade", "install"]):
+        assert ur.prompt_terms(bad) is None, bad
+
+
+def test_both_halves_name_a_plan_the_same_way(ur):
+    loader = importlib.machinery.SourceFileLoader("kuwai_update_user", str(ROOT / "bin" / "kuwai-update"))
+    spec = importlib.util.spec_from_loader("kuwai_update_user", loader)
+    user = importlib.util.module_from_spec(spec)
+    loader.exec_module(user)
+    assert user.plan_token(PLAN) == ur.plan_token(list(reversed(PLAN))) == ur.plan_token(PLAN + PLAN[:1])
+    assert user.plan_lines("linux 7.3-1\n there is nothing to do\n\nmesa 26.1-1\n") == PLAN
+    assert user.PLAN_CHANGED == ur.PLAN_CHANGED
+    assert user.prompt_args({"upgrade": "1:" + "a" * 64, "hold": ["z", "y"], "deps": [], "install": ["foo"]}) == \
+        ["upgrade=1:" + "a" * 64, "hold=y,z", "install=foo"]
+
+
+def run_main(ur, monkeypatch, argv, requests, plan=PLAN, names=("foo",), resolve=None):
+    ran, said = [], []
+    monkeypatch.setattr(ur.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(ur.os, "umask", lambda m: 0o022)
+    monkeypatch.setenv("PKEXEC_UID", str(os.getuid()))
+    monkeypatch.setattr(ur.signal, "alarm", lambda n: None)
+    monkeypatch.setattr(ur.signal, "signal", lambda *a: None)
+    monkeypatch.setattr(ur, "pacman", lambda args: ran.append(args) or 0)
+    monkeypatch.setattr(ur, "resolved", resolve or (lambda ignore=(): list(plan)))
+    monkeypatch.setattr(ur, "files", lambda req, home, uid: [("/home/x/foo-1-1-any.pkg.tar.zst", "0" * 64)])
+    monkeypatch.setattr(ur, "taken", lambda wanted, d, uid: [os.path.join(d, "foo-1-1-any.pkg.tar.zst")])
+    monkeypatch.setattr(ur, "package_names", lambda paths: list(names))
+    monkeypatch.setattr(ur, "say", lambda **m: said.append(m))
+    monkeypatch.setattr(ur.sys, "argv", ["kuwai-update-root", *argv])
+    monkeypatch.setattr(ur.sys, "stdin", io.StringIO("".join(json.dumps(r) + "\n" for r in requests)))
+    assert ur.main() == 0
+    return ran, [m["rc"] for m in said if "rc" in m], " ".join(str(m.get("log", "")) for m in said)
+
+
+def test_the_approved_upgrade_runs_as_resolved(ur, monkeypatch):
+    ran, rcs, _ = run_main(ur, monkeypatch, [f"upgrade={ur.plan_token(PLAN)}", "hold=linux-lts"],
+                           [{"op": "upgrade", "hold": ["linux-lts"]}])
+    assert rcs == [0]
+    assert ran == [["-Sy"], ["-Su", "--noconfirm", "--needed", "--ignore", "linux-lts"]], "-Su against the databases it just checked"
+
+
+def test_a_change_between_the_prompt_and_the_run_is_refused(ur, monkeypatch):
+    approved = ur.plan_token(PLAN)
+    ran, rcs, log = run_main(ur, monkeypatch, [f"upgrade={approved}"], [{"op": "upgrade"}],
+                             plan=PLAN + ["evil-backdoor 1-1"])
+    assert rcs == [ur.PLAN_CHANGED]
+    assert ran == [["-Sy"]], "nothing installed once pacman resolves something the prompt didn't name"
+    assert "changed after the password prompt" in log
+
+
+@pytest.mark.parametrize("failure", ["exit", "timeout", "missing"])
+def test_a_plan_pacman_couldnt_resolve_is_never_an_empty_one(ur, monkeypatch, failure):
+    def run(cmd, **kw):
+        if failure == "timeout":
+            raise ur.subprocess.TimeoutExpired(cmd, 300)
+        if failure == "missing":
+            raise FileNotFoundError(cmd[0])
+        return type("R", (), {"returncode": 1, "stdout": "", "stderr": "error: failed to prepare transaction"})()
+    real = ur.resolved
+    monkeypatch.setattr(ur.subprocess, "run", run)
+    assert real() is None
+    ran, rcs, log = run_main(ur, monkeypatch, [f"upgrade={ur.plan_token([])}"], [{"op": "upgrade"}], resolve=real)
+    assert rcs == [ur.PLAN_CHANGED] and ran == [["-Sy"]], "an approved '0 packages' never runs -Su on a failed resolution"
+    assert "nothing was installed" in log
+
+
+def test_a_refused_upgrade_says_the_databases_are_synced_now(ur, monkeypatch):
+    ran, rcs, log = run_main(ur, monkeypatch, [f"upgrade={ur.plan_token(PLAN)}"], [{"op": "upgrade"}], plan=PLAN[:1])
+    assert rcs == [ur.PLAN_CHANGED]
+    assert "already synced" in log and "partial upgrade" in log
+
+
+@pytest.mark.parametrize("argv, requests", [
+    (["deps=meson"], [{"op": "upgrade"}]),
+    (["deps=meson"], [{"op": "deps", "deps": ["meson", "evil"]}]),
+    (["deps=meson"], [{"op": "deps", "deps": ["meson"]}, {"op": "deps", "deps": ["meson"]}]),
+    (["upgrade=2:" + "0" * 64, "hold=linux"], [{"op": "upgrade", "hold": []}]),
+    (["upgrade=2:" + "0" * 64], [{"op": "upgrade", "deps": ["meson"]}]),
+    (["clean-cache=2"], [{"op": "clean-cache", "keep": 0}]),
+    (["clean-cache=2"], [{"op": "hold"}]),
+])
+def test_anything_but_what_the_prompt_named_is_refused(ur, monkeypatch, argv, requests):
+    ran, rcs, log = run_main(ur, monkeypatch, argv, requests)
+    assert rcs[-1] == 2 and "password prompt" in log
+    assert ran in ([], [["-S", "--noconfirm", "--needed", "--asdeps", "--", "meson"]]), "a refused request runs nothing"
+
+
+def test_only_the_aur_packages_the_prompt_named_are_installed(ur, monkeypatch):
+    ran, rcs, log = run_main(ur, monkeypatch, ["install=foo"], [{"op": "install", "files": []}], names=("evil",))
+    assert rcs == [2] and "not named at the password prompt: evil" in log and ran == []
+    ran, rcs, _ = run_main(ur, monkeypatch, ["install=foo,bar"], [{"op": "install", "files": []}], names=("foo",))
+    assert rcs == [0] and ran[0][:4] == ["-U", "--noconfirm", "--needed", "--"]
 
 
 def test_each_root_run_has_its_own_output_file(ur, tmp_path, monkeypatch):

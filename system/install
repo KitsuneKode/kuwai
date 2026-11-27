@@ -3,8 +3,20 @@ set -eu
 [ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 1; }
 USER_NAME=${SUDO_USER:?run with sudo from your account}
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+# shellcheck source=system/release.sh
+. "$HERE/release.sh"
 
-if [ "${1:-}" = --undo ]; then
+UNDO=0; TRUST=0
+for a in "$@"; do
+    case $a in
+        --undo) UNDO=1 ;;
+        --trust-clone) TRUST=1 ;;
+        *) echo "usage: sudo $0 [--undo] [--trust-clone]" >&2; exit 2 ;;
+    esac
+done
+
+if [ $UNDO = 1 ]; then
+    from_release "$(dirname "$HERE")" "$TRUST" "system/install --undo"
     systemctl disable --now kuwai-wake.path 2>/dev/null || true
     rm -f /etc/systemd/system/kuwai-wake.path /etc/systemd/system/kuwai-wake.service /usr/local/libexec/kuwai-wake-root
     rm -rf /var/lib/kuwai-wake
@@ -14,6 +26,7 @@ if [ "${1:-}" = --undo ]; then
     exit 0
 fi
 
+from_release "$(dirname "$HERE")" "$TRUST" "system/install"
 install -D -o root -g root -m 0755 "$HERE/kuwai-wake-root" /usr/local/libexec/kuwai-wake-root
 install -o root -g root -m 0644 "$HERE/kuwai-wake.path" "$HERE/kuwai-wake.service" /etc/systemd/system/
 install -d -o root -g root -m 0755 /var/lib/kuwai-wake

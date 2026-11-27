@@ -1,10 +1,12 @@
 # Maintainer: KitsuneKode
 #
 # kuwai: a Hyprland desktop shell (Quickshell). pacman owns everything it needs;
-# the desktop itself lives in each person's home: kuwai-setup clones this
-# release there and runs its install.sh (which can undo itself).
+# the desktop itself lives in each person's home. makepkg checks the release
+# tag's signature against validpgpkeys; kuwai-setup, from that tag, fetches the
+# release again for each person, checks it against release-signers/ before
+# anything in it runs, and runs its install.sh (which can undo itself).
 pkgname=kuwai
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="A calm Hyprland desktop: a Dynamic Island, notifications, controls and an agent cockpit (Quickshell)"
 arch=('any')
@@ -80,14 +82,18 @@ optdepends=(
   'bluez-utils: Bluetooth controls'
   'python-gobject: apps keeping the screen on for a video or a call'
 )
+makedepends=('git')
 install=kuwai.install
-source=("LICENSE-$pkgver::https://raw.githubusercontent.com/KitsuneKode/kuwai/v$pkgver/LICENSE"
-        "kuwai-setup")
-sha256sums=('fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0'
-            'SKIP')
+source=("kuwai::git+https://github.com/KitsuneKode/kuwai.git#tag=v$pkgver?signed")
+validpgpkeys=('7C78CB855D504BDF3E9B74AFF150E88B50720270')
+sha256sums=('SKIP')
 
 package() {
-  install -Dm755 "$srcdir/kuwai-setup" "$pkgdir/usr/bin/kuwai-setup"
-  sed -i "s/@VERSION@/$pkgver/" "$pkgdir/usr/bin/kuwai-setup"
-  install -Dm644 "$srcdir/LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  cd "$srcdir/kuwai"
+  install -Dm755 bin/kuwai-setup "$pkgdir/usr/lib/kuwai/bin/kuwai-setup"
+  install -Dm755 bin/kuwai-verify "$pkgdir/usr/lib/kuwai/bin/kuwai-verify"
+  install -Dm644 -t "$pkgdir/usr/lib/kuwai/release-signers" release-signers/*
+  install -d "$pkgdir/usr/bin"
+  ln -s /usr/lib/kuwai/bin/kuwai-setup "$pkgdir/usr/bin/kuwai-setup"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

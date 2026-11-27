@@ -29,11 +29,14 @@ Control the running kuwai.
   kuwai export [file]        export or diff a portable machine manifest (bin/kuwai-profile)
   kuwai promote              validate dev HEAD and fast-forward stable (with auto-rollback)
   kuwai rollback             revert stable to the previous promoted commit (stable-prev)
-  kuwai update-self          update stable to origin's newest release tag (signed by a key in release-signers when it lists any;
-                             a tag that moves is refused; --ref REF follows another on purpose), validate, migrate, restart
+  kuwai update-self          update stable to origin's newest release tag (signed by a key in release-signers, every file the
+                             signed one; a tag that moves is refused; --ref REF follows another on purpose, unchecked),
+                             validate, migrate, restart
+  kuwai setup [--system] …   install a signed release, checked before anything in it runs (bin/kuwai-setup; --system: root's copy only)
   kuwai version              the version, the commit stable runs, and the channel
-  kuwai release vX.Y.Z       tag main's HEAD as a release, signed with ~/.ssh/kuwai_release (KUWAI_RELEASE_KEY);
-                             checked against release-signers; pushing the tag is left to you
+  kuwai release vX.Y.Z       tag main's HEAD as a release: git tag -s with your OpenPGP key in release-signers
+                             (KUWAI_RELEASE_KEY=FINGERPRINT to choose), the tree's digest in its message; checked as
+                             update-self checks it; pushing the tag is left to you
 KUWAI_USAGE
 }
 
@@ -357,8 +360,11 @@ case ${1:-} in
             echo "kuwai: git refused to move stable to $target; nothing was rolled back" >&2
             exit 1
         fi
-        if [ $forward = 1 ] && [ -x "$STABLE/bin/kuwai-migrations" ]; then
-            "$STABLE/bin/kuwai-migrations" || echo "kuwai: a migration for $(git -C "$STABLE" log --oneline -1) failed; see above" >&2
+        if [ $forward = 1 ] && [ -x "$STABLE/bin/kuwai-migrations" ] && ! "$STABLE/bin/kuwai-migrations"; then
+            undo_migrations "$cur"
+            set_head "$cur" || echo "kuwai: git refused to move stable back; run: git -C $STABLE reset --hard $cur" >&2
+            echo "kuwai: a migration for $(git -C "$STABLE" log --oneline -1 "$target") failed (above); nothing was rolled forward, stable stays at $(git -C "$STABLE" log --oneline -1 "$cur")" >&2
+            exit 1
         fi
         git -C "$STABLE" branch -f stable-prev "$cur" 2>/dev/null || true
         echo "stable rolled back to $(git -C "$STABLE" log --oneline -1)"
@@ -366,28 +372,47 @@ case ${1:-} in
         if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
             switch_to "$STABLE"
         fi ;;
+    setup)         shift; exec "$KUWAI/bin/kuwai-setup" "$@" ;;
     release)
         v=${2:-}
         [[ $v =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "usage: kuwai release vX.Y.Z" >&2; exit 2; }
         dev=$(dev_root)
         [ -n "$dev" ] || { echo "kuwai: no dev clone found" >&2; exit 1; }
-        key=${KUWAI_RELEASE_KEY:-$HOME/.ssh/kuwai_release}
-        [ -f "$key.pub" ] || { echo "kuwai: no release key at $key (make one: ssh-keygen -t ed25519 -f $key)" >&2; exit 1; }
         [ "$(git -C "$dev" symbolic-ref --short HEAD 2>/dev/null)" = main ] || { echo "kuwai: releases are cut from main" >&2; exit 1; }
         [ -z "$(git -C "$dev" status --porcelain --untracked-files=no)" ] || { echo "kuwai: main has uncommitted changes" >&2; exit 1; }
-        pub=$(cut -d' ' -f1,2 "$key.pub")
-        git -C "$dev" show HEAD:release-signers 2>/dev/null | grep -qF "$pub" \
-            || { echo "kuwai: $key.pub isn't in release-signers at HEAD; a tag it signs would be refused" >&2; exit 1; }
-        git -C "$dev" -c gpg.format=ssh -c user.signingkey="$key.pub" tag -s -m "kuwai ${v#v}" "$v" HEAD || exit 1
-        allowed=$(mktemp) || exit 1
-        printf 'kuwai-release namespaces="git" %s\n' "$pub" >"$allowed"
-        if git -C "$dev" -c gpg.ssh.allowedSignersFile="$allowed" verify-tag "$v" 2>&1 | grep -qF 'Good "git" signature for kuwai-release with'; then
-            rm -f -- "$allowed"
-            echo "kuwai: $v signed at $(git -C "$dev" log --oneline -1). Publish it: git -C $dev push origin $v"
+        verify=(/usr/bin/python3 -I "$KUWAI/bin/kuwai-verify")
+        keys=$(mktemp -d) || exit 1
+        git -C "$dev" archive HEAD release-signers 2>/dev/null | tar -x -C "$keys" 2>/dev/null
+        if ! listed=$("${verify[@]}" signers "$keys/release-signers" 2>&1); then
+            rm -rf -- "$keys"; echo "kuwai: ${listed#kuwai: }" >&2; exit 1
+        fi
+        key=$(printf '%s' "${KUWAI_RELEASE_KEY:-}" | tr -d ' ' | tr 'a-f' 'A-F')
+        if [ -z "$key" ]; then
+            for f in $listed; do gpg --batch --list-secret-keys "$f" >/dev/null 2>&1 && { key=$f; break; }; done
+        fi
+        if [ -z "$key" ] || ! grep -qxF -- "$key" <<<"$listed"; then
+            rm -rf -- "$keys"
+            echo "kuwai: ${key:-none of your secret keys} isn't in release-signers at HEAD; a tag it signs would be refused" >&2
+            exit 1
+        fi
+        attrs=$(git -C "$dev" rev-parse --path-format=absolute --git-path info/attributes)
+        if marked=$(git -C "$dev" grep -ohE 'export-(ignore|subst)' HEAD -- ':(glob)**/.gitattributes' 2>/dev/null \
+                     || grep -ohsE 'export-(ignore|subst)' -- "$attrs"); then
+            rm -rf -- "$keys"
+            echo "kuwai: an attributes file marks files $(sort -u <<<"$marked" | paste -sd/), so git archive (what a release's digest is taken from) wouldn't give the files a checkout does; remove those attributes first" >&2
+            exit 1
+        fi
+        if ! digest=$("${verify[@]}" manifest-rev "$dev" HEAD); then rm -rf -- "$keys"; exit 1; fi
+        if ! git -C "$dev" -c gpg.format=openpgp tag -s -u "$key" -m "kuwai ${v#v}" -m "kuwai-tree-sha256 $digest" "$v" HEAD; then
+            rm -rf -- "$keys"; exit 1
+        fi
+        if why=$("${verify[@]}" tag "$dev" "$v" --signers "$keys/release-signers" 2>&1 >/dev/null); then
+            rm -rf -- "$keys"
+            echo "kuwai: $v signed by $key at $(git -C "$dev" log --oneline -1) (tree sha256 $digest). Publish it: git -C $dev push origin $v"
         else
-            rm -f -- "$allowed"
+            rm -rf -- "$keys"
             git -C "$dev" tag -d "$v" >/dev/null
-            echo "kuwai: $v didn't verify; the tag was removed" >&2
+            echo "kuwai: $v didn't verify (${why#kuwai: }); the tag was removed" >&2
             exit 1
         fi
         ;;
@@ -418,29 +443,20 @@ case ${1:-} in
                 echo "kuwai: release $ref now points somewhere else than when this machine first saw it ($pinned → $want); staying on $prev" >&2
                 exit 1
             fi
+            keys=$(mktemp -d) || exit 1
+            git -C "$STABLE" archive HEAD release-signers 2>/dev/null | tar -x -C "$keys" 2>/dev/null
+            signers=(--signers "$keys/release-signers")
             extra="${XDG_CONFIG_HOME:-$HOME/.config}/kuwai/release-signers"
-            listed=$( { git -C "$STABLE" show HEAD:release-signers 2>/dev/null; cat "$extra" 2>/dev/null; } )
-            n_extra=$(grep -cvE '^\s*(#|$)' "$extra" 2>/dev/null || true)
-            [ "${n_extra:-0}" -gt 0 ] && echo "kuwai: also trusting $n_extra key(s) from $extra (yours, not kuwai's)" >&2
-            signers=$(printf '%s\n' "$listed" | tr -d ' ' | grep -Eio '^[0-9a-f]{40}$' | tr 'a-f' 'A-F')
-            sshkeys=$(printf '%s\n' "$listed" | grep -Eo '^(ssh-ed25519|sk-ssh-ed25519@openssh\.com|ecdsa-sha2-nistp(256|384|521)|ssh-rsa) [A-Za-z0-9+/]+={0,2}')
-            if [ -n "$signers$sshkeys" ]; then
-                signed=0
-                if [ -n "$signers" ]; then
-                    sig=$(git -C "$STABLE" verify-tag --raw "refs/kuwai/release/$ref" 2>&1 | awk '$2 == "VALIDSIG" { print toupper($3); print toupper($NF) }')
-                    printf '%s\n' "$sig" | grep -qxF -f <(printf '%s\n' "$signers") && signed=1
-                fi
-                if [ $signed = 0 ] && [ -n "$sshkeys" ]; then
-                    allowed=$(mktemp) || exit 1
-                    printf '%s\n' "$sshkeys" | sed 's/^/kuwai-release namespaces="git" /' >"$allowed"
-                    git -C "$STABLE" -c gpg.ssh.allowedSignersFile="$allowed" verify-tag "refs/kuwai/release/$ref" 2>&1 \
-                        | grep -qF 'Good "git" signature for kuwai-release with' && signed=1
-                    rm -f -- "$allowed"
-                fi
-                [ $signed = 1 ] || { echo "kuwai: $ref isn't signed by a key in release-signers; staying on $prev" >&2; exit 1; }
-            else
-                echo "kuwai: no release-signers listed, so $ref is checked against origin and this machine's pins only" >&2
+            if compgen -G "$extra/*.asc" >/dev/null; then
+                echo "kuwai: also trusting the release keys in $extra (yours, not kuwai's)" >&2
+                signers+=(--signers "$extra")
             fi
+            if ! why=$(/usr/bin/python3 -I "$KUWAI/bin/kuwai-verify" tag "$STABLE" "$ref" --ref "refs/kuwai/release/$ref" "${signers[@]}" 2>&1 >/dev/null); then
+                rm -rf -- "$keys"
+                echo "kuwai: $ref isn't a release this copy can trust: ${why#kuwai: }; staying on $prev" >&2
+                exit 1
+            fi
+            rm -rf -- "$keys"
             [ -n "$pinned" ] || { mkdir -p "$STATE_DIR"; printf '%s %s\n' "$ref" "$want" >> "$pins"; }
             git -C "$STABLE" rev-parse --verify -q "refs/tags/$ref" >/dev/null || git -C "$STABLE" update-ref "refs/tags/$ref" "$want"
             target=$(git -C "$STABLE" rev-parse --verify -q "refs/kuwai/release/$ref^{commit}") || { echo "kuwai: $ref is not a commit" >&2; exit 1; }
@@ -467,6 +483,10 @@ case ${1:-} in
         fi
         git -C "$STABLE" diff --quiet "$prev" HEAD -- systemd || systemctl --user daemon-reload 2>/dev/null
         echo "kuwai: updated stable to $(git -C "$STABLE" log --oneline -1)"
+        held=$(readlink /usr/local/lib/kuwai/current 2>/dev/null); held=${held#releases/}
+        if [ -n "$held" ] && [ -z "$follow" ] && [ "$held" != "$ref" ]; then
+            echo "kuwai: root's copy (login entry, login screen, alarms, password prompt, update helper) is still $held: kuwai setup --system --tag $ref brings it along"
+        fi
         if [ "$(cat "$STATE_DIR/channel" 2>/dev/null)" = stable ]; then
             KUWAI_ERRS_BEFORE=$(hyprctl configerrors 2>/dev/null)
             if ! ( switch_to "$STABLE" ); then

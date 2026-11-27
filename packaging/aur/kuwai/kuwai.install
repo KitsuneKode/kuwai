@@ -1,6 +1,7 @@
 post_install() {
     echo ":: kuwai is installed. Set it up for your account (not as root):"
-    echo "     kuwai-setup            (kuwai-setup --dry-run shows what it does first)"
+    echo "     kuwai-setup            (fetches the release, checks its signature and every file, then installs it;"
+    echo "                             kuwai-setup --verify-only checks without installing)"
     echo "   Then pick \"kuwai\" on the login screen."
 }
 post_upgrade() {

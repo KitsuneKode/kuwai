@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -eu
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-ROOT=""; DRY=0; DIRTY=0; REBUILD=1; MODE=install
+ROOT=""; DRY=0; DIRTY=0; TRUST=0; FROM_RELEASE=0; REBUILD=1; MODE=install
 usage() {
-    echo "usage: sudo system/plymouth/install [--undo] [--dry-run] [--dirty] [--no-initramfs] [--root DIR]
+    echo "usage: sudo /usr/local/lib/kuwai/current/system/plymouth/install [--undo] [--dry-run] [--no-initramfs] [--trust-clone [--dirty]] [--root DIR]
   installs the kuwai boot splash (black, one turning accent ring, the lock screen's password
   pill for encrypted disks) and makes it Plymouth's default theme;
   --undo         puts the previous theme back and removes kuwai's
   --dry-run      says what it would do and changes nothing
+  --trust-clone  installs this clone's committed theme instead of root's checked copy, trusting it as it is
   --dirty        installs the working tree instead of the committed files
   --no-initramfs leaves the initramfs alone (the default theme is still set)
   --root DIR     works inside DIR instead of / (for trying it out; it never runs
@@ -19,6 +20,7 @@ while [ $# -gt 0 ]; do
         --undo) MODE=undo ;;
         --dry-run) DRY=1 ;;
         --dirty) DIRTY=1 ;;
+        --trust-clone) TRUST=1 ;;
         --no-initramfs) REBUILD=0 ;;
         --root) shift; [ $# -gt 0 ] || usage; ROOT=${1%/} ;;
         *) usage ;;
@@ -28,6 +30,11 @@ done
 if [ -z "$ROOT" ] && [ $DRY = 0 ] && [ "$(id -u)" != 0 ]; then
     echo "run with sudo (or add --dry-run to see what it would do)" >&2
     exit 1
+fi
+if [ -z "$ROOT" ] && [ $DRY = 0 ]; then
+    . "$HERE/../release.sh"
+    from_release "$HERE/../.." "$TRUST" "system/plymouth/install"
+    [ $TRUST = 1 ] || FROM_RELEASE=1
 fi
 OWN=()
 [ "$(id -u)" = 0 ] && OWN=(-o root -g root)
@@ -70,7 +77,7 @@ stage() {
     trap "rm -rf -- $(printf %q "$STAGED")" EXIT
     local repo
     repo=$(cd "$HERE/../.." && pwd)
-    if [ $DIRTY = 1 ]; then
+    if [ $DIRTY = 1 ] || [ $FROM_RELEASE = 1 ]; then
         (cd "$HERE" && tar -c kuwai) | tar -x -C "$STAGED"
     else
         local run=()
@@ -133,4 +140,4 @@ The default theme is set, but the initramfs won't show it yet: /etc/mkinitcpio.c
 line also needs `quiet splash`. See docs/manual/boot.md.
 MSG
 fi
-say "done. Nothing changes until the next boot; \`system/plymouth/install --undo\` puts it back."
+say "done. Nothing changes until the next boot; \`sudo /usr/local/lib/kuwai/current/system/plymouth/install --undo\` puts it back."

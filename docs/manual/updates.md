@@ -16,7 +16,13 @@ Open **Software Update** from the island's update chip, the launcher, or `Super+
 
 ### Root helper (`kuwai-update-root`)
 
-Run `kuwai update install-helper` once to install `/usr/local/lib/kuwai/kuwai-update-root` owned by root. From then on, `kuwai-update` invokes it through `pkexec` naming the exact operations allowed for that run (`upgrade`, `deps`, `install`, `pacnew`, `clean-cache`).
+Run `kuwai update install-helper` once to install `/usr/local/lib/kuwai/kuwai-update-root` owned by root, from root's checked copy of a signed release (`kuwai-setup` puts it in place; `--trust-clone` installs your checkout's helper as it is, for developing kuwai). From then on, `kuwai-update` invokes it through `pkexec` with the whole transaction on its command line, which the password prompt shows:
+
+- `upgrade=N:SHA256`: how many Arch packages, and the digest of exactly which versions, resolved without root against a fresh copy of the databases just before the prompt. Root syncs, resolves again, and runs `pacman -Su` only if it gets the same set; otherwise nothing is installed and the panel asks you to check again.
+- `hold=`, `deps=`, `install=`: the held packages, the build dependencies, and the AUR packages by name (root reads each built file's name with pacman and refuses one the prompt didn't name).
+- `clean-cache=K`, or `pacnew` for config file choices.
+
+Each named operation runs once, and a request for anything else is refused.
 
 - Built AUR `.pkg.tar.*` files are copied without following symlinks into a root-only temporary directory and checked against their build-time `sha256` before `pacman -U`.
 - Replacing `/etc/<file>` with `<file>.pacnew` saves a timestamped backup under `/var/lib/kuwai/pacnew-backups/` and validates sudoers with `visudo -c`.

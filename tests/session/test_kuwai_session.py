@@ -41,7 +41,8 @@ def test_without_kuwai_hyprland_starts_as_it_is(tmp_path):
 
 def run_session(tmp_path, *args):
     env = dict(os.environ, KUWAI_SYSROOT=str(tmp_path / 'root'))
-    return subprocess.run([str(ROOT / 'system/session'), *args], env=env, capture_output=True, text=True)
+    trust = [] if '--check' in args else ['--trust-clone']
+    return subprocess.run([str(ROOT / 'system/session'), *args, *trust], env=env, capture_output=True, text=True)
 
 
 def test_install_check_and_undo(tmp_path):

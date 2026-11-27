@@ -1,9 +1,8 @@
 import { useState } from "react";
 
 const COMMANDS = `git clone https://github.com/KitsuneKode/kuwai.git ~/Projects/kuwai
-cd ~/Projects/kuwai
-./install.sh --dry-run
-./install.sh --deps
+~/Projects/kuwai/bin/kuwai-setup --verify-only
+~/Projects/kuwai/bin/kuwai-setup --deps
 kuwai doctor`;
 
 export default function InstallBlock() {

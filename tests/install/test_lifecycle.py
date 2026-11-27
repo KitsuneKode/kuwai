@@ -418,12 +418,35 @@ def test_the_login_entry_is_offered_without_a_terminal(install_env):
     (i.repo / 'system').mkdir()
     shutil.copy2(ROOT / 'system/session', i.repo / 'system/session')
     shutil.copy2(ROOT / 'system/kuwai.desktop', i.repo / 'system/kuwai.desktop')
+    shutil.copy2(ROOT / 'system/release.sh', i.repo / 'system/release.sh')
     shutil.copy2(ROOT / 'bin/kuwai-session', i.repo / 'bin/kuwai-session')
     i.env['KUWAI_SYSROOT'] = str(i.home.parent / 'sysroot')
     out = i.run()
-    assert 'sudo ' + str(i.repo / 'system/session') in out
-    subprocess.run([str(i.repo / 'system/session')], env=i.env, check=True, capture_output=True)
+    assert "root's checked copy of a signed release" in out and 'kuwai setup' in out
+    assert 'sudo ' + str(i.repo / 'system/session') + ' --trust-clone' in out
+    subprocess.run([str(i.repo / 'system/session'), '--trust-clone'], env=i.env, check=True, capture_output=True)
     assert '"kuwai" is on the login screen' in i.run()
+
+
+def test_a_stand_in_root_adds_the_login_entry_without_sudo(install_env, tmp_path):
+    i = install_env
+    (i.repo / 'system').mkdir()
+    for rel in ('system/session', 'system/kuwai.desktop', 'system/release.sh', 'bin/kuwai-session'):
+        shutil.copy2(ROOT / rel, i.repo / rel)
+    sysroot = i.home.parent / 'sysroot'
+    i.env['KUWAI_SYSROOT'] = str(sysroot)
+    log = tmp_path / 'ran.log'
+    roots = sysroot / 'usr/local/lib/kuwai/current/system'
+    roots.mkdir(parents=True)
+    (roots / 'session').write_text(f'#!/bin/sh\necho "root\'s copy $*" >> {log}\n')
+    (roots / 'session').chmod(0o755)
+    stubs = tmp_path / 'stubs'
+    stubs.mkdir()
+    (stubs / 'sudo').write_text(f'#!/bin/sh\necho "sudo $*" >> {log}\nexit 1\n')
+    (stubs / 'sudo').chmod(0o755)
+    i.env['PATH'] = f"{stubs}:{i.env['PATH']}"
+    i.run()
+    assert log.read_text().splitlines() == ["root's copy "], "a stand-in root needs no sudo, and no terminal to ask for it"
 
 
 def test_uninstall_never_touches_units_kuwai_did_not_record(install_env):
@@ -517,7 +540,7 @@ def test_a_fresh_install_without_hyde_gets_a_wallpaper_once(install_env):
     (tools / 'file').write_text('#!/bin/sh\necho image/jpeg\n')
     state = install_env.home / '.local/state/kuwai'
     out = install_env.run()
-    assert "Kuwai Night's wallpaper (01-night)" in out
+    assert "kuwai Night's wallpaper (01-night)" in out
     assert (state / 'wallpaper').resolve() == (state / 'wallpapers/01-night.jpg').resolve()
     assert (state / 'wallpapers/CREDITS.txt').exists()
     again = install_env.run()
@@ -553,5 +576,5 @@ def test_an_unpinned_or_wrong_digest_default_wallpaper_is_not_used(install_env):
 
     (themes / 'wallpapers.tsv').write_text('01-night\thttps://example.invalid/night.jpg\tsha256:' + '0' * 64 + '\n')
     out2 = install_env.run()
-    assert "isn't the file Kuwai Night lists" in out2
+    assert "isn't the file kuwai Night lists" in out2
     assert not (install_env.home / '.local/state/kuwai/wallpaper').exists()

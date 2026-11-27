@@ -3,6 +3,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 CTL = ROOT / "bin/kuwai-ctl"
 
@@ -123,11 +125,16 @@ def with_origin(tmp_path, dev):
     return origin
 
 
-def test_update_self_follows_the_newest_release_tag(tmp_path):
+def trust(env, keys, *fprs):
+    return keys.signers(Path(env["HOME"]) / ".config/kuwai/release-signers", *(fprs or [keys.mine]))
+
+
+def test_update_self_follows_the_newest_release_tag(tmp_path, release_keys):
     env, dev, stable, a, b = make_world(tmp_path)
     with_origin(tmp_path, dev)
-    git(dev, "tag", "v0.1.0", a)
-    git(dev, "tag", "v0.2.0", b)
+    trust(env, release_keys)
+    release_keys.release(dev, "v0.1.0", a)
+    release_keys.release(dev, "v0.2.0", b)
     git(dev, "push", "-q", "origin", "--tags")
     r = ctl(env, "update-self")
     assert r.returncode == 0, r.stderr
@@ -138,11 +145,12 @@ def test_update_self_follows_the_newest_release_tag(tmp_path):
     assert "already up to date" in r.stdout
 
 
-def test_update_self_never_moves_stable_back_to_an_older_tag(tmp_path):
+def test_update_self_never_moves_stable_back_to_an_older_tag(tmp_path, release_keys):
     env, dev, stable, a, b = make_world(tmp_path)
     with_origin(tmp_path, dev)
+    trust(env, release_keys)
     git(stable, "merge", "--ff-only", "-q", b)
-    git(dev, "tag", "v0.1.0", a)
+    release_keys.release(dev, "v0.1.0", a)
     git(dev, "push", "-q", "origin", "--tags")
     r = ctl(env, "update-self")
     assert r.returncode == 0, r.stderr
@@ -209,12 +217,13 @@ def test_update_self_needs_a_release_or_an_explicit_ref(tmp_path):
     assert git(stable, "rev-parse", "HEAD") == b
 
 
-def test_update_self_ignores_local_only_tags_and_refuses_a_moved_release(tmp_path):
+def test_update_self_ignores_local_only_tags_and_refuses_a_moved_release(tmp_path, release_keys):
     env, dev, stable, a, b = make_world(tmp_path)
     origin = with_origin(tmp_path, dev)
-    git(dev, "tag", "v0.1.0", a)
+    trust(env, release_keys)
+    release_keys.release(dev, "v0.1.0", a)
     git(dev, "push", "-q", "origin", "--tags")
-    git(dev, "tag", "v9.0.0", b)
+    release_keys.release(dev, "v9.0.0", b)
     r = ctl(env, "update-self")
     assert r.returncode == 0, r.stderr
     assert git(stable, "rev-parse", "HEAD") == a, "a tag origin doesn't have is never picked"
@@ -225,70 +234,133 @@ def test_update_self_ignores_local_only_tags_and_refuses_a_moved_release(tmp_pat
     assert git(stable, "rev-parse", "HEAD") == a
 
 
-def test_update_self_refuses_an_unsigned_release_once_signers_are_listed(tmp_path):
+@pytest.mark.parametrize("tag, why", [
+    ("unsigned", "isn't signed"),
+    ("theirs", "isn't a kuwai release key"),
+    ("no-digest", "digest of its files"),
+    ("other-tree", "aren't the ones its signature names"),
+])
+def test_update_self_refuses_a_release_that_isnt_one(tmp_path, release_keys, tag, why):
+    k = release_keys
     env, dev, stable, a, b = make_world(tmp_path)
     with_origin(tmp_path, dev)
-    conf = Path(env["HOME"]) / ".config/kuwai"
-    conf.mkdir(parents=True)
-    (conf / "release-signers").write_text("0123456789ABCDEF0123456789ABCDEF01234567\n")
-    git(dev, "tag", "-a", "-m", "r", "v0.2.0", b)
+    trust(env, k)
+    if tag == "unsigned":
+        git(dev, "tag", "-a", "-m", "r", "v0.2.0", b)
+    elif tag == "theirs":
+        k.release(dev, "v0.2.0", b, fpr=k.theirs)
+    elif tag == "no-digest":
+        k.release(dev, "v0.2.0", b, line=False)
+    else:
+        k.release(dev, "v0.2.0", b, digest=k.digest(dev, a))
     git(dev, "push", "-q", "origin", "--tags")
     r = ctl(env, "update-self")
-    assert r.returncode != 0 and "isn't signed" in r.stderr
+    assert r.returncode != 0 and why in r.stderr, r.stderr
     assert git(stable, "rev-parse", "HEAD") == a
 
 
-def ssh_key(tmp_path, name):
-    key = tmp_path / name
-    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", name, "-f", str(key)], check=True)
-    return key
-
-
-def test_update_self_takes_a_release_signed_by_a_listed_ssh_key_and_no_other(tmp_path):
+def test_update_self_refuses_everything_while_no_release_key_is_listed(tmp_path, release_keys):
     env, dev, stable, a, b = make_world(tmp_path)
     with_origin(tmp_path, dev)
-    mine, theirs = ssh_key(tmp_path, "mine"), ssh_key(tmp_path, "theirs")
-    conf = Path(env["HOME"]) / ".config/kuwai"
-    conf.mkdir(parents=True)
-    (conf / "release-signers").write_text("# releases\n" + Path(f"{theirs}.pub").read_text())
-    git(dev, "-c", "gpg.format=ssh", "-c", f"user.signingkey={mine}", "tag", "-s", "-m", "r", "v0.2.0", b)
+    release_keys.release(dev, "v0.2.0", b)
     git(dev, "push", "-q", "origin", "--tags")
     r = ctl(env, "update-self")
-    assert r.returncode != 0 and "isn't signed" in r.stderr, "a key that isn't listed is refused"
-    assert git(stable, "rev-parse", "HEAD") == a
-    (conf / "release-signers").write_text(Path(f"{mine}.pub").read_text())
-    r = ctl(env, "update-self")
-    assert r.returncode == 0, r.stderr
-    assert git(stable, "rev-parse", "HEAD") == b
-
-
-def test_an_unsigned_release_is_refused_when_only_ssh_keys_are_listed(tmp_path):
-    env, dev, stable, a, b = make_world(tmp_path)
-    with_origin(tmp_path, dev)
-    conf = Path(env["HOME"]) / ".config/kuwai"
-    conf.mkdir(parents=True)
-    (conf / "release-signers").write_text(Path(f"{ssh_key(tmp_path, 'mine')}.pub").read_text())
-    git(dev, "tag", "-a", "-m", "r", "v0.2.0", b)
-    git(dev, "push", "-q", "origin", "--tags")
-    r = ctl(env, "update-self")
-    assert r.returncode != 0 and "isn't signed" in r.stderr
+    assert r.returncode != 0 and "holds no key" in r.stderr
     assert git(stable, "rev-parse", "HEAD") == a
 
 
-def test_kuwai_release_signs_with_the_listed_key_and_nothing_else(tmp_path):
+def test_update_self_trusts_the_keys_the_running_release_lists(tmp_path, release_keys):
+    k = release_keys
     env, dev, stable, a, b = make_world(tmp_path)
-    mine, other = ssh_key(tmp_path, "mine"), ssh_key(tmp_path, "other")
-    (dev / "release-signers").write_text("# releases\n" + Path(f"{mine}.pub").read_text())
+    k.signers(dev / "release-signers", k.mine)
     git(dev, "add", "release-signers")
     git(dev, "commit", "-qm", "signers")
-    r = ctl({**env, "KUWAI_RELEASE_KEY": str(other)}, "release", "v1.0.0")
+    assert ctl(env, "promote").returncode == 0
+    (dev / "hypr/next.lua").write_text("return 3\n")
+    git(dev, "add", "-A")
+    git(dev, "commit", "-qm", "D")
+    with_origin(tmp_path, dev)
+    k.release(dev, "v0.3.0")
+    git(dev, "push", "-q", "origin", "--tags")
+    r = ctl(env, "update-self")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == git(dev, "rev-parse", "HEAD")
+
+
+def test_kuwai_release_signs_with_the_listed_key_and_nothing_else(tmp_path, release_keys):
+    k = release_keys
+    env, dev, stable, a, b = make_world(tmp_path)
+    env = {**env, "GNUPGHOME": k.home}
+    k.signers(dev / "release-signers", k.mine)
+    git(dev, "add", "release-signers")
+    git(dev, "commit", "-qm", "signers")
+    r = ctl({**env, "KUWAI_RELEASE_KEY": k.theirs}, "release", "v1.0.0")
     assert r.returncode != 0 and "isn't in release-signers" in r.stderr
     assert git(dev, "tag", "-l", "v1.0.0") == "", "no tag from a key that isn't listed"
-    assert ctl({**env, "KUWAI_RELEASE_KEY": str(mine)}, "release", "1.0").returncode == 2
-    r = ctl({**env, "KUWAI_RELEASE_KEY": str(mine)}, "release", "v1.0.0")
+    assert ctl(env, "release", "1.0").returncode == 2
+    r = ctl(env, "release", "v1.0.0")
     assert r.returncode == 0, r.stderr
-    assert "-----BEGIN SSH SIGNATURE-----" in git(dev, "cat-file", "tag", "v1.0.0")
+    raw = git(dev, "cat-file", "tag", "v1.0.0")
+    assert "-----BEGIN PGP SIGNATURE-----" in raw
+    assert f"kuwai-tree-sha256 {k.digest(dev, 'HEAD')}" in raw
     assert git(dev, "rev-parse", "v1.0.0^{commit}") == git(dev, "rev-parse", "HEAD")
+    v = subprocess.run([str(ROOT / "bin/kuwai-verify"), "tag", str(dev), "v1.0.0", "--signers", str(dev / "release-signers")],
+                       capture_output=True, text=True, env=GIT_ENV)
+    assert v.returncode == 0 and k.mine in v.stdout, v.stderr
+
+
+@pytest.mark.parametrize("where, attr", [(".gitattributes", "export-ignore"), ("hypr/.gitattributes", "export-subst"),
+                                         (".git/info/attributes", "export-ignore")])
+def test_kuwai_release_refuses_attributes_that_make_an_archive_differ_from_a_checkout(tmp_path, release_keys, where, attr):
+    k = release_keys
+    env, dev, stable, a, b = make_world(tmp_path)
+    env = {**env, "GNUPGHOME": k.home}
+    k.signers(dev / "release-signers", k.mine)
+    (dev / where).parent.mkdir(parents=True, exist_ok=True)
+    (dev / where).write_text(f"hypr/extra.lua {attr}\n")
+    git(dev, "add", "-A")
+    git(dev, "commit", "-qm", "attributes")
+    r = ctl(env, "release", "v1.0.0")
+    assert r.returncode != 0 and attr in r.stderr, r.stderr
+    assert git(dev, "tag", "-l", "v1.0.0") == ""
+
+
+def test_kuwai_release_refuses_while_release_signers_holds_no_key(tmp_path, release_keys):
+    env, dev, stable, a, b = make_world(tmp_path)
+    r = ctl({**env, "GNUPGHOME": release_keys.home}, "release", "v1.0.0")
+    assert r.returncode != 0 and "holds no key" in r.stderr
+    assert git(dev, "tag", "-l", "v1.0.0") == ""
+
+
+def test_a_forward_rollback_whose_migration_fails_activates_nothing(tmp_path):
+    env, dev, stable, a, b = make_world(tmp_path)
+    fail = tmp_path / "fail-migrations"
+    (dev / "bin/kuwai-migrations").write_text(
+        '#!/bin/sh\n[ -n "$KUWAI_TEST_CALLS" ] && echo "kuwai-migrations $*" >> "$KUWAI_TEST_CALLS"\n'
+        f'[ -z "$1" ] && [ -e "{fail}" ] && exit 1\nexit 0\n')
+    git(dev, "add", "-A")
+    git(dev, "commit", "-qm", "C")
+    c = git(dev, "rev-parse", "HEAD")
+    calls = tmp_path / "calls"
+    env = {**env, "KUWAI_TEST_CALLS": str(calls)}
+    assert ctl(env, "promote").returncode == 0
+    assert ctl(env, "rollback").returncode == 0
+    assert git(stable, "rev-parse", "HEAD") == a and prev_of(stable) == c
+    state = Path(env["XDG_STATE_HOME"]) / "kuwai"
+    state.mkdir(parents=True, exist_ok=True)
+    (state / "channel").write_text("stable\n")
+    fail.write_text("")
+    calls.write_text("")
+    r = ctl(env, "rollback")
+    assert r.returncode != 0, r.stdout
+    assert "nothing was rolled forward" in r.stderr
+    assert git(stable, "rev-parse", "HEAD") == a, "stable stays where it was"
+    assert prev_of(stable) == c, "the rollback target is kept for another try"
+    assert "kuwai-shell" not in calls.read_text(), "nothing was activated"
+    fail.unlink()
+    r = ctl(env, "rollback")
+    assert r.returncode == 0, r.stderr
+    assert git(stable, "rev-parse", "HEAD") == c
 
 
 def test_a_second_rollback_moves_forward_and_runs_the_migrations(tmp_path):

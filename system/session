@@ -2,33 +2,48 @@
 set -eu
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 ROOT=${KUWAI_SYSROOT:-}
+[ "$(id -u)" != 0 ] || ROOT=""
 BIN=$ROOT/usr/local/bin/kuwai-session
 ENTRY=$ROOT/usr/share/wayland-sessions/kuwai.desktop
 SRC_BIN=$(dirname "$HERE")/bin/kuwai-session
 SRC_ENTRY=$HERE/kuwai.desktop
+# shellcheck source=system/release.sh
+. "$HERE/release.sh"
 
-ours() { [ ! -e "$1" ] || cmp -s "$1" "$2" || grep -qs 'kuwai-session\|X-Kuwai-Owned=true' "$1"; }
+MODE=install; TRUST=0
+for a in "$@"; do
+    case $a in
+        --check) MODE=check ;;
+        --undo) MODE=undo ;;
+        --install) MODE=install ;;
+        --trust-clone) TRUST=1 ;;
+        *) echo "usage: sudo $0 [--undo|--check] [--trust-clone]" >&2; exit 2 ;;
+    esac
+done
+
+ours() { [ ! -e "$1" ] || cmp -s "$1" "$2" || grep -qs 'kuwai-session\|X-kuwai-Owned=true' "$1"; }
 owned_by_package() { [ -z "$ROOT" ] && command -v pacman >/dev/null && pacman -Qoq "$1" >/dev/null 2>&1; }
 
-case "${1:-}" in
-    --check)
-        cmp -s "$BIN" "$SRC_BIN" && cmp -s "$ENTRY" "$SRC_ENTRY" && { echo "kuwai session: installed"; exit 0; }
-        echo "kuwai session: not installed or out of date"; exit 1 ;;
-    --undo)
-        [ -n "$ROOT" ] || [ "$(id -u)" = 0 ] || { echo "run with sudo: sudo $0 --undo" >&2; exit 1; }
-        for pair in "$ENTRY:$SRC_ENTRY" "$BIN:$SRC_BIN"; do
-            f=${pair%%:*}; src=${pair#*:}
-            [ -e "$f" ] || continue
-            if owned_by_package "$f" || ! ours "$f" "$src"; then echo "  left $f: it isn't kuwai's"; continue; fi
-            rm -f "$f"; echo "  removed $f"
-        done
-        echo "The kuwai session is gone from the login screen; your other sessions are as they were."
-        exit 0 ;;
-    ""|--install) ;;
-    *) echo "usage: sudo $0 [--undo|--check]" >&2; exit 2 ;;
-esac
+if [ $MODE = check ]; then
+    cmp -s "$BIN" "$SRC_BIN" && cmp -s "$ENTRY" "$SRC_ENTRY" && { echo "kuwai session: installed"; exit 0; }
+    echo "kuwai session: not installed or out of date"; exit 1
+fi
+
+if [ $MODE = undo ]; then
+    [ -n "$ROOT" ] || [ "$(id -u)" = 0 ] || { echo "run with sudo: sudo $0 --undo" >&2; exit 1; }
+    from_release "$(dirname "$HERE")" "$TRUST" "system/session --undo"
+    for pair in "$ENTRY:$SRC_ENTRY" "$BIN:$SRC_BIN"; do
+        f=${pair%%:*}; src=${pair#*:}
+        [ -e "$f" ] || continue
+        if owned_by_package "$f" || ! ours "$f" "$src"; then echo "  left $f: it isn't kuwai's"; continue; fi
+        rm -f "$f"; echo "  removed $f"
+    done
+    echo "The kuwai session is gone from the login screen; your other sessions are as they were."
+    exit 0
+fi
 
 [ -n "$ROOT" ] || [ "$(id -u)" = 0 ] || { echo "run with sudo: sudo $0" >&2; exit 1; }
+from_release "$(dirname "$HERE")" "$TRUST" "system/session"
 for pair in "$ENTRY:$SRC_ENTRY" "$BIN:$SRC_BIN"; do
     f=${pair%%:*}; src=${pair#*:}
     if owned_by_package "$f" || ! ours "$f" "$src"; then echo "$f exists and isn't kuwai's; not replacing it" >&2; exit 1; fi

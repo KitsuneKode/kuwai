@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+cat <<'KUWAI_USAGE'
+kuwai-setup: install kuwai from a signed release, never from the folder this runs in.
+
+  kuwai-setup [--tag vX.Y.Z] [--source URL] [INSTALL OPTIONS…]
+  kuwai-setup --system [--tag vX.Y.Z] [--source URL]
+                 only bring root's copy (the login entry, the login screen, alarms that
+                 wake the laptop, the password prompt, the update helper) to that release
+  kuwai-setup --verify-only [--tag vX.Y.Z] [--source URL]
+                 fetch and check it, say what was checked, install nothing
+
+  1. the newest vX.Y.Z release at SOURCE (https://github.com/KitsuneKode/kuwai.git), or --tag
+  2. only that tag, fetched into a new folder of its own under ~/.cache/kuwai/releases
+  3. checked before anything in it runs: signed by a key in release-signers/ beside this
+     script (a keyring of those keys alone, in a temporary GNUPGHOME), and every file the
+     one the signature names (the tag carries the digest of the whole tree)
+  4. root's copy (sudo, once): /usr/local/lib/kuwai/releases/vX.Y.Z, owned by root and
+     checked again by root, against the fingerprints it keeps (this folder's release keys,
+     named to root only the first time; after that, the keys each release it took lists),
+     with root's own kuwai-verify once it has a release (the first time, the one beside
+     this script); the login entry, the login screen, the alarms, the password prompt and
+     the update helper install from it
+  5. that release's install.sh, as you (INSTALL OPTIONS go to it: install.sh --help)
+
+Without a terminal for sudo, step 4 is printed for you to run later, and the rest goes on.
+When root refuses the release (older than root's, or changed since step 3), nothing is installed.
+KUWAI_USAGE
+}
+
+[ "$(id -u)" != 0 ] || { echo "kuwai-setup: run it as yourself, not root: kuwai lives in your home" >&2; exit 1; }
+HERE="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+VERIFY=$HERE/bin/kuwai-verify
+SIGNERS=$HERE/release-signers
+LIB=${KUWAI_SYSROOT:-}/usr/local/lib/kuwai
+SOURCE=https://github.com/KitsuneKode/kuwai.git
+TAG=""; MODE=install; PASS=()
+while [ $# -gt 0 ]; do
+    case $1 in
+        --tag) TAG=${2:?--tag vX.Y.Z}; shift ;;
+        --source) SOURCE=${2:?--source URL}; shift ;;
+        --system) MODE=system ;;
+        --verify-only) MODE=verify ;;
+        -h|--help) usage; exit 0 ;;
+        *) PASS+=("$1") ;;
+    esac
+    shift
+done
+
+fprs=$(/usr/bin/python3 -I "$VERIFY" signers "$SIGNERS") || exit 1
+CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/releases
+mkdir -p "$CACHE" && chmod 700 "$CACHE"
+STAGE=$(mktemp -u "$CACHE/${TAG:-newest}.XXXXXX")
+KEEP=0
+cleanup() { [ $KEEP = 1 ] || rm -rf -- "$STAGE"; }
+trap cleanup EXIT
+
+echo "Fetching ${TAG:-the newest release} from $SOURCE into a folder of its own; checking it before anything in it runs."
+info=$(/usr/bin/python3 -I "$VERIFY" fetch "$SOURCE" ${TAG:+"$TAG"} --signers "$SIGNERS" --into "$STAGE") \
+    || { echo "kuwai-setup: nothing was installed." >&2; exit 1; }
+field() { /usr/bin/python3 -I -c 'import json, sys; print(json.loads(sys.argv[1])[sys.argv[2]])' "$info" "$1"; }
+name=$(field name); digest=$(field digest); signer=$(field signer)
+echo "Verified kuwai $name: signed by $signer; every file is the one the signature names (tree sha256 $digest)."
+
+if [ $MODE = verify ]; then
+    KEEP=1
+    echo "The checked copy is $STAGE; nothing was installed."
+    exit 0
+fi
+
+root_verifier() {
+    local rel p part perm uid=0
+    [ -z "${KUWAI_SYSROOT:-}" ] || uid=$(id -u)
+    rel=$(readlink "$LIB/current" 2>/dev/null) || return 1
+    [[ $rel =~ ^releases/v[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+    p=${KUWAI_SYSROOT:-}
+    for part in usr local lib kuwai releases "${rel#releases/}" bin kuwai-verify; do
+        p=$p/$part
+        [ -e "$p" ] && [ ! -L "$p" ] && [ "$(stat -c %u -- "$p")" = "$uid" ] || return 1
+        perm=$(stat -c %a -- "$p")
+        (( (8#$perm & 8#022) == 0 )) || return 1
+    done
+    printf '%s\n' "$p"
+}
+
+checker=$(root_verifier) || checker=$VERIFY
+root_cmd=(/usr/bin/python3 -I "$checker" install --from "$STAGE" --tag-file "$STAGE/.git/kuwai-release.tag" --name "$name" --digest "$digest")
+[ -n "${KUWAI_SYSROOT:-}" ] || root_cmd=(sudo "${root_cmd[@]}")
+if [ ! -e "$LIB/signers/fingerprints" ] && [ ! -L "$LIB/signers/fingerprints" ]; then
+    for f in $fprs; do root_cmd+=(--signer "$f"); done
+fi
+if [ "$(readlink "$LIB/current" 2>/dev/null)" = "releases/$name" ]; then
+    echo "Root's copy is $name already."
+elif [ -n "${KUWAI_SYSROOT:-}" ] || { [ -t 0 ] && [ -t 1 ] && command -v sudo >/dev/null; }; then
+    echo "Copying $name for root (sudo, once): root checks its copy again and installs only that."
+    "${root_cmd[@]}" || { echo "kuwai-setup: root didn't take $name (its reason is above), so nothing was installed." >&2; exit 1; }
+else
+    KEEP=1
+    echo "Root's copy needs sudo and a terminal. Run this later (the checked copy stays until then):"
+    echo "  $(printf '%q ' "${root_cmd[@]}")"
+fi
+[ $MODE = system ] && exit 0
+
+"$STAGE/install.sh" --from-release "${PASS[@]}"

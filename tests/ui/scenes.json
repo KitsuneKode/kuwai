@@ -9784,6 +9784,54 @@
    "kind": "worst"
   },
   {
+   "id": "updates/helper-not-set-up",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "props": {
+    "view": "run"
+   },
+   "set": [
+    [
+     "Updates",
+     "plan",
+     {
+      "repo": true,
+      "aur": [],
+      "flatpak": []
+     }
+    ],
+    [
+     "Updates",
+     "phasesSeen",
+     [
+      "check",
+      "repo",
+      "after"
+     ]
+    ],
+    [
+     "Updates",
+     "result",
+     {
+      "ok": true,
+      "repo": true,
+      "oneprompt": false,
+      "prompts": 3
+     }
+    ],
+    [
+     "Updates",
+     "helperState",
+     "failed"
+    ],
+    [
+     "Updates",
+     "helperError",
+     "Root has no checked copy of a signed kuwai release yet (kuwai setup makes one). Until then, in a terminal, kuwai update install-helper --trust-clone installs the helper from your own copy of kuwai as it is, trusting every file in it."
+    ]
+   ]
+  },
+  {
    "id": "system/typical",
    "name": "system",
    "panel": "SystemPanel"

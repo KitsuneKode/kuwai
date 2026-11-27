@@ -141,7 +141,7 @@ as_user "cd '$K' && ./install.sh" >"$OUT/install2.log" 2>&1
 check "a second install exits 0" [ $? -eq 0 ]
 check "a second install changes nothing" [ "$(snap)" = "$installed_snap" ]
 
-as_user "sudo '$K/system/session'" >"$OUT/session-add.log" 2>&1
+as_user "sudo '$K/system/session' --trust-clone" >"$OUT/session-add.log" 2>&1
 check "\"Kuwai\" is added to the login screen (system/session)" bash -c "[ -f /usr/share/wayland-sessions/kuwai.desktop ] && '$K/system/session' --check"
 as_user "'$STABLE/bin/kuwai' auth pin" >"$OUT/auth-pin.log" 2>&1
 PINNED=/usr/local/share/kuwai/shell-auth
@@ -393,7 +393,7 @@ g_hash() { { sha256sum /etc/pam.d/greetd /etc/greetd/config.toml 2>&1; readlink 
 pacman -S --needed --noconfirm greetd rsync >/dev/null 2>"$OUT/pacman-greetd.err"
 check "greetd and rsync install from the official repos" bash -c "pacman -Q greetd rsync >/dev/null"
 g_before=$(g_hash)
-yes | as_user "cd '$K' && sudo ./greeter/install --yes" >"$OUT/greeter-install.log" 2>&1
+yes | as_user "cd '$K' && sudo ./greeter/install --trust-clone --yes" >"$OUT/greeter-install.log" 2>&1
 check "greeter/install --yes exits 0" [ "${PIPESTATUS[1]}" -eq 0 ]
 check "/etc/greetd/config.toml starts the greeter's compositor as user greeter on vt 1" bash -c "grep -qx 'command = \"$G/compositor-start\"' /etc/greetd/config.toml && grep -qx 'user = \"greeter\"' /etc/greetd/config.toml && grep -qx 'vt = 1' /etc/greetd/config.toml"
 check "/etc/pam.d/greetd includes the system login stack" bash -c "grep -q 'auth *include *system-login' /etc/pam.d/greetd"
@@ -401,9 +401,9 @@ check "the greeter's code is root's: root-owned, no links, start scripts executa
 check "the greeter's code is the committed revision ($(cut -c1-9 "$G/code-revision" 2>/dev/null))" bash -c "[ \"\$(cut -c1-40 $G/code-revision)\" = \"\$(git -C '$K' rev-parse HEAD)\" ]"
 check "the login screen can read the user's name as the greeter account" bash -c "runuser -u greeter -- test -r $G/home/.kuwai-user && [ \"\$(runuser -u greeter -- cat $G/home/.kuwai-user)\" = $U ]"
 check "greetd.service is enabled for the next boot" bash -c "systemctl is-enabled greetd.service | grep -qx enabled"
-as_user "cd '$K' && sudo ./greeter/install --code" >"$OUT/greeter-code.log" 2>&1
+as_user "cd '$K' && sudo ./greeter/install --trust-clone --code" >"$OUT/greeter-code.log" 2>&1
 check "greeter/install --code (just the code, again) exits 0" [ $? -eq 0 ]
-yes | as_user "cd '$K' && sudo ./greeter/install --undo" >"$OUT/greeter-undo.log" 2>&1
+yes | as_user "cd '$K' && sudo ./greeter/install --trust-clone --undo" >"$OUT/greeter-undo.log" 2>&1
 check "greeter/install --undo exits 0" [ "${PIPESTATUS[1]}" -eq 0 ]
 check "greetd is off again and its package config is as it was" bash -c "! systemctl is-enabled greetd.service 2>/dev/null | grep -qx enabled"
 g_after=$(g_hash)

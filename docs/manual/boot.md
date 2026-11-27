@@ -15,11 +15,11 @@ Arch needs three things, and the installer checks the first two and tells you wh
 ## Install
 
 ```sh
-system/plymouth/install --dry-run   # what it would do; changes nothing
-sudo system/plymouth/install        # copies the theme, makes it the default, rebuilds the initramfs
+/usr/local/lib/kuwai/current/system/plymouth/install --dry-run   # what it would do; changes nothing
+sudo /usr/local/lib/kuwai/current/system/plymouth/install        # copies the theme, makes it the default, rebuilds the initramfs
 ```
 
-It copies the committed theme (refusing links and uncommitted changes; `--dirty` installs the working tree), records the theme that was the default, runs `plymouth-set-default-theme -R kuwai`, and prints the checksum of every file it installed. If the `plymouth` hook is missing from `mkinitcpio.conf` it still sets the default theme but skips the rebuild and tells you what to add; `--no-initramfs` skips the rebuild on purpose. Nothing changes on screen until the next boot.
+Like the other root steps it runs only from root's checked copy of a signed release (`kuwai setup` puts it in place), and checks that copy again first. It copies the theme from there (refusing links; developing kuwai, `--trust-clone` installs a clone's committed theme instead and `--dirty` with it the working tree), records the theme that was the default, runs `plymouth-set-default-theme -R kuwai`, and prints the checksum of every file it installed. If the `plymouth` hook is missing from `mkinitcpio.conf` it still sets the default theme but skips the rebuild and tells you what to add; `--no-initramfs` skips the rebuild on purpose. Nothing changes on screen until the next boot.
 
 To look at it before rebooting, from a text console (Ctrl+Alt+F3), not from the desktop:
 
@@ -33,7 +33,7 @@ sudo plymouth quit
 ## Undo
 
 ```sh
-sudo system/plymouth/install --undo
+sudo /usr/local/lib/kuwai/current/system/plymouth/install --undo
 ```
 
 Puts back the theme that was the default (or Plymouth's own default if none was recorded), rebuilds the initramfs and removes `/usr/share/plymouth/themes/kuwai`. If you have since chosen another theme, only kuwai's files are removed.

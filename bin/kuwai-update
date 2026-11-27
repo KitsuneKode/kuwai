@@ -23,8 +23,11 @@
     kuwai-update hold NAME | unhold NAME
                                        keep a package at the version you have (pacman --ignore on every
                                        update, Arch and AUR) until you let it go; `state` lists them
-    kuwai update install-helper         install kuwai-update-root (one password, once): from then on a
-                                       whole update asks for your password once, not once per step
+    kuwai update install-helper [--trust-clone]
+                                       install kuwai-update-root (one password, once) from root's checked
+                                       copy of a signed release: from then on a whole update asks for your
+                                       password once, not once per step (--trust-clone: this checkout's
+                                       helper as it is, for developing kuwai)
     kuwai-update run [--repo] [--aur PKG ...]
                                        the update itself (what `start` runs): one JSON event per line
                                        (phase, log, progress, error, done) on stdout and in update.jsonl;
@@ -32,8 +35,12 @@
 
 How it updates (no terminal, no stored passwords, no sudo rules):
   · One password for the whole update: root's part is kuwai-update-root, started once with pkexec
-    (installed root-owned by `install-helper`; it only runs pacman). Without it, each root step
-    asks on its own (`pkexec pacman …`), as before.
+    (installed root-owned by `install-helper`; it only runs pacman). The password prompt names the
+    whole transaction: how many Arch packages and the digest of exactly which versions (resolved
+    without root just before it asks), the held packages, the build dependencies and the AUR
+    packages by name. Root runs that and nothing else: if pacman resolves anything different
+    after it syncs, nothing is installed. Without it, each root step asks on its own
+    (`pkexec pacman …`), as before.
   · Arch's packages update together: `pacman -Syu --noconfirm` (pacman's defaults answer its
     questions, and the risky ones default to "no", so a conflict stops it instead of guessing).
     Never per-package: Arch doesn't support partial upgrades. Build dependencies the AUR packages
@@ -88,6 +95,8 @@ EVENTS = os.path.join(RUNTIME, "update.jsonl")
 LOCK = os.path.join(RUNTIME, "update.lock")
 UNIT = "kuwai-update"
 HELPER = "/usr/local/lib/kuwai/kuwai-update-root"
+RELEASE = "/usr/local/lib/kuwai/current"
+RELEASE_VERIFY = RELEASE + "/bin/kuwai-verify"
 HELPER_SRC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kuwai-update-root")
 FLATPAK_TARGET = re.compile(r"^(?:(user|system):)?([A-Za-z0-9][A-Za-z0-9._/-]*)$")
 NAME_OK = re.compile(r"^[a-z0-9@._+-]+$")
@@ -284,10 +293,57 @@ def news(since):
     return out[:6]
 
 
+def checkup_db():
+    return os.environ.get("CHECKUPDATES_DB") or os.path.join(os.environ.get("TMPDIR", "/tmp"), f"checkup-db-{os.getuid()}")
+
+
+PLAN_LINE = re.compile(r"^\S+ \S+$")
+
+
+def plan_lines(text):
+    return [l.strip() for l in text.splitlines() if PLAN_LINE.match(l.strip())][:2000]
+
+
+def plan_token(plan):
+    """How the password prompt names a repo upgrade: the number of packages and the digest of
+    exactly which versions. kuwai-update-root computes the same from what pacman resolves."""
+    lines = sorted(set(plan))
+    return f"{len(lines)}:{hashlib.sha256(chr(10).join(lines).encode()).hexdigest()}"
+
+
+def expected_plan(hold=()):
+    """What `pacman -Su` will install, resolved now without root against a fresh copy of the
+    databases (checkupdates syncs it): the package set the password prompt binds to."""
+    db = checkup_db()
+    r = sh(["checkupdates", "--nocolor"], env={**os.environ, "CHECKUPDATES_DB": db}, timeout=300)
+    if r.returncode not in (0, 2):
+        raise RuntimeError("Arch's package lists couldn't be read (offline?). Nothing was changed.")
+    ignore = ["--ignore", ",".join(hold)] if hold else []
+    p = sh(["pacman", "-Su", *ignore, "--print", "--print-format", "%n %v", "--dbpath", db, "--logfile", "/dev/null"], timeout=120)
+    if p.returncode != 0:
+        raise RuntimeError("pacman couldn't work out the update (see the log). Nothing was changed.")
+    return plan_lines(p.stdout)
+
+
+def prompt_args(binding):
+    """pkexec's command line after the helper: what the password prompt shows, and all root may do."""
+    out = []
+    if "upgrade" in binding:
+        out.append(f"upgrade={binding['upgrade']}")
+    for key in ("hold", "deps", "install"):
+        if binding.get(key):
+            out.append(f"{key}=" + ",".join(sorted(binding[key])))
+    if "clean-cache" in binding:
+        out.append(f"clean-cache={int(binding['clean-cache'])}")
+    if binding.get("pacnew"):
+        out.append("pacnew")
+    return out
+
+
 def resolved_extra(listed):
     """What pacman's own resolution adds to the listed upgrades (new dependencies, replacements),
     from the copy of the databases checkupdates just synced: no root, nothing changed."""
-    db = os.environ.get("CHECKUPDATES_DB") or os.path.join(os.environ.get("TMPDIR", "/tmp"), f"checkup-db-{os.getuid()}")
+    db = checkup_db()
     if not os.path.isdir(os.path.join(db, "sync")):
         return []
     r = sh(["pacman", "-Su", "--print", "--print-format", "%n %v", "--dbpath", db, "--logfile", "/dev/null"], timeout=60)
@@ -743,6 +799,7 @@ class Run:
 
 AUTH_FAIL = (126, 127)
 DEPS_FAILED = 90
+PLAN_CHANGED = 92
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07")
 
 
@@ -757,6 +814,30 @@ def helper_ok():
             return a.read() == b.read()
     except OSError:
         return False
+
+
+AHEAD = ("or, if this copy of kuwai is ahead of the newest release, {cmd} once, which installs this copy's helper "
+         "as it is, trusting every file in it")
+
+
+def release_helper_differs():
+    try:
+        with open(os.path.join(RELEASE, "bin/kuwai-update-root"), "rb") as a, open(HELPER_SRC, "rb") as b:
+            return a.read() != b.read()
+    except OSError:
+        return False
+
+
+def helper_how():
+    """How to put kuwai-update-root in place from here."""
+    if os.path.lexists(RELEASE):
+        if release_helper_differs():
+            return ("Root's release has a different update helper from this kuwai's: bring root's copy up to date with "
+                    "`kuwai setup --system`, " + AHEAD.format(cmd="run `kuwai update install-helper --trust-clone`") + ".")
+        return "Run `kuwai update install-helper` once to install it from root's checked copy of kuwai."
+    return ("Root has no checked copy of a signed kuwai release yet (kuwai setup makes one); until then, run "
+            "`kuwai update install-helper --trust-clone` once, which installs the helper from your own copy of kuwai "
+            "as it is, trusting every file in that copy.")
 
 
 def agent_missing():
@@ -787,20 +868,20 @@ class Root:
         self.p = None
         self.prompts = 0
         self.transaction = None
-        self.ops = ()
+        self.binding = {}
         verified = os.path.isfile(HELPER_SRC) and helper_ok()
         self.stale = os.path.isfile(HELPER_SRC) and not verified
         self.helper = verified
 
-    def open(self, ops=()):
-        """0 once root is there; pkexec's code (126/127: cancelled) when it isn't. The
-        operations go in pkexec's argv, so the password prompt names them and the
-        helper does nothing else."""
+    def open(self, binding=None):
+        """0 once root is there; pkexec's code (126/127: cancelled) when it isn't. The whole
+        transaction goes in pkexec's argv (prompt_args), so the password prompt names it and
+        the helper does that and nothing else."""
         if not self.helper or self.p:
             return 0
         self.prompts += 1
-        self.ops = sorted(set(ops or self.ops or ()))
-        cmd = ["pkexec", HELPER, *self.ops]
+        self.binding = dict(binding or self.binding or {})
+        cmd = ["pkexec", HELPER, *prompt_args(self.binding)]
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
         hello = self.p.stdout.readline()
         if '"ready"' not in hello:
@@ -814,10 +895,10 @@ class Root:
         if self.stale:
             self.stale = False
             self.R.emit(e="log", line="kuwai-update-root is missing or out of date, so each step asks for the password. "
-                                      "Run `kuwai update install-helper` once to review and install it.")
+                                      + helper_how())
         if not self.helper and op == "install":
             self.R.emit(e="log", line="Built packages are installed only through kuwai-update-root, which copies and checks "
-                                      "each file first. Run `kuwai update install-helper` once, then update again.")
+                                      "each file first. " + helper_how() + " Then update again.")
             return 1
         if not self.helper:
             self.prompts += 1
@@ -835,7 +916,20 @@ class Root:
                    "deps": ["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps],
                    "install": ["-U", "--noconfirm", "--needed", "--", *files]}[op]
             return self.R.stream(["pkexec", "pacman", *cmd], progress=progress)
-        rc = self.open((op,))
+        if not self.binding:
+            if op == "install":
+                self.R.emit(e="log", line="Built packages are installed only when the password prompt names them.")
+                return 1
+            try:
+                one = {"upgrade": lambda: {"upgrade": plan_token(expected_plan(hold)), "hold": list(hold)},
+                       "deps": lambda: {"deps": list(deps)},
+                       "clean-cache": lambda: {"clean-cache": int(keep)}}[op]()
+            except RuntimeError as ex:
+                self.R.emit(e="log", line=str(ex))
+                return 1
+            rc = self.open(one)
+        else:
+            rc = self.open()
         if rc:
             return rc
         self.R.log.write(f"$ (root) pacman {op} {' '.join([*deps, *[f['path'] if isinstance(f, dict) else f for f in files]])}\n")
@@ -1482,8 +1576,26 @@ def run_locked(args):
     try:
         result["oneprompt"] = root.helper
         if root.helper and (want_repo or extra_repo_deps or plan):
-            rc = root.open(["upgrade"] * bool(want_repo) + ["deps"] * bool(extra_repo_deps) + ["install"] * bool(plan)
-                           + ["clean-cache"] * bool(prune))
+            binding = {}
+            if want_repo:
+                try:
+                    expected = expected_plan(holds)
+                except RuntimeError as ex:
+                    R.emit(e="error", msg=str(ex))
+                    R.emit(e="done", **{**result, "ok": False})
+                    return 1
+                binding["upgrade"] = plan_token(expected)
+                binding["hold"] = holds
+                R.emit(e="log", line=f"The password prompt names this update: {len(expected)} Arch package(s), "
+                                     f"{binding['upgrade'].split(':')[1][:12]}… for exactly these versions: "
+                                     + ", ".join(expected[:40]) + (" …" if len(expected) > 40 else ""))
+            if extra_repo_deps:
+                binding["deps"] = extra_repo_deps
+            if plan:
+                binding["install"] = sorted({name for (_, _, _, _, outputs) in plan for name in outputs})
+            if prune:
+                binding["clean-cache"] = 2
+            rc = root.open(binding)
             if rc:
                 R.emit(e="error", msg=cancelled_msg())
                 R.emit(e="done", **{**result, "ok": False, "cancelled": True})
@@ -1497,6 +1609,14 @@ def run_locked(args):
             if rc in AUTH_FAIL:
                 R.emit(e="error", msg=cancelled_msg())
                 R.emit(e="done", **{**result, "ok": False, "cancelled": True})
+                return 1
+            if rc == PLAN_CHANGED:
+                phase_done("repo", False, transaction=root.transaction)
+                R.emit(e="error", msg="Arch's packages changed between the password prompt and the update, so nothing was "
+                                      "installed: what you approved is what runs, or nothing does. Check for updates again and update in full: "
+                                      "the package databases are synced now, so installing one package on its own first "
+                                      "would be a partial upgrade.")
+                R.emit(e="done", **{**result, "repo": False, "ok": False})
                 return 1
             upgraded = want_repo and rc in (0, DEPS_FAILED)
             if want_repo:
@@ -1650,10 +1770,31 @@ def main(argv):
             return 0 if res.get("ok") else 1
         elif cmd == "run":
             return run(argv[1:])
-        elif cmd == "install-helper":
+        elif cmd == "install-helper" and argv[1:] in ([], ["--trust-clone"]):
             if helper_ok():
                 print(json.dumps({"installed": True, "already": True}))
                 return 0
+            if argv[1:] != ["--trust-clone"]:
+                if not os.path.isfile(RELEASE_VERIFY):
+                    print(json.dumps({"error": "Root has no checked copy of a signed kuwai release yet (kuwai setup makes one). "
+                                               "Until then, in a terminal, kuwai update install-helper --trust-clone installs "
+                                               "the helper from your own copy of kuwai as it is, trusting every file in it."}))
+                    return 1
+                r = subprocess.run(["pkexec", "/usr/bin/python3", "-I", RELEASE_VERIFY, "place", "update-helper"],
+                                   stdin=subprocess.DEVNULL, capture_output=True, text=True)
+                if r.returncode == 0 and helper_ok():
+                    print(json.dumps({"installed": True}))
+                    return 0
+                if r.returncode == 0:
+                    print(json.dumps({"error": "Root's release has a different update helper from this kuwai's: "
+                                               "bring root's copy up to date with kuwai setup --system, "
+                                               + AHEAD.format(cmd="in a terminal, kuwai update install-helper --trust-clone") + "."}))
+                elif r.returncode in AUTH_FAIL:
+                    print(json.dumps({"error": "Not installed: cancelled at the password prompt."}))
+                else:
+                    print(json.dumps({"error": (r.stderr.strip().splitlines() or ["Not installed."])[-1].removeprefix("kuwai: ")}))
+                return 1
+            print("--trust-clone: installing this checkout's helper as it is; nothing checks it against a release.", file=sys.stderr)
             with open(HELPER_SRC, "rb") as f:
                 digest = hashlib.sha256(f.read()).hexdigest()
             print(f"installing kuwai-update-root, sha256 {digest}", file=sys.stderr)

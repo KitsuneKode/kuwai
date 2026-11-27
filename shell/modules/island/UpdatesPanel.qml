@@ -873,7 +873,7 @@ FocusScope {
         readonly property bool ok: !!res && res.ok && !Updates.runError
 
         Item {
-            width: parent.width; height: 44
+            width: parent.width; height: Math.max(44, runHead.implicitHeight)
             Rectangle {
                 id: runBadge
                 width: 44; height: 44; radius: Theme.r4
@@ -889,6 +889,7 @@ FocusScope {
                 }
             }
             Column {
+                id: runHead
                 x: 56; anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 56
                 spacing: 2
@@ -987,8 +988,11 @@ FocusScope {
         Notice {
             visible: !Updates.running && !!runCol.res && runCol.res.oneprompt === false && (runCol.res.prompts || 0) > 1 && Updates.helperState !== "done"
             glyph: "\u{f0306}"; tone: Theme.accent
-            title: Updates.helperState === "failed" ? "Not set up (cancelled?)" : "Asked for your password " + (runCol.res ? runCol.res.prompts : 0) + " times"
-            detail: "Set up once (your password one more time) and every update after asks just once."
+            title: Updates.helperState !== "failed" ? "Asked for your password " + (runCol.res ? runCol.res.prompts : 0) + " times"
+                 : Updates.helperError ? "Not set up" : "Not set up (cancelled?)"
+            detail: Updates.helperState === "failed" && Updates.helperError ? Updates.helperError
+                  : "Set up once (your password one more time) and every update after asks just once."
+            detailLines: 8
             action: Updates.helperState === "working" ? "" : "Set up"
             onActed: Updates.setupOnePrompt()
         }
