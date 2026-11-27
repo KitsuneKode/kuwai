@@ -13,6 +13,11 @@ while IFS=$'\t' read -r time pid sig exe; do
     id="${time}-${pid}-${exe}"
     if jq -e --arg k "$id" '.[$k]' "$seen" >/dev/null 2>&1; then continue; fi
     info=$(coredumpctl info "$pid" 2>/dev/null || true)
+    unit=$(sed -n 's/^ *Unit: *//p' <<<"$info" | head -1)
+    case $unit in docker-*|libpod-*|machine-*|*containerd*|systemd-nspawn*)
+        jq --arg k "$id" '.[$k]=true' "$seen" > "${seen}.tmp" && mv "${seen}.tmp" "$seen"
+        continue ;;
+    esac
     sess=$(sed -n 's/^ *Session: *\([0-9a-z]*\).*/\1/p' <<<"$info" | head -1)
     if [ -n "$sess" ] && command -v loginctl >/dev/null 2>&1 && ! loginctl show-session "$sess" >/dev/null 2>&1; then
         jq --arg k "$id" '.[$k]=true' "$seen" > "${seen}.tmp" && mv "${seen}.tmp" "$seen"
