@@ -5,6 +5,44 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## STATE (2026-11-27, late) — what is left, where UX falls short
+
+Done today, beyond the release review: wallpaper changes at a measured steady
+60 fps (crop, even motion, transparent fades, awww swapped under the cover,
+recolour after); live wallpapers through the same reveal (frozen frame →
+first frame), 10-bit HEVC loops, thumbnails never block the Live tab; rapid
+steps coalesce (newest apply only, intent-based stepping, presses take turns);
+the 13 GB OOM (two BiRefNet cut-outs) capped for good; two audits fixed
+(Fable: leaks/security; Neon: rendering/long-session); limited agents say
+"Limited · back in" instead of a ✓; clearer state marks; Kiro in kittymux
+(PR #61); a muted mic says so at the dictation key (shuush 0dc1ce2).
+
+Left, in order:
+- [ ] Warm mic + pre-roll, queued dictations (fork, feat/warm-mic-queue).
+- [ ] Screensaver as a real idle step (saver → fade → lock; still default).
+- [ ] README screenshots from healthy rehearsal scenes; clips as 1:1 crops.
+- [ ] Fresh-VM pass: install, first login, lock, suspend/resume, greeter, uninstall.
+- [ ] Root never runs checkout code; signed release (needs the owner's key).
+- [ ] The shell's 99 % / 853 MB episode (17:18–20:35) is unexplained; watch
+      kuwai-check. Quickshell is built against Qt 6.12.0 on 6.12.1: crashes
+      and the stuck-panel hangs point there until Arch rebuilds it.
+
+Where the experience is still thin:
+- Feedback when something silently can't happen: a muted mic (fixed), no
+  model loaded, a provider out of quota mid-dictation, wallpaper apply failing.
+  Every such case should say one plain sentence where you are looking.
+- The island's agent states now read well; the panel rows still need the same
+  marks and a reset time for T3 limits (T3 gives none yet).
+- Theme switches through HyDE take seconds; the picture changes at once but
+  the colours land later. A batched recolour (one Theme change) would hide it.
+
+What Hex taught (MIT, ideas only): protect code/links/paths/vocabulary from
+cleanup rules (done); route by app and by browser site (done); keep a cancelled
+take (done); restore the clipboard only if it is still ours, richest type
+(done, off by default); warm mic with pre-roll and queued delivery (in
+progress); per-entry re-clean and spoken commands ("my clipboard", "rewrite
+this") next; real words-per-minute from history.
+
 ## RELEASE REVIEW (2026-11-27, night) — Astra 6.2, Grok 4.7 xhigh, Neon 4 high, Fable 5.2
 
 Verdict of all four: not ready to announce yet; nothing is a cross-user or root
