@@ -178,18 +178,54 @@ def test_setup_runs_the_release_only_after_checking_it(tmp_path, release_keys):
 
 def test_setup_names_the_release_keys_to_root_only_the_first_time(tmp_path, release_keys):
     k = release_keys
-    repo = source_repo(tmp_path, k, k.mine, k.theirs)
+    repo = source_repo(tmp_path, k)
     k.release(repo, "v1.0.0")
-    d = setup_dir(tmp_path, k, k.mine, k.theirs)
     sysroot = tmp_path / "sys"
-    signers = sysroot / "usr/local/lib/kuwai/signers"
-    signers.mkdir(parents=True)
-    (signers / "fingerprints").write_text(k.mine + "\n")
+    sysroot.mkdir()
+    lib = sysroot / "usr/local/lib/kuwai"
+    r = run_setup(tmp_path, setup_dir(tmp_path, k, k.mine), "--source", repo, "--system", sysroot=sysroot)
+    assert r.returncode == 0, r.stderr
+    assert (lib / "signers/fingerprints").read_text().split() == [k.mine]
+    k.git(repo, "commit", "-q", "--allow-empty", "-m", "next")
+    k.release(repo, "v1.1.0")
+    r = run_setup(tmp_path, setup_dir(tmp_path / "later", k, k.mine, k.theirs), "--source", repo, "--system", sysroot=sysroot)
+    assert r.returncode == 0, "a second key in release-signers beside kuwai-setup broke root's step: " + r.stderr
+    assert os.readlink(lib / "current") == "releases/v1.1.0"
+
+
+def logged_verifier(d, log):
+    real = d / "bin/kuwai-verify.real"
+    shutil.move(d / "bin/kuwai-verify", real)
+    (d / "bin/kuwai-verify").write_text(f"import runpy, sys\nopen({str(log)!r}, 'a').write(sys.argv[1] + chr(10))\n"
+                                        f"sys.argv[0] = {str(real)!r}\nrunpy.run_path({str(real)!r}, run_name='__main__')\n")
+
+
+def test_root_checks_a_release_with_its_own_verifier_once_it_has_one(tmp_path, release_keys):
+    k = release_keys
+    repo = source_repo(tmp_path, k)
+    k.release(repo, "v1.0.0")
+    d = setup_dir(tmp_path, k, k.mine)
+    log = tmp_path / "verifier.log"
+    logged_verifier(d, log)
+    sysroot = tmp_path / "sys"
+    sysroot.mkdir()
+    lib = sysroot / "usr/local/lib/kuwai"
     r = run_setup(tmp_path, d, "--source", repo, "--system", sysroot=sysroot)
-    assert "--signer" not in r.stdout, "root already keeps its keys; a second key in release-signers mustn't break its step"
-    (signers / "fingerprints").unlink()
-    r = run_setup(tmp_path, d, "--source", repo, "--system", sysroot=sysroot)
-    assert f"--signer {k.mine}" in r.stdout and f"--signer {k.theirs}" in r.stdout
+    assert r.returncode == 0, r.stderr
+    assert log.read_text().split() == ["signers", "fetch", "install"], "the first time, this folder's is all there is"
+    assert os.readlink(lib / "current") == "releases/v1.0.0"
+    for name in ("v1.1.0", "v1.2.0"):
+        k.git(repo, "commit", "-q", "--allow-empty", "-m", name)
+        k.release(repo, name)
+        log.write_text("")
+        r = run_setup(tmp_path, d, "--source", repo, "--system", sysroot=sysroot)
+        assert r.returncode == 0, r.stderr
+        assert os.readlink(lib / "current") == f"releases/{name}"
+        if name == "v1.1.0":
+            assert "install" not in log.read_text().split(), "root's own verifier checked the new release"
+            (lib / "releases/v1.1.0/bin/kuwai-verify").chmod(0o775)
+        else:
+            assert "install" in log.read_text().split(), "a verifier others can write isn't root's"
 
 
 @pytest.mark.parametrize("signed_by", ["theirs", "nobody"])

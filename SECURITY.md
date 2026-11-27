@@ -33,6 +33,15 @@ not a public issue. Say what you did, what happened, and the commit you ran.
   of every file. A file changed after `kuwai-setup` checked it, a swapped tag, a key root
   doesn't trust, an older release than root's, a name with a control character in it, or a
   link out of the tree is refused, and nothing is installed.
+- **What root's re-check protects, and what it can't.** It protects against the checked
+  folder (anything running as you can write it) being changed between `kuwai-setup`'s check
+  and root's copy: root checks what it copied, not what was checked. Once root has a release,
+  the check runs root's own verifier (`/usr/local/lib/kuwai/current/bin/kuwai-verify`, used
+  only when it and every folder above it are root's and writable by no one else) against
+  the keys root keeps, so a `kuwai-setup` changed after that can't choose what root trusts.
+  It can't protect the first install from a changed `kuwai-setup`: that run names the keys
+  and supplies the verifier root runs, and both come from your account. Check the
+  fingerprint it prints against the published one before the first `sudo`.
 - **Root's release keys.** `kuwai-setup` names the release keys to root only at the first
   install. After that, each release root takes replaces root's list with the keys listed in
   that release's `release-signers/`, and only after its tag checked out against a key

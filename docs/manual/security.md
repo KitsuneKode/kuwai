@@ -34,7 +34,7 @@ kuwai runs as your normal user session (Hyprland, Quickshell, systemd user units
 ## Known limitations and accepted boundaries
 
 - **Same-user trust boundary:** `VoxtypeHost` loads voxtype QML from `$XDG_DATA_HOME/voxtype/quickshell` when voxtype is installed, and `kuwai-auth.service` is a user unit. Both run under the same user account as the main shell; pinning `shell-auth/` via `kuwai auth pin` protects the prompt code itself.
-- **The first install trusts `kuwai-setup` itself:** it comes from your clone (or the AUR package, which makepkg checked against the release key). Check the fingerprint it prints against the published one.
+- **The first install trusts `kuwai-setup` itself:** it comes from your clone (or the AUR package, which makepkg checked against the release key), and that first run names the release keys and supplies the verifier root runs. Check the fingerprint it prints against the published one. Root's re-check covers a checked folder changed after `kuwai-setup` checked it; from the second release on, root checks with its own verifier and its own keys.
 - **Not yet formally qualified across all hardware:** live lock-screen failure recovery on every GPU/compositor crash mode, portal screen-share blackouts across all compositor/app combinations, and an independent audit of the optional Ollama assistant's tool execution.
 - **Full-disk encryption:** kuwai does not replace OS-level disk encryption.
 
