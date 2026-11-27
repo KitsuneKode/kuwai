@@ -187,7 +187,7 @@ Singleton {
         onRunningChanged: if (running) { root.frames = 0; root.worstMs = 0; root.fps = 0; }
         onTriggered: {
             root.frames += 1;
-            root.worstMs = Math.max(root.worstMs, frameTime * 1000);
+            if (root.frames > 1) root.worstMs = Math.max(root.worstMs, frameTime * 1000);
             root.fps = elapsedTime > 0 ? root.frames / elapsedTime : 0;
         }
     }
