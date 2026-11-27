@@ -12,6 +12,43 @@ Please report vulnerabilities privately through GitHub's
 [private vulnerability reporting](https://github.com/KitsuneKode/kuwai/security/advisories/new),
 not a public issue. Say what you did, what happened, and the commit you ran.
 
+## What is verified before anything runs
+
+- **Releases.** A release is a tag `vX.Y.Z` signed with `git tag -s` by a key in
+  [`release-signers/`](release-signers/README), whose message carries
+  `kuwai-tree-sha256`: the SHA-256 of every file in the tree (path, executable bit,
+  content, link target). `kuwai release` makes exactly that.
+- **Installing (`bin/kuwai-setup`).** Fetches only that tag into a new folder of its own,
+  then checks it with `git verify-tag` against a keyring built from `release-signers/*.asc`
+  alone, in a temporary `GNUPGHOME` (your own keyring plays no part), checks the tag's name
+  and that the tree's digest is the signed one, checks the checked-out files again, and only
+  then runs that release's `install.sh`. An unsigned tag, a plain tag, a tag signed by any
+  other key, a tag without the digest or with another tree's, or a tag renamed from another
+  release is refused, and nothing from it runs. With no key in `release-signers/`, everything
+  is refused.
+- **What root runs.** Root installs only from its own copy,
+  `/usr/local/lib/kuwai/releases/vX.Y.Z` (owned by root, writable by no one else). Root makes
+  that copy from the checked folder, then checks the copy itself: `gpgv` on the tag against
+  the fingerprints root keeps in `/usr/local/lib/kuwai/signers` (given once, at the first
+  install; never taken from a release afterwards), and the digest of every file. A file
+  changed after `kuwai-setup` checked it, a swapped tag, a key root doesn't trust, an older
+  release than root's, or a link out of the tree is refused, and nothing is installed.
+  `system/session`, `system/install`, `greeter/install`, `kuwai auth pin` and
+  `kuwai update install-helper` run from that copy only, and check it again each time
+  (ownership of every folder and file, signature, digest). From a clone they refuse unless
+  given `--trust-clone`, which says that it trusts every file in the clone.
+- **Updates.** `kuwai update-self` checks a release the same way before stable moves.
+  The root update helper's password prompt names the whole transaction: the number of Arch
+  packages and the digest of exactly which versions, the held packages, the build
+  dependencies and the AUR packages. Root runs that and nothing else; if pacman resolves a
+  different set after it syncs, nothing is installed.
+- **Undoing the login screen.** `greeter/install --undo` restores only what the root-owned
+  receipt written at install lists (paths it replaced, each kept copy's digest, the earlier
+  login manager); without that receipt it restores nothing.
+
+What only a real install shows: `sudo`/`pkexec` and polkit on the machine, the real
+`/usr/local` ownership, greetd booting into the login screen.
+
 ## What is covered by tests
 
 - The assistant: secrets are refused by read *and* by search; files the sandbox
@@ -21,6 +58,12 @@ not a public issue. Say what you did, what happened, and the commit you ran.
   (`tests/root`). No privileged transaction runs in tests.
 - The installer restores the state before the first install and never writes
   through a link (`tests/install`).
+- Releases: every refusal above, and nothing from a refused release running
+  (`tests/release/test_provenance.py`); root's copy and its checks, run under a stand-in
+  root (`tests/release/test_root_copy.py`); the login screen's receipt
+  (`tests/greeter/test_receipt.py`); the update prompt's transaction
+  (`tests/root/test_update_root.py`, `tests/update/test_root_helper_trust.py`);
+  `update-self` and `kuwai release` (`tests/recovery/test_release_refs.py`).
 
 What is *not* qualified yet: live lock-screen failure modes, real portal screen
 sharing, and the assistant on hardware other than the author's. See

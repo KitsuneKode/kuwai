@@ -121,7 +121,7 @@ const features = [
       {
         src: "/media/login/login.webp",
         alt: "kuwai greetd login screen with centered clock, user avatar, and hold-to-power row",
-        caption: "Login screen on greetd (optional: sudo greeter/install)."
+        caption: "Login screen on greetd (optional: greeter/install, from root's checked copy)."
       },
       {
         src: "/media/login/lock.webp",
@@ -224,7 +224,7 @@ const features = [
 const rootSurface = [
   {
     component: "system/session",
-    when: "Once during install (optional undo: sudo system/session --undo)",
+    when: "Once during install, from root's checked copy of a signed release (undo: system/session --undo)",
     why: "Installs /usr/local/bin/kuwai-session and /usr/share/wayland-sessions/kuwai.desktop so Kuwai appears as its own login session."
   },
   {
@@ -387,7 +387,7 @@ const homeSchema = {
       <div class="container">
         <div class="section-head">
           <h2 id="requirements-title">Requirements</h2>
-          <p class="section-intro">kuwai targets Arch Linux and relies on packages available in the official repositories. Running <code>./install.sh --deps</code> checks what is missing and installs it with <code>pacman</code>.</p>
+          <p class="section-intro">kuwai targets Arch Linux and relies on packages available in the official repositories. Running <code>kuwai-setup --deps</code> checks what is missing and installs it with <code>pacman</code>.</p>
         </div>
 
         <div class="req-grid">
@@ -428,13 +428,15 @@ const homeSchema = {
 
         <InstallBlock client:visible />
 
+        <p class="section-intro"><code>kuwai-setup</code> installs a signed release, never the clone: it fetches only the newest release tag into a folder of its own, checks it is signed by the release key in <code>release-signers/</code> (<code>7C78 CB85 5D50 4BDF 3E9B 74AF F150 E88B 5072 0270</code>) and that every file is the one the signature names, and runs nothing from it before that. Root gets its own copy in <code>/usr/local/lib/kuwai</code> and checks it again.</p>
+
         <div class="install-notes">
           <div class="info-card">
-            <h3>Optional system steps (sudo)</h3>
+            <h3>Optional system steps (sudo, from root's checked copy)</h3>
             <ul class="plain-list">
-              <li><code>sudo greeter/install</code> — replace SDDM or another display manager with kuwai's greetd login screen (<code>--undo</code> puts the previous manager back).</li>
-              <li><code>sudo system/install</code> — install <code>kuwai-wake</code> so alarms can wake a sleeping laptop via RTC (<code>--undo</code> removes it).</li>
-              <li><code>kuwai update install-helper</code> — install the root-owned update helper so a system update asks for your password once per operation.</li>
+              <li><code>sudo /usr/local/lib/kuwai/current/greeter/install</code> — replace SDDM or another display manager with kuwai's greetd login screen (<code>--undo</code> puts back what its root-owned receipt lists).</li>
+              <li><code>sudo /usr/local/lib/kuwai/current/system/install</code> — install <code>kuwai-wake</code> so alarms can wake a sleeping laptop via RTC (<code>--undo</code> removes it).</li>
+              <li><code>kuwai update install-helper</code> — install the root-owned update helper so a system update asks for your password once, and the prompt names exactly what will be installed.</li>
             </ul>
           </div>
 
@@ -442,7 +444,7 @@ const homeSchema = {
             <h3>Updating, checking, and uninstalling</h3>
             <ul class="plain-list">
               <li><code>kuwai doctor</code> — checks Hyprland config, notification ownership, DND state, user services, and shell health.</li>
-              <li><code>kuwai update-self</code> — updates <code>stable</code> to the newest signed release tag (verified against <code>release-signers</code>), runs migrations, and rolls back automatically if the shell fails to load.</li>
+              <li><code>kuwai update-self</code> — updates <code>stable</code> to the newest signed release tag (its signature and every file checked against <code>release-signers</code>), runs migrations, and rolls back automatically if the shell fails to load.</li>
               <li><code>./install.sh --uninstall</code> — restores every user file and systemd unit state recorded in <code>~/.local/state/kuwai/original/</code> before the first install.</li>
             </ul>
           </div>
@@ -502,7 +504,7 @@ const homeSchema = {
         </div>
 
         <p class="section-footnote">
-          Release tags are verified against SSH/PGP keys listed in <code>release-signers</code>, and tags that move after first sight are refused. For full details and known limitations, read <a href="https://github.com/KitsuneKode/kuwai/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" class="inline-link">SECURITY.md</a> and <a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/security.md" target="_blank" rel="noopener noreferrer" class="inline-link">docs/manual/security.md</a>.
+          Release tags must be signed by an OpenPGP key in <code>release-signers</code> and name the digest of every file; nothing from a release runs before both are checked, root installs only from its own checked copy, and tags that move after first sight are refused. For full details and known limitations, read <a href="https://github.com/KitsuneKode/kuwai/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" class="inline-link">SECURITY.md</a> and <a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/security.md" target="_blank" rel="noopener noreferrer" class="inline-link">docs/manual/security.md</a>.
         </p>
       </div>
     </section>

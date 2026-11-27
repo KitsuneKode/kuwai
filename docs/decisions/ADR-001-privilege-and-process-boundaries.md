@@ -30,7 +30,8 @@ permissions with the main user shell (`shell/`):
 1. **Greeter code/data split (`greeter/install`, `greeter/sync`, `greeter/hyprland.lua`, `greeter/start`, `greeter/session-start`, `greeter/keys`)**:
    - Everything executable in `/var/lib/kuwai-greeter` (`shell/`, `hyprland.lua`,
      `start`, `session-start`, `compositor-start`, `keys`) is owned by `root`
-     and refreshed only via `sudo greeter/install --code` (with explicit
+     and refreshed only via `sudo /usr/local/lib/kuwai/current/greeter/install --code`,
+     from root's checked copy of a signed release (with explicit
      `chown -R root:root` because `rsync` preserves prior ownership on unchanged
      files).
    - Only `/var/lib/kuwai-greeter/home/` is user-writable (`greeter/sync` copies

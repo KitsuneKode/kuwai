@@ -63,24 +63,29 @@ Optional packages (screenshot annotation, OCR, live wallpapers, external monitor
 
 ## Install
 
+kuwai installs from a signed release, never from whatever a clone happens to hold. `kuwai-setup` fetches only the newest release tag into a fresh folder of its own, checks that it is signed by a key in [release-signers/](release-signers/README) and that every file is the one the signature names, and runs nothing from it before both checks pass:
+
 ```sh
 git clone https://github.com/KitsuneKode/kuwai.git ~/Projects/kuwai
-cd ~/Projects/kuwai
-./install.sh --dry-run     # preview every change without writing
-./install.sh --deps        # install missing Arch packages, stable channel, Hyprland config, user units, and login entry
+~/Projects/kuwai/bin/kuwai-setup --verify-only   # fetch and check the newest release; install nothing
+~/Projects/kuwai/bin/kuwai-setup --deps          # check it again, give root its own checked copy (sudo, once), install it for you
 ```
 
-Optional system integrations (require `sudo` and support `--undo`):
+`kuwai-setup` prints the fingerprint of the key that signed the release. The release key is `7C78 CB85 5D50 4BDF 3E9B 74AF F150 E88B 5072 0270`: if what it prints differs, stop. Options after the first go to that release's `install.sh` (`--dry-run`, `--deps`, `--no-services`, …).
+
+Root never runs your clone. `kuwai-setup` copies the checked release to `/usr/local/lib/kuwai/releases/vX.Y.Z`, owned by root, where root checks it again against the release key's fingerprint it keeps. The login entry, the login screen, the alarm wake helper, the password prompt and the update helper are installed from that copy only (each support `--undo`):
 
 ```sh
-sudo greeter/install       # greetd login screen sharing the lock screen's design (--code refreshes after updates)
-sudo system/install        # RTC wake helper so alarms wake a sleeping laptop
-kuwai update install-helper # root-owned pacman helper for Software Update
+sudo /usr/local/lib/kuwai/current/greeter/install   # greetd login screen sharing the lock screen's design (--code refreshes after updates)
+sudo /usr/local/lib/kuwai/current/system/install    # RTC wake helper so alarms wake a sleeping laptop
+kuwai update install-helper                          # root-owned pacman helper for Software Update
 ```
 
-kuwai registers its own **Kuwai** login session with Hyprland config in `~/.config/kuwai/hypr/` (`hyprland.lua`, `monitors.lua`, `user.lua`), leaving `~/.config/hypr` and your plain Hyprland session untouched. Everything replaced on first install is recorded in `~/.local/state/kuwai/original/` and restored by `./install.sh --uninstall` (plus `sudo system/session --undo` and `kuwai auth unpin` for the two root-installed pieces).
+Developing kuwai: `./install.sh` in a clone installs that clone for you, and the root scripts accept `--trust-clone`, which says plainly that it trusts every file in the clone.
 
-An AUR `PKGBUILD` and `kuwai-setup` wrapper also live in `packaging/aur/kuwai/`. Full details on channels, migrations, backups, and uninstall are in [docs/manual/install.md](docs/manual/install.md).
+kuwai registers its own **Kuwai** login session with Hyprland config in `~/.config/kuwai/hypr/` (`hyprland.lua`, `monitors.lua`, `user.lua`), leaving `~/.config/hypr` and your plain Hyprland session untouched. Everything replaced on first install is recorded in `~/.local/state/kuwai/original/` and restored by `./install.sh --uninstall` (plus `sudo /usr/local/lib/kuwai/current/system/session --undo` and `kuwai auth unpin` for the two root-installed pieces).
+
+The AUR `PKGBUILD` in `packaging/aur/kuwai/` builds from the signed tag (makepkg checks its signature) and installs that tag's `kuwai-setup`. Full details on channels, migrations, backups, and uninstall are in [docs/manual/install.md](docs/manual/install.md).
 
 ## What you get
 
@@ -90,7 +95,7 @@ An AUR `PKGBUILD` and `kuwai-setup` wrapper also live in `packaging/aur/kuwai/`.
 - **Controls, Sound, and Displays** ([docs/manual/display.md](docs/manual/display.md), [docs/manual/audio.md](docs/manual/audio.md)): `Super+Ctrl+Space` opens Controls (Wi-Fi, Bluetooth, DND, Night Shift, Caffeine, microphone, Reduce Motion, brightness, Display presets, and a per-app PipeWire sound mixer). HDR status reads the live signal on the wire (`bin/kuwai-hdr`).
 - **Launcher**: `Super+A` searches apps, open windows, files (`fd`), settings, and actions. Inline prefixes: `=` calculator (math, units, currencies), `!` processes and listening ports (`! 3000`), `+` Arch and AUR packages, `:` emoji, `;` Nerd Font glyphs, plus `timer 10m`, `pomodoro`, `remind me …`, `alarm 7:30`, and `note …`.
 - **Clipboard**: Opt-in shelf (`Super+V`, pins on `Super+Shift+V`) backed by `cliphist` with fuzzy search, Quick Look (`Space`), inline editing, OCR (`Ctrl+O`), rendered Markdown/code/Mermaid, secret masking, and undo delete (`Ctrl+Z`).
-- **Lock and login**: `Super+L` locks the session; `sudo greeter/install` installs the matching `greetd` login screen. Both use a five-dot pulse password pill (length is never revealed) and hold-to-confirm power actions (0.8 s).
+- **Lock and login**: `Super+L` locks the session; `greeter/install` (from root's checked copy) installs the matching `greetd` login screen. Both use a five-dot pulse password pill (length is never revealed) and hold-to-confirm power actions (0.8 s).
   | | |
   |---|---|
   | ![Login screen](docs/media/login/login.webp) | ![Lock screen](docs/media/login/lock.webp) |
@@ -140,7 +145,8 @@ If you develop inside a clone, switch with `kuwai channel dev` and land changes 
 
 - **No telemetry.** Settings, notification history, and logs remain local in `~/.config/kuwai`, `~/.local/state/kuwai` (`0700`), and `~/.cache/kuwai` (`0700`).
 - **Opt-in collection.** Clipboard history and GitHub/Gmail feeds start off until you accept them during install or enable them with `kuwai collect`. The local Ollama assistant is also off by default.
-- **Narrow root boundaries.** Only five components ever use root: `system/session` (login entry), `kuwai auth pin` (root-owned polkit password prompt), `kuwai-update-root` (op-scoped `pkexec` pacman helper), and the optional `greeter/install` and `system/install` helpers.
+- **Signed releases.** `kuwai-setup` and `kuwai update-self` take only a release tag signed by a key in `release-signers/` whose every file is the signed one; nothing in it runs before that is checked.
+- **Narrow root boundaries.** Only five components ever use root: `system/session` (login entry), `kuwai auth pin` (root-owned polkit password prompt), `kuwai-update-root` (`pkexec` pacman helper bound to the exact transaction its password prompt shows), and the optional `greeter/install` and `system/install` helpers. Each installs from root's own copy of a signed release, checked by root again, never from your clone.
 
 See [SECURITY.md](SECURITY.md) and [docs/manual/security.md](docs/manual/security.md) for the trust model and known limitations.
 

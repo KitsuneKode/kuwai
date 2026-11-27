@@ -22,7 +22,7 @@ Left, in order:
 - [x] Screensaver as a real idle step (saver → fade → lock; still default). c4c8d05
 - [x] README screenshots from healthy rehearsal scenes (7bf600d). Clips as 1:1 crops: the owner runs the recording brief while away.
 - [ ] Fresh-VM pass: install, first login, lock, suspend/resume, greeter, uninstall.
-- [ ] Root never runs checkout code; signed release (needs the owner's key).
+- [x] Root never runs checkout code; signed release (code done: kuwai-setup, kuwai-verify, root's copy in /usr/local/lib/kuwai; the owner exports the GPG key into release-signers/ and cuts v0.2.0 with kuwai release).
 - [ ] The shell's 99 % / 853 MB episode (17:18–20:35) is unexplained. The
       repo's quickshell (built against Qt 6.12.0, running on 6.12.1) is a weak
       suspect: a patch release keeps Qt's private symbols. Stay on extra's
@@ -71,11 +71,14 @@ screen once); portal.frag openings (unlock doors, login iris, saver veil);
 kuwai secrets; docs and site rewritten for strangers (Neon, merged).
 
 Blocks the release:
-- [ ] Release provenance (Astra P0): kuwai-setup verifies a signed tag in a clean
+- [x] Release provenance (Astra P0): kuwai-setup verifies a signed tag in a clean
       staging dir before running anything; README installs the same artifact.
-- [ ] Root never runs checkout code (Astra P0): system/session, system/install,
+      (bin/kuwai-setup + bin/kuwai-verify; tag carries kuwai-tree-sha256; GPG keys in
+      release-signers/*.asc, private GNUPGHOME; refuses with no key.)
+- [x] Root never runs checkout code (Astra P0): system/session, system/install,
       greeter staging and the update helper install from a verified release, not
-      the user's clone.
+      the user's clone. (/usr/local/lib/kuwai/releases/vX.Y.Z, checked by root with
+      gpgv against its own fingerprints; --trust-clone for development.)
 - [ ] Fresh install themes (Neon P0): `kuwai-look list` includes the downloaded
       Kuwai Night wallpaper; theme cards have thumbnails or say "downloads on
       first use"; applying a theme keeps Colours on Theme; drop or credit the
@@ -83,7 +86,7 @@ Blocks the release:
 - [ ] README media (Fable P0): re-shoot tour images from healthy scenes (no
       error notice, no red CPU, the new Now Playing); clips at 1:1 crops;
       login/lock/goodbye media current or cut.
-- [ ] Update prompt binds to one transaction (Astra P1); greeter --undo needs a
+- [x] Update prompt binds to one transaction (Astra P1); greeter --undo needs a
       root-owned receipt (Astra P1); a failed forward-rollback migration returns
       failure before activation (Astra P1).
 - [ ] Relocated XDG dirs keep the assistant's denied paths (Astra P1).
