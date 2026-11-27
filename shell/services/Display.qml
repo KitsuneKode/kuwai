@@ -55,8 +55,17 @@ Singleton {
         id: tempLater
         interval: 60
         // Off: 6500 K first (identity alone keeps reporting the old warm value).
-        onTriggered: root.run(root.temperature >= 6400 ? ["sh", "-c", "hyprctl hyprsunset temperature 6500; hyprctl hyprsunset identity"]
-                                                        : ["hyprctl", "hyprsunset", "temperature", String(root.temperature)])
+        onTriggered: {
+            if (root.temperature >= 6400) { root.run(["sh", "-c", "hyprctl hyprsunset temperature 6500; hyprctl hyprsunset identity"]); return; }
+            warm.command = ["sh", "-c", 'hyprctl hyprsunset temperature "$1" >/dev/null 2>&1 && exit 0; systemctl --user start hyprsunset.service || exit 1; '
+                            + 'for i in 1 2 3 4 5 6 7 8 9 10; do sleep 0.2; hyprctl hyprsunset temperature "$1" >/dev/null 2>&1 && exit 0; done; exit 1',
+                            "sh", String(root.temperature)];
+            warm.running = true;
+        }
+    }
+    Process {
+        id: warm
+        onExited: code => { if (code !== 0) root.temperature = 6500; }
     }
     // The accurate preset holds Night Shift off; the switch says so instead.
     function toggleNight() { if (!nightHeld) setTemperature(nightOn ? 6500 : nightWarmth); }

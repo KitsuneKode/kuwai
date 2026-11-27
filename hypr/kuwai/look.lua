@@ -116,8 +116,8 @@ K.config({
 function L.apply_theme()
 	T.load_colors(true)
 	if T.kuwai then
-		local active_b = T.rgba("accent", "b3")
-		local soft_b = T.rgba("accent", "4d")
+		local active_b = T.rgba("accent", "80")
+		local soft_b = T.rgba("border", "40") or T.rgba("accent", "26")
 		local inactive_b = T.rgba("border", "55")
 		if active_b then
 			K.config({
