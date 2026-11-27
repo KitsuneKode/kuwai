@@ -5,6 +5,34 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## INSPIRATION PASS (2026-11-27) — Clove and pocket-dots, with Neon 4 and Sol 6.2
+
+Landed: Night Shift's switch starts hyprsunset itself; the focused border at half
+accent; a fresh install gets Kuwai Night's wallpaper; dictation's ring is one shader
+(voice ripples from the island while listening, accent comets while writing);
+cancelled takes kept 10 min in RAM and brought back with Super+Ctrl+Alt+D
+(voxtype fork 3b53a49f, `voxtype record recover`); Cleanup → Caches (disk dots,
+comes back / check first, each tool's own clean); dev servers with name, agent,
+age and a verified Stop; the launcher never ends session processes and says when
+one is still running; cards' top-edge light; Geist Mono fallback; no wallmap job
+without the model.
+
+Next, in order (both reviews agree):
+- [ ] Activity tab in System: apps grouped by systemd scope (app-*.scope) with
+      desktop icons, CPU per logical CPU from cgroup cpu.stat deltas while open,
+      PSS on a slower beat, Stop/Force quit through kuwai-procs.
+- [ ] API keys in shell rc files → Secret Service: scan named files only (name,
+      file:line, never the value), store via secret-tool on stdin, verify, then
+      rewrite atomically; a per-tool launcher loads it. Never print or log a value.
+- [ ] Caches: Docker images and journald as "check first" with their commands.
+- [ ] Wallpaper: a zero-model contour reveal (Sobel edges sketch in, then fill).
+- [ ] README clips: record from the rehearsal (Xvfb) or on the live session while
+      the owner is away (they agreed to recording; not while they type).
+Not taken: Clove's dotted canvas behind cards, Geist Sans, continuous Orbit/Ripple
+indicators on the resting notch, pocket-dots' pixel colonies and opaque bar.
+Clove is a paid product: ideas only, never its code, images or words; pocket-dots
+is GPL-3.0 with separately licensed assets: ideas only (AGENTS.md).
+
 ## FINAL REVIEW (2026-11-27) — five models at d0caa60, plus the owner's reports
 
 Threads: Grok 4.7 (attacker as you), Sol 6.2 (data/runtime), Astra 6.2 (privileged
