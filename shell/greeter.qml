@@ -78,6 +78,7 @@ ShellRoot {
         trace("failure");
         challenge = "";
         handoff.stop();
+        launchAck.stop();
         quitAnyway.stop();
         locked = true;
         leaving = false;
@@ -113,7 +114,7 @@ ShellRoot {
             root.challenge = String(message || "Verification code").replace(/[:\s]+$/, "");
         }
         function onAuthFailure(message) { root.fail("Incorrect password"); }
-        function onError(error) { root.fail("Couldn't log in (" + error + ")"); }
+        function onError(error) { root.trace("error"); root.fail("Couldn't log in. Try again"); }
         function onReadyToLaunch() {
             root.password = "";
             root.trace("authenticated");
@@ -121,6 +122,7 @@ ShellRoot {
             handoff.start();
         }
         function onLaunched() {
+            launchAck.stop();
             root.trace("launched");
             endCompositor.running = true;
             quitAnyway.start();
@@ -140,8 +142,10 @@ ShellRoot {
             // (sh -c 'script' sh arg) fall apart into `sh -c exec`, which
             // ends the session at once, and greetd shows the login again.
             Greetd.launch(['"${SHELL:-/bin/sh}"', "-l", "-c", "'" + root.session.replace(/'/g, "'\\''") + "'"], ["KUWAI_HANDOFF_ID=" + root.handoffId], false);
+            launchAck.start();
         }
     }
+    Timer { id: launchAck; interval: 8000; onTriggered: { root.trace("launch-timeout"); root.fail("Couldn't start your session. Try again"); } }
     // Hyprland is told to end while the cover is still up: it stops drawing
     // at once, so its last frame (your wallpaper) stays on the screens through
     // its ~1 s teardown, where quitting first left its black background.

@@ -51,6 +51,7 @@ Column {
     function isCode(i) { return Notifs.otpOf(i) !== "" || Notifs.otpLikely(i); }
     function heading(i) {
         if (isCode(i) && Notifs.codeShaped(i.title || "")) return (i.app || "Verification") + " · code";
+        if (Notifs.lockHidden(i)) return i.app || "Message";
         return i.title || i.app || "";
     }
     function preview(i) {
