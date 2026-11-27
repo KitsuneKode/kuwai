@@ -6,18 +6,19 @@
 `what` is the server as you'd name it ("next dev", "vite"), `agent` the coding
 agent it was started under (its parent chain, nothing else), `start` the
 kernel's start time, so stopping it later can check it's still the same one.
+Listeners and their owners come from /proc: net/tcp and net/tcp6 name the
+socket inodes, and each process's fd links name the sockets it holds.
 """
+import ipaddress
 import json
 import os
 import re
-import subprocess
 
 HOME = os.path.realpath(os.path.expanduser("~"))
+PROC = os.environ.get("KUWAI_PROC", "/proc")
 SKIP = re.compile(r"^(t3code|antigravity|chrome|chromium|firefox|zen|electron|code|cursor|windsurf|devin|discord|slack|spotify|steam|"
                   r"syncthing|kdeconnectd|Hyprland|qs|quickshell|kitty|ghostty|systemd.*|pipewire.*|wireplumber|obs|zapzap|"
                   r"language_server.*|gopls|rust-analyzer|tsserver|vscode.*|claude|codex|opencode|kittymux.*)$", re.I)
-LINE = re.compile(r"\s(\[?[0-9a-fA-F:.*%\w]*\]?):(\d+)\s.*users:\(\(\"([^\"]+)\",pid=(\d+)")
-
 
 AGENTS = [(re.compile(r"^claude$|claude-code", re.I), "Claude"), (re.compile(r"^codex", re.I), "Codex"),
           (re.compile(r"^opencode", re.I), "OpenCode"), (re.compile(r"cursor-agent|^cursor$", re.I), "Cursor"),
@@ -31,23 +32,27 @@ SERVERS = [(r"next(/dist/bin/next)?\b.*\bdev\b", "next dev"), (r"next\b.*\bstart
 TICK = os.sysconf("SC_CLK_TCK")
 
 
-def stat(pid):
-    with open(f"/proc/{pid}/stat") as f:
+def root(proc=None):
+    return proc or PROC
+
+
+def stat(pid, proc=None):
+    with open(os.path.join(root(proc), str(pid), "stat")) as f:
         st = f.read()
     rest = st[st.rindex(")") + 2:].split()
     return st[st.index("(") + 1:st.rindex(")")], int(rest[1]), int(rest[19])
 
 
-def argv(pid):
+def argv(pid, proc=None):
     try:
-        with open(f"/proc/{pid}/cmdline", "rb") as f:
+        with open(os.path.join(root(proc), str(pid), "cmdline"), "rb") as f:
             return [a.decode(errors="replace") for a in f.read().split(b"\0") if a]
     except OSError:
         return []
 
 
-def what(pid, name):
-    cmd = " ".join(argv(pid))[:400]
+def what(pid, name, proc=None):
+    cmd = " ".join(argv(pid, proc))[:400]
     for pat, label in SERVERS:
         if re.search(pat, cmd):
             return label
@@ -58,16 +63,16 @@ def what(pid, name):
     return name
 
 
-def agent(pid):
+def agent(pid, proc=None):
     """The coding agent this server runs under, if one of its ancestors is one."""
     seen = 0
     while pid > 1 and seen < 40:
         seen += 1
         try:
-            name, ppid, _ = stat(pid)
+            name, ppid, _ = stat(pid, proc)
         except (OSError, ValueError, IndexError):
             return ""
-        a = argv(pid)
+        a = argv(pid, proc)
         base = os.path.basename(a[0]) if a else ""
         script = os.path.basename(a[1]) if len(a) > 1 and base in ("node", "bun", "python3", "python") else ""
         for pat, label in AGENTS:
@@ -77,9 +82,12 @@ def agent(pid):
     return ""
 
 
-def uptime():
-    with open("/proc/uptime") as f:
-        return float(f.read().split()[0])
+def uptime(proc=None):
+    try:
+        with open(os.path.join(root(proc), "uptime")) as f:
+            return float(f.read().split()[0])
+    except (OSError, ValueError, IndexError):
+        return 0.0
 
 
 def project(cwd):
@@ -91,39 +99,132 @@ def project(cwd):
     return os.path.basename(cwd)
 
 
-def listening(text):
-    seen, out = set(), []
-    for line in text.splitlines():
-        m = LINE.search(line)
-        if not m:
-            continue
-        host, port, proc, pid = m.group(1), int(m.group(2)), m.group(3), int(m.group(4))
-        name = re.sub(r"-MainThread$", "", proc)
-        if port in seen or SKIP.match(name):
-            continue
+def ipv4(hexaddr):
+    raw = bytes.fromhex(hexaddr)
+    return str(ipaddress.IPv4Address(raw[::-1]))
+
+
+def ipv6(hexaddr):
+    raw = bytes.fromhex(hexaddr)
+    return str(ipaddress.IPv6Address(b"".join(raw[i:i + 4][::-1] for i in range(0, 32, 4))))
+
+
+def address(hexaddr, family):
+    try:
+        return ipv4(hexaddr) if family == "tcp" else ipv6(hexaddr)
+    except (ValueError, TypeError):
+        return ""
+
+
+def loopback(host):
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def sockets(proc=None):
+    """Listening socket inode → port and whether it is loopback-only."""
+    out = {}
+    for family in ("tcp", "tcp6"):
         try:
-            cwd = os.path.realpath(os.readlink(f"/proc/{pid}/cwd"))
+            with open(os.path.join(root(proc), "net", family)) as f:
+                lines = f.read().splitlines()
         except OSError:
             continue
-        if not cwd.startswith(HOME + os.sep):
+        for line in lines[1:]:
+            parts = line.split()
+            if len(parts) < 10 or parts[3] != "0A":
+                continue
+            try:
+                hexaddr, hexport = parts[1].rsplit(":", 1)
+                port = int(hexport, 16)
+            except ValueError:
+                continue
+            inode = parts[9]
+            if not inode.isdigit() or inode == "0" or not 0 < port < 65536:
+                continue
+            host = address(hexaddr, family)
+            out[inode] = {"port": port, "host": host, "local": loopback(host)}
+    return out
+
+
+def socket_owners(inodes, proc=None):
+    """Socket inode → pids holding it, from fd links under /proc."""
+    owners = {}
+    if not inodes:
+        return owners
+    try:
+        pids = os.listdir(root(proc))
+    except OSError:
+        return owners
+    for d in pids:
+        if not d.isdigit():
             continue
+        fddir = os.path.join(root(proc), d, "fd")
         try:
-            _, _, start = stat(pid)
-        except (OSError, ValueError, IndexError):
+            fds = os.listdir(fddir)
+        except OSError:
             continue
-        seen.add(port)
-        out.append({"port": port, "proc": name, "what": what(pid, name), "project": project(cwd), "pid": pid, "start": start,
-                    "age": max(0, int(uptime() - start / TICK)), "agent": agent(pid),
-                    "local": host.startswith(("127.", "[::1]", "localhost"))})
+        for fd in fds:
+            try:
+                target = os.readlink(os.path.join(fddir, fd))
+            except OSError:
+                continue
+            if not target.startswith("socket:[") or not target.endswith("]"):
+                continue
+            inode = target[8:-1]
+            if inode in inodes:
+                owners.setdefault(inode, []).append(int(d))
+    return owners
+
+
+def candidate(pid, proc, up):
+    try:
+        cwd = os.path.realpath(os.readlink(os.path.join(root(proc), str(pid), "cwd")))
+    except OSError:
+        return None
+    if not cwd.startswith(HOME + os.sep):
+        return None
+    try:
+        name, _, start = stat(pid, proc)
+    except (OSError, ValueError, IndexError):
+        return None
+    name = re.sub(r"-MainThread$", "", name)
+    if SKIP.match(name):
+        return None
+    return {"proc": name, "what": what(pid, name, proc), "project": project(cwd), "pid": pid, "start": start,
+            "age": max(0, int(up - start / TICK)), "agent": agent(pid, proc)}
+
+
+def scan(proc=None):
+    """Rows for listening TCP ports, owned through /proc socket inodes."""
+    listens = sockets(proc)
+    owners = socket_owners(set(listens), proc)
+    ports = {}
+    for inode, s in listens.items():
+        p = ports.setdefault(s["port"], {"inodes": [], "local": True})
+        p["inodes"].append(inode)
+        p["local"] = p["local"] and s["local"]
+    up = uptime(proc)
+    out = []
+    for port, p in ports.items():
+        rows = []
+        for inode in p["inodes"]:
+            for pid in sorted(owners.get(inode, [])):
+                row = candidate(pid, proc, up)
+                if row and all(row["pid"] != old["pid"] for old in rows):
+                    rows.append(row)
+        if not rows:
+            continue
+        row = rows[0]
+        row.update({"port": port, "local": p["local"]})
+        out.append(row)
     return sorted(out, key=lambda r: r["port"])
 
 
 def main():
-    try:
-        text = subprocess.run(["ss", "-ltnpH"], capture_output=True, text=True, timeout=3).stdout
-    except (OSError, subprocess.SubprocessError):
-        text = ""
-    print(json.dumps(listening(text)))
+    print(json.dumps(scan()))
 
 
 if __name__ == "__main__":

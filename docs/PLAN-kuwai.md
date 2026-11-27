@@ -96,8 +96,8 @@ Before announcing (P1/P2):
 - [x] Usage/Updates/Agents/Cleanup: one state each (Fable 13–15); orange only
       for "needs you"; lock and login share one token set (Fable 12); farewell
       marks all drawn as Shapes (Fable 11).
-- [ ] AUR updates with yay or no helper (Neon); kittymux path from PATH.
-- [ ] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
+- [x] AUR updates with yay or no helper (Neon); kittymux path from PATH.
+- [x] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
       text (Grok P2); Agents Stop can force and says "on this network".
 - [x] Voxtype: clear stale cancelled takes at daemon start (Astra P2).
 - [x] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups (the clipboard shelf is staged at 100 % and 120 % only: its geometry is fixed pixels).

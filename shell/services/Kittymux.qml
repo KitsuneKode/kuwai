@@ -1,4 +1,4 @@
-// kittymux, read through its public contract (~/Projects/kittymux/docs/inbox.md):
+// kittymux, read through its public contract (its docs/inbox.md):
 //
 //   inbox-snapshot.json    watched; rewritten atomically on every inbox change
 //   kittymux pick --json   what needs you, running agents, recent conversations,
@@ -30,12 +30,12 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string home: Quickshell.env("HOME")
     readonly property string stateDir: Paths.kittymuxState
-    readonly property string bin: home + "/.local/bin/kittymux"
-    // Override with KITTYMUX_ROOT when kittymux isn't under ~/Projects/kittymux.
-    readonly property string muxRoot: Quickshell.env("KITTYMUX_ROOT") || (home + "/Projects/kittymux")
-    readonly property string iconDir: muxRoot + "/assets/notify"
+    property string bin: ""
+    // KITTYMUX_ROOT can still point at a checkout for its notification art.
+    readonly property string muxRoot: Quickshell.env("KITTYMUX_ROOT") || ""
+    readonly property string iconDir: muxRoot ? muxRoot + "/assets/notify" : ""
+    function muxBin() { return bin || "kittymux"; }
 
     property bool available: false
     property bool watching: false              // set while the Agents tab is visible
@@ -322,24 +322,24 @@ Singleton {
     }
     function icon(agent) {
         const name = (agent || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
-        return brand(name) || (name ? "file://" + iconDir + "/" + name + ".png" : "");
+        return brand(name) || (name && iconDir ? "file://" + iconDir + "/" + name + ".png" : "");
     }
 
     // ── Actions ──────────────────────────────────────────────────────────
     function act(action) {
-        run([bin, "act", JSON.stringify(action)]);
+        run([muxBin(), "act", JSON.stringify(action)]);
     }
     function jumpEvent(id) {
-        run([bin, "inbox", "jump", id]);
+        run([muxBin(), "inbox", "jump", id]);
     }
     function ack(id) {
-        run([bin, "inbox", "ack", id]);
+        run([muxBin(), "inbox", "ack", id]);
     }
     function ackAll() {
-        run([bin, "inbox", "ack", "--all"]);
+        run([muxBin(), "inbox", "ack", "--all"]);
     }
     function openPanel() {
-        run([bin, "panel", "toggle"]);
+        run([muxBin(), "panel", "toggle"]);
     }
 
     // ── Answer a permission prompt from the notch (owner said yes, 2026-11-13)
@@ -416,7 +416,7 @@ Singleton {
                 "umask 077; printf %s \"$2\" > \"$1.tmp\" && mv -f \"$1.tmp\" \"$1\"", "sh", asksDir + "/" + r.key + ".answer", reply] }).running = true;
             return;
         }
-        const cmd = [bin, "answer", r.key, choice, "--expect", r.question];
+        const cmd = [muxBin(), "answer", r.key, choice, "--expect", r.question];
         if (answerDry) cmd.push("--dry-run");
         answerer.createObject(root, { command: cmd, key: r.key, choice: choice }).running = true;
     }
@@ -470,9 +470,12 @@ Singleton {
     Component.onCompleted: probe.running = true
     Process {
         id: probe
-        command: ["test", "-x", root.bin]
+        command: ["sh", "-c", "command -v kittymux"]
+        stdout: StdioCollector { id: probeOut }
         onExited: code => {
-            root.available = code === 0;
+            const found = (probeOut.text || "").trim().split("\n")[0];
+            root.bin = code === 0 ? found : "";
+            root.available = code === 0 && found !== "";
             if (root.available) pick.running = true;
         }
     }
@@ -526,7 +529,7 @@ Singleton {
     }
     Process {
         id: pick
-        command: [root.bin, "pick", "--json"]
+        command: [root.muxBin(), "pick", "--json"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try { root.rows = JSON.parse(text); } catch (e) {}
