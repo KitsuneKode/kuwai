@@ -140,7 +140,7 @@ Row {
                 radius: pill.radius
                 blur: 9
                 spread: 0
-                color: Qt.alpha(Theme.accent, 0.6 * Math.max(0, Math.min(1, cap.g)) * Math.max(0, (cap.lit - 0.42) / 0.58))
+                color: Qt.alpha(Theme.accentLive, 0.6 * Math.max(0, Math.min(1, cap.g)) * Math.max(0, (cap.lit - 0.42) / 0.58))
                 visible: color.a > 0.01
             }
             Rectangle {
@@ -151,10 +151,10 @@ Row {
                 height: caps.px((12 + 6 * cap.g) * caps.scale)
                 radius: width / 2
                 color: cap.guest && !cap.on ? "transparent"
-                     : Qt.alpha(Theme.accent, cap.rest + (cap.lit - cap.rest) * Math.max(0, Math.min(1, cap.g)))
+                     : Qt.alpha(Theme.accentLive, cap.rest + (cap.lit - cap.rest) * Math.max(0, Math.min(1, cap.g)))
                 // Guests (from a screen that's gone): hollow, so they read as visiting.
                 border.width: cap.guest && !cap.on ? 1.5 : 0
-                border.color: Qt.alpha(Theme.accent, capArea.containsMouse ? 0.8 : 0.5)
+                border.color: Qt.alpha(Theme.accentLive, capArea.containsMouse ? 0.8 : 0.5)
             }
             MouseArea {
                 id: capArea
@@ -210,7 +210,7 @@ Row {
             anchors.fill: chip
             radius: chip.radius
             blur: 10; spread: 1
-            color: Qt.alpha(Theme.accent, 0.45 * Math.max(0, Math.min(1, special.value)))
+            color: Qt.alpha(Theme.accentLive, 0.45 * Math.max(0, Math.min(1, special.value)))
         }
         Rectangle {
             id: chip
@@ -220,8 +220,8 @@ Row {
             scale: Math.max(0, special.value)
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: Theme.accent }
-                GradientStop { position: 1; color: Qt.lighter(Theme.accent, 1.35) }
+                GradientStop { position: 0; color: Theme.accentLive }
+                GradientStop { position: 1; color: Qt.lighter(Theme.accentLive, 1.35) }
             }
             border.width: 1
             border.color: Theme.edge(3)
@@ -274,7 +274,7 @@ Row {
                     anchors.fill: dotPill
                     radius: dotPill.radius
                     blur: 6; spread: 0
-                    color: Qt.alpha(Theme.accent, dotArea.containsMouse ? 0.4 : 0.22)
+                    color: Qt.alpha(Theme.accentLive, dotArea.containsMouse ? 0.4 : 0.22)
                 }
                 Rectangle {
                     id: dotPill
@@ -282,7 +282,7 @@ Row {
                     width: parent.width
                     height: caps.px(14 * caps.scale)
                     radius: width / 2
-                    color: Qt.alpha(Theme.accent, dotArea.containsMouse ? 0.7 : 0.48)
+                    color: Qt.alpha(Theme.accentLive, dotArea.containsMouse ? 0.7 : 0.48)
                     Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 }
                 MouseArea {
