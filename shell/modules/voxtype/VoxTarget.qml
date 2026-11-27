@@ -16,6 +16,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import qs.config
+import qs.components
 import qs.services
 
 Scope {
@@ -112,6 +113,29 @@ Scope {
                 mask: Region {}
                 color: "transparent"
 
+                Rectangle {
+                    id: caption
+                    readonly property bool want: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!root.box
+                    width: Math.min(words.implicitWidth + Theme.s4 * 2, root.box ? root.box.w * 0.7 : 0)
+                    height: words.implicitHeight + Theme.s2 * 2
+                    x: root.box ? root.box.x + (root.box.w - width) / 2 : 0
+                    y: root.box ? root.box.y + root.box.h - height - Theme.s5 : 0
+                    radius: height / 2
+                    color: Qt.rgba(0.07, 0.07, 0.09, 0.88)
+                    border.width: 1; border.color: Theme.edge(1)
+                    opacity: want ? 1 : 0
+                    visible: opacity > 0.01
+                    Behavior on opacity { NumberAnimation { duration: want ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Label {
+                        id: words
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, caption.width - Theme.s4 * 2)
+                        elide: Text.ElideLeft
+                        text: Activities.voxText
+                        size: Theme.tCallout
+                        color: Theme.textPrimary
+                    }
+                }
                 Rectangle {
                     id: ring
                     // Outside the window's own border, concentric with it.

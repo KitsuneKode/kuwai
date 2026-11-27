@@ -42,6 +42,15 @@ Singleton {
             root.voxState = s || "idle";
         }
     }
+    property bool voxInField: false
+    FileView {
+        path: root.runtime + "/voxtype/live_in_field"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: root.voxInField = true
+        onLoadFailed: root.voxInField = false
+    }
     FileView {
         path: root.runtime + "/voxtype/live_text"
         watchChanges: true
