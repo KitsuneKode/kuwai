@@ -1,7 +1,7 @@
 export const DEFAULTS = { deny: 3, failInterval: 900, unlockTime: 600 };
 
 export function parseConf(text) {
-    const conf = { ...DEFAULTS };
+    const conf = Object.assign({}, DEFAULTS);
     const get = k => {
         const m = String(text || "").match(new RegExp("^\\s*" + k + "\\s*=\\s*(\\d+)", "m"));
         return m ? parseInt(m[1], 10) : -1;

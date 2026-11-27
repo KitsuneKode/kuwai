@@ -43,7 +43,7 @@ export function fromFocused(n, focused) {
     const title = text(n.summary || n.title).toLowerCase();
     const window = String(focused.title || "").toLowerCase();
     if (kittyCommandDone(n)) return true;
-    return title.length >= 3 && new RegExp("(^|[^\\p{L}\\p{N}])" + escaped(title) + "($|[^\\p{L}\\p{N}])", "u").test(window);
+    return title.length >= 3 && new RegExp("(^|\\W)" + escaped(title) + "($|\\W)").test(window);
 }
 
 export function authAsk(i) {
