@@ -146,7 +146,8 @@ still() {
         setsid -f awww-daemon --format xrgb >/dev/null 2>&1
         for _ in $(seq 1 50); do awww query >/dev/null 2>&1 && break; sleep 0.1; done
     fi
-    awww img "$f" --transition-type fade --transition-duration 0.6 >/dev/null 2>&1 || return 1
+    if [ "${WALLPAPER_AWWW_TRANSITION_DEFAULT:-}" = none ]; then awww img "$f" --transition-type none >/dev/null 2>&1 || return 1
+    else awww img "$f" --transition-type fade --transition-duration 0.6 >/dev/null 2>&1 || return 1; fi
     mkdir -p "$(dirname "$STILL")"
     ln -sfn "$(readlink -f "$f")" "$STILL"
     local look="$(dirname "$(readlink -f "$0")")/kuwai-look"
@@ -157,7 +158,7 @@ case "${1:-list}" in
     set)    still "${2:?usage: kuwai-wall set IMAGE}" ;;
     restore) [ -e "$STILL" ] || exit 0; still "$STILL" ;;
     json)   json ;;
-    off)    "$SCRIPT" stop ;;
+    off)    "$SCRIPT" stop; [ -e "$STILL" ] && WALLPAPER_AWWW_TRANSITION_DEFAULT=${WALLPAPER_AWWW_TRANSITION_DEFAULT:-none} still "$STILL"; exit 0 ;;
     add)    shift; add "$@" ;;
     import) shift; import "$@" ;;
     list)   find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V ;;

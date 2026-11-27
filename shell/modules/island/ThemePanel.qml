@@ -221,7 +221,7 @@ FocusScope {
             return;
         }
         if (mode === "live") {
-            if (it.off) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
+            if (it.off) WallFx.liveOff();
             else WallFx.playLive(it.path);
             relive.restart();
             said(it.off ? "Live wallpaper off" : "Live wallpaper: " + nice);

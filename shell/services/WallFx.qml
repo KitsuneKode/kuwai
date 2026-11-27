@@ -206,6 +206,9 @@ Singleton {
             else if (!swap.running) check.running = true;
         }
     }
+    function liveOff() {
+        root.play(Paths.stateHome + "/kuwai/wallpaper", () => Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]));
+    }
     function playLive(name) {
         if (!name || poster.running) return;
         poster.name = name;
@@ -287,6 +290,7 @@ Singleton {
                                                                       : ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-look", "set-wallpaper", path]));
         }
         function live(name: string): void { root.playLive(name); }
+        function liveOff(): void { root.liveOff(); }
         function stats(): string { return JSON.stringify({ phase: root.phase, lastRun: root.lastRun, frames: root.frames, fps: Math.round(root.fps), worstMs: Math.round(root.worstMs) }); }
     }
 
