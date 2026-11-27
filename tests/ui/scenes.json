@@ -2507,6 +2507,45 @@
    }
   },
   {
+   "id": "theme/this-screen",
+   "name": "theme",
+   "panel": "ThemePanel",
+   "props": {
+    "loading": false,
+    "mode": "wallpapers",
+    "info": {
+     "current": "earthlight",
+     "themes": [],
+     "wallpapers": [
+      {
+       "name": "Aurora from orbit",
+       "path": "/home/test/cover-sample.png",
+       "thumb": "/home/test/cover-sample.png",
+       "palette": []
+      }
+     ],
+     "monitors": [
+      {
+       "name": "DP-3",
+       "identity": "Acer XV272U V",
+       "wallpaper": "/home/test/cover-sample.png"
+      }
+     ],
+     "screenWallpapers": {
+      "DP-3": "/home/test/cover-sample.png"
+     }
+    },
+    "wallScope": "this"
+   },
+   "set": [
+    [
+     "Island",
+     "screen",
+     "DP-3"
+    ]
+   ]
+  },
+  {
    "id": "usage/typical",
    "name": "usage",
    "panel": "UsagePanel",

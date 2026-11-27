@@ -102,13 +102,16 @@ function makeWallFx(screenNames = ['eDP-1', 'DP-3']) {
     shownBefore: {},
     failure: '',
     participants: [],
+    targetOutputs: [],
+    verifyTargets: [],
+    scoped: false,
     readyScreens: {},
     liveProbe: { running: false },
     query: { running: false },
     check: { running: false },
     mapLookup: { running: false, command: [] },
     swap: { running: false, command: [] },
-    verifier: { path: '', before: {}, why: '', tries: 0, running: false },
+    verifier: { path: '', before: {}, targets: [], why: '', tries: 0, running: false },
     loadLimit: timer(),
     watchdog: timer(),
     settleLimit: timer(),
@@ -123,7 +126,7 @@ function makeWallFx(screenNames = ['eDP-1', 'DP-3']) {
     verifyLater: timer(),
   };
   fx = functions('shell/services/WallFx.qml', [
-    'currentScreens', 'sameParticipants', 'screensChanged', 'markReady',
+    'currentScreens', 'normalizeTargets', 'awwwCommand', 'sameParticipants', 'screensChanged', 'markReady',
     'play', 'cancelTransition', 'bail', 'drain', 'parse', 'cover',
     'enterSettling', 'leave', 'force', 'finish', 'unreadable', 'decodeFailed',
     'verify', 'verified',
@@ -303,4 +306,44 @@ test('canonical path resolution compares realpath on both sides of awww query an
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('a targeted per-screen play scopes participants, awww -o output, hotplug bailout, and verification', () => {
+  const { fx, detached } = makeWallFx(['eDP-1', 'DP-3']);
+  fx.play('/w/acer.jpg', () => {}, false, ['DP-3']);
+  expect(fx.phase).toBe('loading');
+  expect(fx.scoped).toBe(true);
+  expect(fx.participants).toEqual(['DP-3']);
+  expect(fx.targetOutputs).toEqual(['DP-3']);
+  expect(fx.awwwCommand('/w/acer.jpg', fx.targetOutputs)).toEqual(['awww', 'img', '-o', 'DP-3', '/w/acer.jpg', '--transition-type', 'none']);
+
+  fx.markReady('eDP-1');
+  expect(fx.phase).toBe('loading');
+  fx.markReady('DP-3');
+  expect(fx.phase).toBe('covered');
+
+  fx.phase = 'revealing';
+  fx.startFn = null;
+  fx.swapped = false;
+  fx.Quickshell.screens = [{ name: 'eDP-1' }, { name: 'DP-3' }, { name: 'HDMI-A-1' }];
+  fx.screensChanged();
+  expect(fx.phase).toBe('revealing');
+
+  fx.Quickshell.screens = [{ name: 'eDP-1' }];
+  fx.screensChanged();
+  expect(fx.phase).toBe('');
+  expect(detached).toEqual([['awww', 'img', '-o', 'DP-3', '/w/acer.jpg', '--transition-type', 'none']]);
+
+  expect(Outcome.unchanged(
+    { 'eDP-1': '/w/old.jpg', 'DP-3': '/w/old.jpg' },
+    { 'eDP-1': '/w/old.jpg', 'DP-3': '/w/acer.jpg' },
+    '/w/acer.jpg',
+    ['DP-3'],
+  )).toBe(false);
+  expect(Outcome.unchanged(
+    { 'eDP-1': '/w/old.jpg', 'DP-3': '/w/old.jpg' },
+    { 'eDP-1': '/w/old.jpg', 'DP-3': '/w/old.jpg' },
+    '/w/acer.jpg',
+    ['DP-3'],
+  )).toBe(true);
 });

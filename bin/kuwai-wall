@@ -183,12 +183,23 @@ prune_art() {
     "$SCRIPT" prune
 }
 
+restore() {
+        screens="${XDG_STATE_HOME:-$HOME/.local/state}/kuwai/wallpapers.json"
+        look="$(dirname "$(readlink -f "$0")")/kuwai-look"
+        if [ -f "$screens" ] && [ -x "$look" ]; then
+            WALLPAPER_AWWW_TRANSITION_DEFAULT=none "$look" restore >/dev/null
+        else
+            [ -e "$STILL" ] || exit 0
+            still "$STILL"
+        fi
+}
+
 case "${1:-list}" in
     set)    still "${2:?usage: kuwai-wall set IMAGE}" ;;
-    restore) [ -e "$STILL" ] || exit 0; still "$STILL" ;;
+    restore) restore ;;
     json)   json ;;
     thumbs) thumbs ;;
-    off)    "$SCRIPT" stop; [ -e "$STILL" ] && WALLPAPER_AWWW_TRANSITION_DEFAULT=${WALLPAPER_AWWW_TRANSITION_DEFAULT:-none} still "$STILL"; exit 0 ;;
+    off)    "$SCRIPT" stop; WALLPAPER_AWWW_TRANSITION_DEFAULT=${WALLPAPER_AWWW_TRANSITION_DEFAULT:-none} restore ;;
     add)    shift; add "$@" ;;
     import) shift; import "$@" ;;
     list)   find "$LIB" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) -printf '%f\n' | sort -V ;;

@@ -63,6 +63,9 @@ Singleton {
     property var shownBefore: ({})
     property string failure: ""
     property var participants: []
+    property var targetOutputs: []
+    property var verifyTargets: []
+    property bool scoped: false
     property var readyScreens: ({})
     property string nextReal: ""
 
@@ -75,6 +78,21 @@ Singleton {
         }
         return out;
     }
+    function normalizeTargets(targets) {
+        if (typeof targets === "string" && targets) return [targets];
+        if (!Array.isArray(targets)) return [];
+        const out = [];
+        for (let i = 0; i < targets.length; i++) {
+            const n = String(targets[i] || "").trim();
+            if (n && out.indexOf(n) < 0) out.push(n);
+        }
+        return out;
+    }
+    function awwwCommand(path, outputs) {
+        const list = Array.isArray(outputs) && outputs.length ? outputs : [];
+        if (list.length) return ["awww", "img", "-o", list.join(","), path, "--transition-type", "none"];
+        return ["awww", "img", path, "--transition-type", "none"];
+    }
     function sameParticipants(expected, actual) {
         if (!expected || !actual || expected.length !== actual.length) return false;
         for (let i = 0; i < expected.length; i++)
@@ -83,7 +101,13 @@ Singleton {
     }
     function screensChanged() {
         if (phase === "") return;
-        if (!sameParticipants(participants, currentScreens())) bail("monitors changed");
+        const actual = currentScreens();
+        if (scoped) {
+            for (let i = 0; i < participants.length; i++)
+                if (actual.indexOf(participants[i]) < 0) { bail("monitors changed"); return; }
+            return;
+        }
+        if (!sameParticipants(participants, actual)) bail("monitors changed");
     }
     function markReady(name) {
         if (phase !== "loading" || !name || participants.indexOf(name) < 0) return;
@@ -99,20 +123,25 @@ Singleton {
         function onScreensChanged() { root.screensChanged(); }
     }
 
-    function play(path, start, live) {
+    function play(path, start, live, targets) {
         if (!path) return;
         if (phase !== "") {
-            queued = { path: path, start: start, live: !!live };
+            queued = { path: path, start: start, live: !!live, targets: targets || null };
             return;
         }
+        const wantTargets = normalizeTargets(targets);
         // Stream callbacks from a cancelled transition can still arrive.
         // Allow the next wallpaper through immediately while they drain.
         if (liveProbe.running || query.running || check.running || mapLookup.running || Theme.reduceMotion) { if (start) start(); return; }
         const screens = currentScreens();
-        if (!screens.length) { if (start) start(); return; }
+        const selected = wantTargets.length ? wantTargets.filter(n => screens.indexOf(n) >= 0) : screens;
+        if (!selected.length) { if (start) start(); return; }
         verifyLater.stop();
         toLive = !!live;
-        participants = screens;
+        scoped = wantTargets.length > 0;
+        participants = selected;
+        targetOutputs = scoped ? selected.slice() : [];
+        verifyTargets = targetOutputs.slice();
         readyScreens = ({});
         shownBefore = ({}); failure = ""; nextReal = "";
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false; swapped = false; needMap = false; fade = 0;
@@ -132,6 +161,8 @@ Singleton {
         liveHeld = false;
         startFn = null;
         participants = [];
+        targetOutputs = [];
+        scoped = false;
         readyScreens = ({});
         if (Theme.flushRecolor) Theme.flushRecolor();
         loadLimit.stop(); watchdog.stop(); settleLimit.stop();
@@ -139,10 +170,10 @@ Singleton {
         reveal.stop(); fadeIn.stop(); fadeOut.stop(); swap.running = false;
     }
     function bail(why) {
-        const path = next, start = startFn, live = toLive, wasSwapped = swapped;
+        const path = next, start = startFn, live = toLive, wasSwapped = swapped, outs = (targetOutputs || []).slice();
         cancelTransition();
         lastRun = "fallback: " + why;
-        if (!start && !live && !wasSwapped && path) Quickshell.execDetached(["awww", "img", path, "--transition-type", "none"]);
+        if (!start && !live && !wasSwapped && path) Quickshell.execDetached(awwwCommand(path, outs));
         if (start) start();
         verify();
         drain();
@@ -150,7 +181,7 @@ Singleton {
     function drain() {
         const q = queued;
         queued = null;
-        if (q) Qt.callLater(() => root.play(q.path, q.start, q.live));
+        if (q) Qt.callLater(() => root.play(q.path, q.start, q.live, q.targets));
     }
 
     // What awww shows now, per screen (": DP-3: 2560x1440, … image: /path").
@@ -225,8 +256,8 @@ Singleton {
         interval: 16
         onTriggered: {
             if (root.toLive) root.liveHeld = true;
-            else if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
-            swap.command = ["awww", "img", root.next, "--transition-type", "none"];
+            else if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-livewall", "stop"]);
+            swap.command = root.awwwCommand(root.next, root.targetOutputs);
             swap.running = true;
             if (root.startFn) { const s = root.startFn; root.startFn = null; s(); }
             go.restart();
@@ -261,8 +292,16 @@ Singleton {
         easing.type: Easing.BezierSpline
         onFinished: root.enterSettling()
     }
+    function playWallpaper(path, output) {
+        const bin = Paths.bin + (Hyde.present ? "/kuwai-themes" : "/kuwai-look");
+        const command = ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", bin,
+            Hyde.present ? "wallpaper" : "set-wallpaper"];
+        if (output) command.push("--output", output);
+        command.push(path);
+        play(path, () => Quickshell.execDetached(command), false, output ? [output] : []);
+    }
     function liveOff() {
-        root.play(Paths.stateHome + "/kuwai/wallpaper", () => Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]));
+        Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
     }
     function playLive(name) {
         if (!name || poster.running) return;
@@ -326,7 +365,8 @@ Singleton {
     Timer { id: settleLimit; interval: 4000; onTriggered: if (root.phase === "settling") root.force("awww hadn't switched") }
 
     function force(why) {
-        Quickshell.execDetached(["awww", "img", next, "--transition-type", "none"]);
+        const outs = (targetOutputs || []).slice();
+        Quickshell.execDetached(awwwCommand(next, outs));
         if (startFn) startFn();
         startFn = null;
         liveHeld = false;
@@ -359,12 +399,13 @@ Singleton {
     function verify() {
         if (toLive || !next || !Object.keys(shownBefore).length) return;
         verifier.path = next; verifier.before = shownBefore; verifier.why = failure; verifier.tries = 0;
+        verifier.targets = typeof verifyTargets !== "undefined" && Array.isArray(verifyTargets) ? verifyTargets.slice() : [];
         verifyLater.restart();
     }
     function verified(text) {
         if (root.phase !== "") return;
         const wanted = Outcome.parseWanted(text);
-        if (!Outcome.unchanged(verifier.before, parse(text), wanted)) return;
+        if (!Outcome.unchanged(verifier.before, parse(text), wanted, verifier.targets)) return;
         if (++verifier.tries < 4) { verifyLater.restart(); return; }
         lastRun += " · unchanged";
         Moments.show({ kind: "note", glyph: "\u{f02ee}", label: Outcome.sentence(verifier.why), value: "", ring: -1, tone: Theme.textPrimary }, 3200);
@@ -374,6 +415,7 @@ Singleton {
         id: verifier
         property string path: ""
         property var before: ({})
+        property var targets: []
         property string why: ""
         property int tries: 0
         command: ["sh", "-c", 'awww query 2>/dev/null | while IFS= read -r l; do printf "%s\\n" "$l"; case "$l" in *"image: "*) o=${l#:}; o=${o#"${o%%[![:space:]]*}"}; o=${o%%:*}; p=${l#*image:}; p=${p#"${p%%[![:space:]]*}"}; r=$(realpath -e -- "$p" 2>/dev/null); [ -n "$r" ] && printf "kuwai-real %s %s\\n" "$o" "$r";; esac; done; printf "kuwai-wanted %s\\n" "$(realpath -e -- "$1" 2>/dev/null)"', "sh", path]
@@ -383,9 +425,9 @@ Singleton {
 
     IpcHandler {
         target: "wallfx"
-        function play(path: string): void {
-            root.play(path, () => Quickshell.execDetached(Hyde.present ? ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-themes", "wallpaper", path]
-                                                                      : ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-look", "set-wallpaper", path]));
+        function play(path: string): void { root.playWallpaper(path, ""); }
+        function playOutput(output: string, path: string): void {
+            if (output) root.playWallpaper(path, output);
         }
         function live(name: string): void { root.playLive(name); }
         function liveOff(): void { root.liveOff(); }

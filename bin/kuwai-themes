@@ -21,7 +21,14 @@ import signal
 import subprocess
 import sys
 
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if os.path.join(ROOT, "lib") not in sys.path:
+    sys.path.insert(0, os.path.join(ROOT, "lib"))
+
+from look.screens import connected_screen_walls, set_global_wall
+
 HOME = os.path.expanduser("~")
+STATE_HOME = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local/state")
 THEMES = os.path.join(HOME, ".config/hyde/themes")
 THUMBS = os.path.join(HOME, ".cache/hyde/thumbs")
 CACHE = os.path.join(HOME, ".cache/kuwai/themes.json")
@@ -184,7 +191,17 @@ def listing() -> dict:
                               "current": os.path.realpath(p) == active, "palette": wall_palette(p, cache)})
     if len(cache) != known:
         save(CACHE, json.dumps(cache))
-    return {"current": cur, "themes": themes, "wallpapers": walls, "mode": color_mode(), "modes": MODES, "hyde": hyde_here()}
+    monitors, screen_walls = connected_screen_walls(STATE_HOME, fallback_wall=active)
+    return {
+        "current": cur,
+        "themes": themes,
+        "wallpapers": walls,
+        "mode": color_mode(),
+        "modes": MODES,
+        "hyde": hyde_here(),
+        "monitors": monitors,
+        "screenWallpapers": screen_walls,
+    }
 
 
 def photos() -> list:
@@ -237,9 +254,16 @@ def bar_after(code, waited):
 def main(argv):
     wait = "--wait" in argv
     argv = [a for a in argv if a != "--wait"]
+    output = None
+    if "--output" in argv:
+        idx = argv.index("--output")
+        if idx + 1 >= len(argv):
+            return 2
+        output = argv[idx + 1]
+        argv = argv[:idx] + argv[idx + 2:]
     cmd = argv[0] if argv else "list"
     needs = {"theme": "theme.switch.sh", "wallpaper": "wallpaper.sh", "colormode": "theme.switch.sh"}.get(cmd)
-    if needs and not os.path.isfile(os.path.join(LIB, needs)):
+    if needs and not (cmd == "wallpaper" and output) and not os.path.isfile(os.path.join(LIB, needs)):
         print(f"kuwai-themes: {cmd} switches through HyDE's {needs} ({LIB}), and HyDE isn't installed; nothing changed",
               file=sys.stderr)
         return 3
@@ -253,8 +277,17 @@ def main(argv):
     elif cmd == "photos":
         print(json.dumps(photos()), flush=True)
     elif cmd == "theme" and len(argv) == 2 and os.path.isdir(os.path.join(THEMES, argv[1])):
+        wall = os.path.realpath(os.path.join(THEMES, argv[1], "wall.set"))
+        if os.path.isfile(wall):
+            set_global_wall(STATE_HOME, wall)
         return bar_after(launch([os.path.join(LIB, "theme.switch.sh"), "-s", argv[1]], wait), wait)
     elif cmd == "wallpaper" and len(argv) == 2 and os.path.isfile(argv[1]):
+        if output:
+            look = os.path.join(ROOT, "bin", "kuwai-look")
+            cm = color_mode()
+            mode = MODES[cm] if 0 <= cm < len(MODES) else "theme"
+            return launch([look, "set-wallpaper", "--mode", mode, "--output", output, argv[1]], wait)
+        set_global_wall(STATE_HOME, argv[1])
         run = os.environ.get("XDG_RUNTIME_DIR") or os.path.join(HOME, ".cache")
         script = 'printf "%s" "$3" > "$1.want"; exec 9>"$1"; flock 9; [ "$(cat "$1.want" 2>/dev/null)" = "$3" ] || exit 0; "$2" -s "$3" --global 9>&-'
         return launch(["sh", "-c", script, "kuwai-themes", os.path.join(run, "kuwai-wallpaper.lock"), os.path.join(LIB, "wallpaper.sh"), argv[1]], wait)

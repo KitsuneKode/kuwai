@@ -24,11 +24,20 @@ FocusScope {
     focus: true
     implicitWidth: Theme.panelXL
     // Exactly three rows of cards between the header and the key hints.
-    implicitHeight: 66 + 3 * (Math.round(Math.floor((Theme.panelXL - 32 - 330) / 4) * 0.5625) + 40) + 40
+    implicitHeight: Math.min(Theme.panelMaxH, 66 + 3 * (Math.round(Math.floor((Theme.panelXL - 32 - 330) / 4) * 0.5625) + 40) + 40 + (Theme.textScale > 1.5 ? 80 : Theme.textScale > 1.1 ? 30 : 0))
 
     property bool previewPlaying: false
     onCurrentChanged: previewPlaying = false
     property string mode: Island.themeMode || "themes"      // themes | wallpapers | live | saver
+    property string wallScope: "all"
+    readonly property string activeScreen: Island.screen || Screens.focusedName || ""
+    readonly property bool canTargetScreen: (info.monitors || []).some(m => m.name === activeScreen && m.identity)
+    function isItemCurrent(it) {
+        if (!it) return false;
+        if (mode === "wallpapers" && wallScope === "this" && activeScreen && info.screenWallpapers && info.screenWallpapers[activeScreen])
+            return it.path === info.screenWallpapers[activeScreen];
+        return !!it.current;
+    }
     readonly property var modes: ["themes", "wallpapers", "live", "saver"]
     // Live wallpapers (bin/kuwai-wall json), with "Off" first: back to the still one.
     property var live: []
@@ -213,6 +222,7 @@ FocusScope {
         loops: Animation.Infinite
     }
     readonly property bool listed: mode === "themes" || mode === "wallpapers"     // what kuwai-themes lists
+    onCanTargetScreenChanged: if (!canTargetScreen) wallScope = "all"
     onModeChanged: { previewPlaying = false; current = Math.max(0, items.findIndex(x => x.current)); grid.positionViewAtIndex(current, GridView.Center); }
 
     function apply(i) {
@@ -248,8 +258,9 @@ FocusScope {
         }
         // A wallpaper: the shell plays the change (services/WallFx: the new
         // picture grows out of the island); awww's own transition is off.
-        const path = it.path;
-        WallFx.play(path, () => Quickshell.execDetached(["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", bin, useLook ? "set-wallpaper" : "wallpaper", path]));
+        if (wallScope === "this" && !canTargetScreen) return;
+        WallFx.playWallpaper(it.path, wallScope === "this" ? activeScreen : "");
+        relist.restart();
     }
     // What an apply did, said where you are looking: which one is being
     // applied (and a turning mark on its card), that it landed, or why it
@@ -504,7 +515,7 @@ FocusScope {
                     color: picker.applyError !== "" && !applyLine.busy ? Theme.orange : Theme.textSecondary
                 }
             }
-            Label { visible: !applyLine.visible; text: preview.it && preview.it.current ? "In use now" : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: Theme.tSub; color: Theme.textSecondary }
+            Label { visible: !applyLine.visible; text: picker.isItemCurrent(preview.it) ? (picker.mode === "wallpapers" && picker.wallScope === "this" ? "In use on this screen" : "In use now") : picker.mode === "live" && preview.it && preview.it.off ? "Press ↵ to turn the live wallpaper off" : "Press ↵ or click to apply"; size: Theme.tSub; color: Theme.textSecondary }
             Label { visible: picker.mode === "live"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai-wall add FILE.mp4 \"name\" · guide: docs/manual/looks.md"; size: Theme.tFootnote; color: Theme.textTertiary }
             Label { visible: picker.mode === "saver"; width: parent.width; wrapMode: Text.Wrap; text: "Add your own: kuwai saver add FILE.mp4 · guide: docs/manual/looks.md"; size: Theme.tFootnote; color: Theme.textTertiary }
         }
@@ -516,7 +527,25 @@ FocusScope {
         visible: picker.mode === "themes" || picker.mode === "wallpapers"
         anchors { right: parent.right; rightMargin: 22; bottom: parent.bottom; bottomMargin: 14 }
         width: 310
-        spacing: 8
+        spacing: Theme.s2
+        Column {
+            visible: picker.mode === "wallpapers" && picker.canTargetScreen
+            width: parent.width
+            spacing: Theme.s1
+            Label {
+                visible: Theme.textScale <= 1.5
+                width: parent.width
+                elide: Text.ElideRight
+                text: "Apply to"
+                size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary
+            }
+            Segmented {
+                width: parent.width
+                options: [{ id: "all", label: "All screens" }, { id: "this", label: "This screen" }]
+                current: picker.wallScope
+                onPicked: id => picker.wallScope = id
+            }
+        }
         Label { text: "Colours"; size: Theme.tSub; weight: Theme.wMedium; color: Theme.textSecondary }
         Segmented {
             width: parent.width
@@ -607,7 +636,7 @@ FocusScope {
             required property var modelData
             required property int index
             readonly property bool on: index === picker.current
-            readonly property bool isCurrent: modelData.current
+            readonly property bool isCurrent: picker.isItemCurrent(modelData)
             width: grid.cellWidth; height: grid.cellHeight
 
             ClippingRectangle {
