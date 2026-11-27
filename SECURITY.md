@@ -38,8 +38,9 @@ not a public issue. Say what you did, what happened, and the commit you ran.
   and root's copy: root checks what it copied, not what was checked. Once root has a release,
   the check runs root's own verifier (`/usr/local/lib/kuwai/current/bin/kuwai-verify`, used
   only when it and every folder above it are root's and writable by no one else) against
-  the keys root keeps, so a `kuwai-setup` changed after that can't choose what root trusts.
-  It can't protect the first install from a changed `kuwai-setup`: that run names the keys
+  the keys root keeps, so a changed `kuwai-verify` or `release-signers/` in your account
+  can't choose what root trusts. A changed `kuwai-setup` still can, like any script you run
+  that calls `sudo`: it chooses what runs as root. It can't protect the first install from a changed `kuwai-setup`: that run names the keys
   and supplies the verifier root runs, and both come from your account. Check the
   fingerprint it prints against the published one before the first `sudo`.
 - **Root's release keys.** `kuwai-setup` names the release keys to root only at the first
