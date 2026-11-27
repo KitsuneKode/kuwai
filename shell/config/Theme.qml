@@ -323,8 +323,12 @@ Singleton {
         if (c.palette && JSON.stringify(c.palette) !== JSON.stringify(root.palette)) { root.palette = c.palette; n++; }
         return n;
     }
-    function recolor() { root.recolorSettle.restart(); }
-    property Timer recolorSettle: Timer { interval: root.recolorMs; onTriggered: root.commit(root.colours()) }
+    property bool coloured: false
+    function recolor() {
+        if (!root.coloured) root.commit(root.colours());
+        root.recolorSettle.restart();
+    }
+    property Timer recolorSettle: Timer { interval: root.recolorMs; onTriggered: { root.coloured = true; root.commit(root.colours()); } }
     FileView {
         id: kuwaiPalette
         property bool loaded: false

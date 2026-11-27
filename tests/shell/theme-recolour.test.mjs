@@ -14,7 +14,7 @@ const Qt = {
 function theme() {
   const sets = {};
   const file = () => ({ loaded: false, body: '', text() { return this.body; } });
-  const scope = { Qt, JSON, colorMode: 0, themeName: '', wallTopLuma: 0.1, palette: [],
+  const scope = { Qt, JSON, coloured: true, colorMode: 0, themeName: '', wallTopLuma: 0.1, palette: [],
     kuwaiPalette: file(), themeDcol: file(), themeKitty: file(), wallDcol: file(),
     recolorSettle: { restarts: 0, restart() { this.restarts++; } } };
   for (const k of ['accent', 'accentSoft', 'themeBg', 'themeFg', 'wallInk']) {
@@ -49,6 +49,15 @@ test('HyDE switching theme lands once, on the theme, never on the wallpaper colo
   expect(t.palette).toEqual(['#001100', '#00AA00']);
 });
 
+test('the first colours after a start land at once, not after the settle', () => {
+  const { t, sets } = theme();
+  t.coloured = false;
+  t.wallDcol.loaded = true; t.wallDcol.body = dcol('AA0000', '110000');
+  t.recolor();
+  expect(sets.accent).toBe(1);
+  expect(t.recolorSettle.restarts).toBe(1);
+});
+
 test('the same colours again change nothing', () => {
   const { t, sets } = theme();
   t.wallDcol.loaded = true; t.wallDcol.body = dcol('AA0000', '110000');
@@ -79,7 +88,7 @@ test('only the always-visible fills blend; the accent itself is one commit', () 
   const qml = read('shell/config/Theme.qml');
   expect(qml).not.toMatch(/Behavior on accent\s*\{/);
   expect(qml).toMatch(/property color accentLive: accent\n\s*Behavior on accentLive \{ ColorAnimation/);
-  expect(qml).toMatch(/Timer \{ interval: root\.recolorMs; onTriggered: root\.commit\(root\.colours\(\)\) \}/);
+  expect(qml).toMatch(/Timer \{ interval: root\.recolorMs; onTriggered: \{ root\.coloured = true; root\.commit\(root\.colours\(\)\); \} \}/);
   for (const m of qml.matchAll(/onLoaded: \{[^}]*\}/g)) expect(m[0]).not.toMatch(/from(Dcol|Kitty|KuwaiLook)\(/);
   const capsules = read('shell/modules/island/Capsules.qml');
   expect(capsules).not.toMatch(/Theme\.accent\b(?!Live)/);

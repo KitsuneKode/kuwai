@@ -32,7 +32,7 @@ test('the sentence is plain: no helper, status or path', () => {
 function wallfx() {
   const said = [];
   const s = functions('shell/services/WallFx.qml', ['verify', 'verified', 'parse'], {
-    Outcome, toLive: false, next: '/w/new.jpg', shownBefore: { 'DP-3': '/w/old.jpg' }, failure: '', lastRun: 'revealed',
+    Outcome, phase: '', toLive: false, next: '/w/new.jpg', shownBefore: { 'DP-3': '/w/old.jpg' }, failure: '', lastRun: 'revealed',
     verifier: { path: '', before: {}, why: '', tries: 0, running: false },
     verifyLater: { restarts: 0, restart() { this.restarts++; } },
     Moments: { show: m => said.push(m.label) }, Theme: { textPrimary: 'white' },
@@ -48,6 +48,14 @@ test('a change that left the old picture on screen says so once, after a few loo
   expect(said).toEqual([]);
   s.verified(': DP-3: x, image: /w/old.jpg\nkuwai-wanted /w/new.jpg\n');
   expect(said).toEqual(['The wallpaper couldn\'t be changed']);
+});
+
+test('a look that comes back while the next change runs says nothing', () => {
+  const { s, said } = wallfx();
+  s.verify();
+  s.phase = 'loading';
+  for (let i = 0; i < 4; i++) s.verified(': DP-3: x, image: /w/old.jpg\nkuwai-wanted /w/new.jpg\n');
+  expect(said).toEqual([]);
 });
 
 test('a change that landed, a live one, or one with nothing known says nothing', () => {

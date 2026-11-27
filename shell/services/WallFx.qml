@@ -312,6 +312,7 @@ Singleton {
         verifyLater.restart();
     }
     function verified(text) {
+        if (root.phase !== "") return;
         const wanted = (String(text).match(/^kuwai-wanted (.*)$/m) || ["", ""])[1].trim();
         if (!Outcome.unchanged(verifier.before, parse(text), wanted)) return;
         if (++verifier.tries < 4) { verifyLater.restart(); return; }
