@@ -151,6 +151,22 @@ choice for a default. `WRONG`: under 3:1 even shaded. `lib/rehearse/wall.py`
 is the same rule as the component, for tools that judge wallpapers
 (`wall.lock_clock(path)`).
 
+## The clock face on the three screens
+
+The lock, the login and the screensaver draw their date, digits and glance
+lines with one component (`shell/components/ClockFace.qml`, its lines made of
+`ClockChip`), each at its own scale (the saver's is `Theme.saverClockScale`).
+The lock and login scenes stage it at 100, 120 and 200 % with the rest of the
+run: `lock/glance` (weather and Focus on a bright wallpaper) and
+`greeter/bright-wall` (the login over the same bright picture, 1920 x 1080: a
+screen scene may carry a `size`). Both read their ground from `ClockGround`,
+which samples the wallpaper once and takes its zone from the face's own size.
+
+The screensaver is not a scene. `bin/kuwai-ui-test --case saver --backend x11
+--text-scale 1|1.2|2 --output DIR` stages `SaverClock` over a painted wallpaper
+(`clock-full.png`, `clock-bare.png`, `clock-long.png`) and fails when the face
+does not fit the screen.
+
 ## The known list
 
 `tests/ui/rehearsal-known.txt` holds faults that exist and are not fixed yet.

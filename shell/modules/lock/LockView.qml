@@ -31,14 +31,7 @@ Item {
     property bool preview: false
 
     readonly property string home: Quickshell.env("HOME")
-    property date now: new Date()
-    // The clock wakes on the minute, not every second (it shows minutes).
-    Timer {
-        id: minute
-        running: true
-        interval: 60000 - (Date.now() % 60000) + 50
-        onTriggered: { view.now = new Date(); interval = 60000 - (Date.now() % 60000) + 50; restart(); }
-    }
+    readonly property date now: clockFace.now
     // Someone's there: for 30 s after the last key, click or pointer move.
     // Without them the lock draws nothing new (LockMedia rests its bars).
     property bool awake: true
@@ -137,7 +130,7 @@ Item {
     Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, 0.22 * (1 - view.u)) }
     // Under the date and clock, as much darker as this wallpaper needs (none
     // over a dark one). It goes with the scrim on unlock.
-    ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22; opacity: 1 - view.u }
+    ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22; face: clockFace; opacity: 1 - view.u }
     readonly property bool artShown: Media.playing && lockArt.status === Image.Ready
     WallTone {
         id: tones
@@ -179,41 +172,20 @@ Item {
 
         // ── Date, time, glance ───────────────────────────────────────────────
         // Asking for the password, it makes room: smaller, a little higher.
-        Column {
+        ClockFace {
+            id: clockFace
             anchors.horizontalCenter: parent.horizontalCenter
             y: Math.round(parent.height * Theme.lockClockTop) - ask.value * 24 * view.move
             transformOrigin: Item.Top
             scale: 1 - ask.value * 0.16 * view.move
-            spacing: Theme.lockClockGap
-            Label {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: Dates.shortDate(view.now)
-                size: Theme.tLockDate; weight: Theme.wSemibold
-                color: view.tint
-            }
-            TextMorph {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: Dates.clock(view.now)
-                size: Theme.lockClockSize(view.height); weight: Theme.wBold; rounded: true
-                color: view.tint
-                duration: Theme.breatheMs; stagger: 60
-            }
+            ink: view.tint
+            screenH: view.height
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
-                topPadding: 22
-                spacing: 24
-                Row {
-                    visible: SystemStats.weatherTemp !== ""
-                    spacing: 7
-                    Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherGlyph; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: SystemStats.weatherTemp; size: Theme.tLockLine; weight: Theme.wMedium; color: view.tint }
-                }
-                Row {
-                    visible: Notifs.muted
-                    spacing: 7
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0594}"; font.family: Theme.fontGlyph; font.pixelSize: 18; color: view.tint }
-                    Label { anchors.verticalCenter: parent.verticalCenter; text: "Focus"; size: Theme.tLockLine; weight: Theme.wMedium; color: view.tint }
-                }
+                visible: SystemStats.weatherTemp !== "" || Notifs.muted
+                spacing: Theme.s5
+                ClockChip { visible: SystemStats.weatherTemp !== ""; glyph: SystemStats.weatherGlyph; text: SystemStats.weatherTemp; size: clockFace.lineSize; color: view.tint }
+                ClockChip { visible: Notifs.muted; glyph: "\u{f0594}"; text: "Focus"; size: clockFace.lineSize; color: view.tint }
             }
         }
 

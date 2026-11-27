@@ -13,7 +13,7 @@
 // gone by 72 % of the height, so the rest of the wallpaper keeps its own light. lib/rehearse/wall.py models the
 // same rule; tests/ui/clock-ground.qml measures the real picture.
 //
-//   ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22 }
+//   ClockGround { anchors.fill: parent; source: wall.source; ink: view.tint; base: 0.22; face: clockFace }
 import QtQuick
 import qs.config
 
@@ -22,10 +22,19 @@ Item {
     property url source
     property color ink: "white"
     property real base: 0.22            // the scrim already over the whole wallpaper
-    readonly property real want: 3.5    // large text needs 3:1; over it, for the blur's unevenness
+    property real want: 3.5             // large text needs 3:1; over it, for the blur's unevenness
     readonly property real most: 0.62   // never darker than this: past it the wallpaper is gone
-    // The clock's zone, as shares of the screen (LockView: the column starts at 11 % of the height).
-    readonly property rect zone: Qt.rect(0.33, 0.10, 0.34, 0.20)
+    property Item face: null
+    property int edge: Qt.TopEdge
+    property rect area: Qt.rect(0, 0, 0, 0)
+    readonly property rect zone: {
+        if (width <= 0 || height <= 0) return Qt.rect(0.33, 0.10, 0.34, 0.20);
+        if (area.width > 0) return Qt.rect(area.x / width, area.y / height, area.width / width, area.height / height);
+        if (!face) return Qt.rect(0.33, 0.10, 0.34, 0.20);
+        const w = Math.min(width, face.width + 2 * Theme.s5);
+        return Qt.rect((width - w) / 2 / width, Theme.lockClockTop - 0.01, w / width, Math.min(1, face.height / height + 0.02));
+    }
+    onZoneChanged: probe.again()
     // How bright it gets behind the clock (0-1, sRGB; what 95 % of the zone is under), and the shade for it.
     property real bright: 0
     property real shade: {
@@ -40,15 +49,17 @@ Item {
     Behavior on shade { NumberAnimation { duration: Theme.colorMs } }
 
     Rectangle {
+        id: band
         width: parent.width
-        // Full to just under the clock, then a long fall: a vignette, not a band
-        // with an edge (it ended in a sixth of the screen at first, and showed).
         height: Math.round(parent.height * 0.72)
+        y: ground.edge === Qt.BottomEdge ? parent.height - height : 0
+        rotation: ground.edge === Qt.BottomEdge ? 180 : 0
         visible: ground.shade > 0.005
+        readonly property real full: Math.max(0.44, Math.min(0.9, ((ground.edge === Qt.BottomEdge ? 1 - ground.zone.y : ground.zone.y + ground.zone.height) + 0.03) / 0.72))
         gradient: Gradient {
             GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, ground.shade) }
-            GradientStop { position: 0.44; color: Qt.rgba(0, 0, 0, ground.shade) }
-            GradientStop { position: 0.72; color: Qt.rgba(0, 0, 0, ground.shade * 0.4) }
+            GradientStop { position: band.full; color: Qt.rgba(0, 0, 0, ground.shade) }
+            GradientStop { position: band.full + (1 - band.full) / 2; color: Qt.rgba(0, 0, 0, ground.shade * 0.4) }
             GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0) }
         }
     }
@@ -59,6 +70,7 @@ Item {
         opacity: 0                       // painted (a hidden canvas is not), never seen
         renderStrategy: Canvas.Immediate
         property string held: ""
+        function again() { if (held && isImageLoaded(held)) requestPaint(); }
         function take() {
             const src = String(ground.source);
             if (held && held !== src) unloadImage(held);

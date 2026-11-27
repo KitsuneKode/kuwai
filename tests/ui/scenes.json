@@ -14680,6 +14680,68 @@
      ]
     ]
    ]
+  },
+  {
+   "id": "greeter/bright-wall",
+   "name": "greeter",
+   "panel": "../lock/GreeterView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "screen": true,
+   "settle": 2000,
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "wallpaper": "/home/test/walls/bright.jpg"
+   }
+  },
+  {
+   "id": "lock/glance",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "screen": true,
+   "settle": 2000,
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "set": [
+    [
+     "Hyde",
+     "wallpaper",
+     "/home/test/walls/bright.jpg"
+    ],
+    [
+     "Weather",
+     "ok",
+     true
+    ],
+    [
+     "Weather",
+     "temp",
+     14
+    ],
+    [
+     "Weather",
+     "desc",
+     "Light rain"
+    ],
+    [
+     "Notifs",
+     "dnd",
+     true
+    ]
+   ]
   }
  ]
 }

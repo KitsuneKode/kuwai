@@ -118,6 +118,11 @@ Singleton {
     readonly property int tLockLine: tTitle3
     readonly property real lockClockTop: 0.11
     readonly property int lockClockGap: s1
+    readonly property int lockLineTop: s5
+    readonly property real lockChipGap: 0.4
+    readonly property real clockLead: 0.05
+    readonly property real lockSmallWant: 4.5
+    readonly property real saverClockScale: 1.3
     readonly property real lockHintAlpha: 0.85
     readonly property int lockPillW: 320
     function lockTint(accent) { return Qt.tint(Qt.rgba(1, 1, 1, 0.9), Qt.alpha(accent, 0.35)); }
