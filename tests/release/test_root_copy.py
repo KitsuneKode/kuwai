@@ -269,7 +269,7 @@ def test_trust_clone_says_plainly_what_it_trusts(tmp_path):
 
 
 def test_root_scripts_refuse_a_clone_before_doing_anything():
-    for script in ("system/session", "system/install", "greeter/install"):
+    for script in ("system/session", "system/install", "greeter/install", "system/plymouth/install"):
         text = (ROOT / script).read_text()
         guard = text.index("from_release ")
         first_change = min(i for i in (text.find(w, guard - 1) for w in ("install -", "rm -", "systemctl ", "rsync ")) if i >= 0)
@@ -277,10 +277,10 @@ def test_root_scripts_refuse_a_clone_before_doing_anything():
 
 
 def test_every_hint_to_run_a_root_script_names_one_root_will_run():
-    hint = re.compile(r"sudo[^\n]{0,80}(?:system/install|greeter/install|system/session)")
-    ok = ("$LIB/current", "$KUWAI_LIB/current", "/usr/local/lib/kuwai/current", "--trust-clone")
+    hint = re.compile(r"sudo[^\n]{0,80}(?:system/install|greeter/install|system/session|plymouth/install)")
+    ok = ("$LIB/current", "$KUWAI_LIB/current", "/usr/local/lib/kuwai/current", "…/current/", "--trust-clone")
     stale = []
-    for top in ("bin", "shell", "greeter", "system", "lib", "install.sh"):
+    for top in ("bin", "shell", "greeter", "system", "lib", "install.sh", "docs/manual"):
         for path in sorted((ROOT / top).rglob("*")) if (ROOT / top).is_dir() else [ROOT / top]:
             if not path.is_file() or path.suffix in (".png", ".jpg", ".ttf", ".otf"):
                 continue

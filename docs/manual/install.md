@@ -63,10 +63,7 @@ All of them run only from root's checked copy, check it again first, and are rev
 sudo /usr/local/lib/kuwai/current/greeter/install   # greetd login screen (--code updates its root copy; --undo restores the previous login)
 sudo /usr/local/lib/kuwai/current/system/install    # kuwai-wake RTC alarm wake helper (--undo removes it)
 kuwai update install-helper                          # /usr/local/lib/kuwai/kuwai-update-root for Software Update, from root's copy (--trust-clone: from your clone, before root has a release)
-sudo greeter/install          # greetd login screen (--code updates its root copy; --undo restores previous DM)
-sudo system/install           # kuwai-wake RTC alarm wake helper (--undo removes it)
-kuwai update install-helper   # installs /usr/local/lib/kuwai/kuwai-update-root for Software Update
-sudo system/plymouth/install  # boot splash theme (see boot.md; --dry-run first, --undo removes it)
+sudo /usr/local/lib/kuwai/current/system/plymouth/install   # boot splash theme (see boot.md; --dry-run first, --undo removes it)
 ```
 
 `greeter/install` writes a receipt the first time (`/var/lib/kuwai-greeter/original/receipt`, root's, `0600`): the files it replaced, the digest of each kept copy, and the login manager that was on. `--undo` restores only what that receipt lists, from copies that still match it. An install from before receipts has none: `--undo` then records what is kept, but only when every folder down to the kept copies, and each copy, is root's alone; otherwise it restores nothing.
