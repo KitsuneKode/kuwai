@@ -147,10 +147,10 @@ describe("stop and force quit", () => {
   });
   test("what a stop says afterwards, with no helper, exit status or path in it", () => {
     expect(A.outcome({ ok: true, gone: true }, "Zen")).toBe("");
-    expect(A.outcome({ ok: true, gone: false, why: "it's still running; force quit ends it" }, "Zen")).toBe("Still running. Force quit ends it.");
+    expect(A.outcome({ ok: true, gone: false, why: "it's still running; force quit ends it" }, "Zen")).toBe("Still running");
     expect(A.outcome({ ok: false, why: "your session needs it" }, "Zen")).toBe("Couldn't stop Zen: your session needs it");
     expect(A.outcome({}, "Zen")).toBe("Couldn't stop Zen");
-    expect(A.noteWarns("Still running. Force quit ends it.")).toBe(true);
+    expect(A.noteWarns("Still running")).toBe(true);
     expect(A.noteWarns("Couldn't stop Zen")).toBe(true);
     expect(A.noteWarns("Stopping…")).toBe(false);
   });
@@ -232,7 +232,7 @@ describe("the service's model", () => {
     const s = service();
     s.show(f([{ unit: "app-a-1.scope" }]));
     s.ended("app-a-1.scope", "A", { ok: true, gone: false });
-    expect(s.model[0].note).toBe("Still running. Force quit ends it.");
+    expect(s.model[0].note).toBe("Still running");
     s.show(f([]));
     expect(s.notes).toEqual({});
   });

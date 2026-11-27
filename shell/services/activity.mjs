@@ -178,7 +178,7 @@ export function viewState(s) {
  * @param {string} name
  */
 export function outcome(r, name) {
-    if (r && r.ok && r.gone === false) return "Still running. Force quit ends it.";
+    if (r && r.ok && r.gone === false) return "Still running";
     if (r && r.ok) return "";
     return "Couldn't stop " + name + (r && r.why ? ": " + r.why : "");
 }

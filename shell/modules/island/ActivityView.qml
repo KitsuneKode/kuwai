@@ -13,12 +13,13 @@ FocusScope {
     readonly property real rowH: Theme.sp(Theme.rowMin)
     readonly property real cpuW: Theme.sp(48)
     readonly property real memW: Theme.sp(72)
-    readonly property int placeholders: 5
+    readonly property real headY: Theme.sp(24) + Theme.s2
+    readonly property int placeholders: Math.max(2, Math.min(5, Math.floor((maxHeight - headY) / rowH)))
     readonly property real placeholderH: placeholders * rowH
     readonly property string view: Activity.view
     readonly property bool shaped: view === "list" || view === "loading"
-    readonly property real topY: shaped ? head.height + Theme.s2 : 0
-    readonly property real listMax: Math.max(placeholderH, maxHeight - topY)
+    readonly property real topY: shaped ? headY : 0
+    readonly property real listMax: Math.max(2 * rowH, maxHeight - headY)
     property bool keyboard: false
     property string selKey: ""
     property Item hoverRow: null
@@ -104,7 +105,7 @@ FocusScope {
         y: av.topY
         width: parent.width
         visible: av.view !== "list"
-        height: visible ? Math.max(av.placeholderH + (av.shaped ? 0 : head.height + Theme.s2), implicitHeight) : 0
+        height: visible ? implicitHeight : 0
 
         Column {
             visible: av.view === "loading"
@@ -256,10 +257,12 @@ FocusScope {
                             onClicked: Activity.press(row.key, "stop", row.name)
                         }
                         Ui.Button {
+                            id: forceBtn
                             height: Theme.sp(28); size: Theme.tFootnote
                             kind: row.armed ? "danger" : "quiet"
                             text: row.armed ? "Press again to quit" : "Force quit"
                             onClicked: Activity.press(row.key, "force", row.name)
+                            Tip { text: "Ends it at once; unsaved work is lost"; shown: forceBtn.hovered; below: true }
                         }
                     }
                 }
