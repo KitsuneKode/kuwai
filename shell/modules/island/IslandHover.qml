@@ -927,8 +927,8 @@ Item {
                         { text: "Show progress", glyph: "\u{f06b0}", triggered: () => Island.open("updates", hover.bar.screenName, "pointer", "island") }
                     ] : [
                         { text: "Review and update", glyph: "\u{f06b0}", triggered: () => Island.open("updates", hover.bar.screenName, "pointer", "island") },
-                        { text: updMenu.confirmAll ? "Click again: AUR without review" : "Update everything now", glyph: "\u{f0e4f}", danger: updMenu.confirmAll, keepOpen: !updMenu.confirmAll,
-                          enabled: Updates.total > 0, triggered: () => { if (!updMenu.confirmAll) { updMenu.confirmAll = true; return; } Updates.runAll(); } },
+                        { text: updMenu.confirmAll ? (Updates.aurLive.length && !Updates.aurReadOnly ? "Click again: AUR without review" : "Click again: update everything") : "Update everything now", glyph: "\u{f0e4f}", danger: updMenu.confirmAll, keepOpen: !updMenu.confirmAll,
+                          enabled: Updates.runnableCount > 0, triggered: () => { if (!updMenu.confirmAll) { updMenu.confirmAll = true; return; } Updates.runAll(); } },
                         { text: "Update in a terminal (sysup)", glyph: "\u{f018d}", triggered: () => Updates.terminal() },
                         { isSeparator: true },
                         { text: "Check again", glyph: "\u{f0450}", triggered: () => Updates.check() }

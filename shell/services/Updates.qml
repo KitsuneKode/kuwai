@@ -32,6 +32,7 @@ Singleton {
     readonly property var repo: data && data.repo ? data.repo : []
     readonly property var repoExtra: data && data.repoExtra ? data.repoExtra : []
     readonly property var aur: data && data.aur ? data.aur : []
+    readonly property bool aurReadOnly: !!(data && data.aurReadOnly)
     readonly property var news: data && data.news ? data.news : []
     readonly property var flatpak: data && data.flatpak && Settings.updatesFlatpak ? data.flatpak : []
     readonly property var manualNews: news.filter(n => n.manual)
@@ -196,7 +197,7 @@ Singleton {
     onDataChanged: {
         root.reviewEpoch++;
         root.reviews = ({});
-        root.reviewQueue = aur.filter(p => root.trusted.indexOf(p.name) < 0).map(p => p.name);
+        root.reviewQueue = root.aurReadOnly ? [] : aur.filter(p => root.trusted.indexOf(p.name) < 0).map(p => p.name);
         root.nextReview();
     }
 
@@ -219,6 +220,7 @@ Singleton {
     }
     // "trusted" · "approved" · "routine" (looked at: only versions changed) · "review" · "loading"
     function aurState(name) {
+        if (root.aurReadOnly) return "readonly";
         if ((root.mutationCurrent && root.mutationCurrent.name === name) || root.mutationQueue.some(j => j.name === name)) return "loading";
         if (trusted.indexOf(name) >= 0) return "trusted";
         const r = reviews[name];
@@ -233,7 +235,7 @@ Singleton {
 
     property var reviewQueue: []
     function review(name, refresh) {
-        if (reviewing === name || reviewQueue.indexOf(name) >= 0) return;
+        if (root.aurReadOnly || reviewing === name || reviewQueue.indexOf(name) >= 0) return;
         if (reviews[name] && !reviews[name].error && !refresh) return;
         const remaining = Object.assign({}, reviews); delete remaining[name]; root.reviews = remaining;
         reviewQueue = [...reviewQueue, name];
@@ -313,18 +315,18 @@ Singleton {
     property string installAsk: ""
     property string installPending: ""
     function requestInstall(name) {
-        if (!/^[a-z0-9@._+-]{1,100}$/.test(String(name || ""))) return;
+        if (aurReadOnly || !/^[a-z0-9@._+-]{1,100}$/.test(String(name || ""))) return;
         installAsk = name;
         Island.open("updates", Island.screen, "pointer");
     }
     function approveAndInstall(name) {
-        if (running) return;
+        if (running || aurReadOnly) return;
         if (selectable(name)) { installNew(name); return; }
         installPending = name;
         approve(name);
     }
     function installNew(name) {
-        if (running || lowSpace) return false;
+        if (running || lowSpace || aurReadOnly) return false;
         plan = { repo: false, aur: [name], flatpak: [] };
         starter.command = [bin, "start", "--aur", name];
         resetRun();
@@ -334,18 +336,20 @@ Singleton {
         return true;
     }
     function approve(name, automatic) {
+        if (root.aurReadOnly) return;
         const r = reviews[name];
         if (!r || !r.head || r.error) return;
         enqueueMutation({ op: "approve", name: name, sha: r.head, automatic: !!automatic, args: ["approve", name, r.head] });
     }
-    function unapprove(name) { enqueueMutation({ op: "unapprove", name: name, args: ["unapprove", name] }); }
-    function setTrusted(name, on) { enqueueMutation({ op: "trust", name: name, on: on, args: ["trust", name, on ? "on" : "off"] }); }
+    function unapprove(name) { if (root.aurReadOnly) return; enqueueMutation({ op: "unapprove", name: name, args: ["unapprove", name] }); }
+    function setTrusted(name, on) { if (root.aurReadOnly) return; enqueueMutation({ op: "trust", name: name, on: on, args: ["trust", name, on ? "on" : "off"] }); }
 
     // ── The run ──────────────────────────────────────────────────────────
     readonly property var chosenAur: aurLive.filter(p => selected(p.name)).map(p => p.name)
     readonly property var chosenFlatpak: flatpak.filter(p => !flatpakOff[p.id]).map(p => p.id)
     readonly property int chosenCount: (includeRepo ? repoLive.length : 0) + chosenAur.length + chosenFlatpak.length
-    readonly property int waitingReview: aurLive.filter(p => !selectable(p.name)).length
+    readonly property int runnableCount: repoLive.length + (aurReadOnly ? 0 : aurLive.length) + flatpak.length
+    readonly property int waitingReview: aurReadOnly ? 0 : aurLive.filter(p => !selectable(p.name)).length
     readonly property bool lowPower: !!(data && data.power && !data.power.ac && data.power.battery !== null && data.power.battery < 30)
     readonly property bool lowSpace: !!(data && data.freeBytes < 3 * 1024 * 1024 * 1024)
 
@@ -390,8 +394,9 @@ Singleton {
     // Everything, now: Arch, every AUR package at its newest commit without a
     // review (for this run only; you chose it), every Flatpak app.
     function runAll() {
-        if (running || total <= 0 || lowSpace) return;
-        plan = { repo: repoLive.length > 0, aur: aurLive.map(p => p.name), flatpak: flatpak.map(p => p.id) };
+        if (running || runnableCount === 0 || lowSpace) return;
+        plan = { repo: repoLive.length > 0, aur: aurReadOnly ? [] : aurLive.map(p => p.name), flatpak: flatpak.map(p => p.id) };
+        if (!plan.repo && !plan.aur.length && !plan.flatpak.length) return;
         const args = [bin, "start"];
         if (plan.repo) args.push("--repo");
         if (plan.aur.length) args.push("--aur", ...plan.aur);
@@ -634,7 +639,7 @@ Singleton {
         // sysup in a terminal, for anything the panel leaves to paru.
         if (Hyde.hasShell) { Hyde.run(["app", "system.update.sh", "up"], "Updating in a terminal"); return; }
         Apps.run(["sh", "-c", 'for t in xdg-terminal-exec kitty ghostty foot alacritty wezterm konsole; do command -v "$t" >/dev/null || continue; case $t in xdg-terminal-exec) exec "$t" sh -c "$1" ;; wezterm) exec "$t" start -- sh -c "$1" ;; *) exec "$t" -e sh -c "$1" ;; esac; done',
-                  "sh", 'if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi; printf "\\nDone. Press Enter to close. "; read _']);
+                  "sh", 'if command -v paru >/dev/null; then paru -Syu; elif command -v yay >/dev/null; then yay -Syu; else sudo pacman -Syu; printf "\\nAUR packages update once an AUR helper is installed.\\n"; fi; printf "\\nDone. Press Enter to close. "; read _']);
     }
     function restart() { Quickshell.execDetached(["systemctl", "reboot"]); }
 

@@ -14,6 +14,7 @@ Trash) are listed as "check first" with what to do, never touched.
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -106,24 +107,36 @@ def keep(d):
 
 
 def empty(path):
-    """Remove what's inside path, never following a link out of it."""
-    if not os.path.isdir(path) or os.path.islink(path):
+    """Remove what's inside path by descriptor, never through a link."""
+    if os.path.islink(path):
         return
-    dev = os.stat(path).st_dev
-    for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
-        if os.lstat(root).st_dev != dev:
-            continue
-        for n in files:
+    try:
+        dev = os.stat(path).st_dev
+    except OSError:
+        return
+    try:
+        for root, dirs, files, fd in os.fwalk(path, topdown=False, follow_symlinks=False):
             try:
-                os.unlink(os.path.join(root, n))
+                if os.fstat(fd).st_dev != dev:
+                    continue
             except OSError:
-                pass
-        for n in dirs:
-            p = os.path.join(root, n)
-            try:
-                os.unlink(p) if os.path.islink(p) else os.rmdir(p)
-            except OSError:
-                pass
+                continue
+            for n in files:
+                try:
+                    os.unlink(n, dir_fd=fd)
+                except OSError:
+                    pass
+            for n in dirs:
+                try:
+                    mode = os.stat(n, dir_fd=fd, follow_symlinks=False).st_mode
+                    if stat.S_ISLNK(mode):
+                        os.unlink(n, dir_fd=fd)
+                    else:
+                        os.rmdir(n, dir_fd=fd)
+                except OSError:
+                    pass
+    except OSError:
+        pass
 
 
 def clear(kid):

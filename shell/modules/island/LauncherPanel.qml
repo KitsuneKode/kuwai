@@ -88,7 +88,7 @@ FocusScope {
     property var have: ({})
     Process {
         running: true
-        command: ["sh", "-c", 'k=$(command -v kittymux || [ -x "$HOME/.local/bin/kittymux" ] && echo y); for c in claude codex; do [ -n "$k" ] && command -v "$c" >/dev/null && echo "$c"; done; for d in "${XDG_DATA_HOME:-$HOME/.local/share}/applications" /usr/share/applications; do ls "$d" 2>/dev/null; done | grep -qi "t3" && echo t3; true']
+        command: ["sh", "-c", 'k=$(command -v kittymux >/dev/null && echo y); for c in claude codex; do [ -n "$k" ] && command -v "$c" >/dev/null && echo "$c"; done; for d in "${XDG_DATA_HOME:-$HOME/.local/share}/applications" /usr/share/applications; do ls "$d" 2>/dev/null; done | grep -qi "t3" && echo t3; true']
         stdout: StdioCollector { onStreamFinished: { const h = {}; for (const w of text.split("\n")) if (w) h[w] = true; launcher.have = h; } }
     }
     readonly property var actions: [

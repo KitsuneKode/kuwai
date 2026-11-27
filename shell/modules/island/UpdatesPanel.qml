@@ -45,6 +45,10 @@ FocusScope {
     property string menuOf: ""                    // a package whose menu is open (the rehearsal stages it)
 
     function openReview(name) { pkg = name; fileIx = 0; Updates.review(name); go("review"); }
+    function openAurRow(row) {
+        if (Updates.aurReadOnly) { if (row.page !== "") Apps.open(row.page); return; }
+        openReview(row.modelData.name);
+    }
     property bool installing: false
     function openInstall(name) { installing = true; openReview(name); }
     function takeAsk() { if (Updates.installAsk) { const n = Updates.installAsk; Updates.installAsk = ""; openInstall(n); } }
@@ -419,7 +423,7 @@ FocusScope {
                         width: parent.width - 32 - (bumps.visible ? bumps.width + Theme.s3 : 0)
                         spacing: 1
                         Label { text: "AUR · " + Updates.aur.length + (Updates.aur.length === 1 ? " package" : " packages"); size: Theme.tCallout; weight: Theme.wSemibold }
-                        Label { width: parent.width; elide: Text.ElideRight; text: "Built as you, from exactly the change you approve"; size: Theme.tFootnote; color: Theme.textTertiary }
+                        Label { width: parent.width; elide: Text.ElideRight; text: Updates.aurReadOnly ? "Read-only here · update from a terminal with an AUR helper" : "Built as you, from exactly the change you approve"; size: Theme.tFootnote; color: Theme.textTertiary }
                     }
                     // Approve the plain version bumps in one go (each one was read).
                     Button {
@@ -452,7 +456,7 @@ FocusScope {
                         MouseArea {
                             id: rowArea
                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: up.openReview(aurRow.modelData.name)
+                            onClicked: up.openAurRow(aurRow)
                             onContainsMouseChanged: {
                                 if (containsMouse) aurCard.hoverRow = aurWash;
                                 else if (aurCard.hoverRow === aurWash) aurCard.hoverRow = null;
@@ -462,14 +466,14 @@ FocusScope {
                         activeFocusOnTab: true
                         Keys.onPressed: e => {
                             if (aurMenu.handleKey(e)) return;
-                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { up.openReview(aurRow.modelData.name); e.accepted = true; }
+                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { up.openAurRow(aurRow); e.accepted = true; }
                             else if (e.key === Qt.Key_Space && Updates.selectable(aurRow.modelData.name)) { Updates.setExcluded(aurRow.modelData.name, Updates.selected(aurRow.modelData.name)); e.accepted = true; }
                         }
                         FocusRing { anchors.fill: aurWash; cornerRadius: Theme.r1 }
                         Accessible.role: Accessible.ListItem
                         Accessible.name: aurRow.modelData.name + ", " + stateChip.text
-                        Accessible.description: "Review the changes. More in its menu."
-                        Accessible.onPressAction: up.openReview(aurRow.modelData.name)
+                        Accessible.description: Updates.aurReadOnly ? "Read-only. Open its AUR page. More in its menu." : "Review the changes. More in its menu."
+                        Accessible.onPressAction: up.openAurRow(aurRow)
                         Component.onCompleted: if (up.menuOf === modelData.name) Qt.callLater(() => aurMenu.popup(aurRow.width * 0.55, aurRow.height / 2))
                         ContextMenu {
                             id: aurMenu
@@ -477,7 +481,7 @@ FocusScope {
                             bounds: up
                             title: aurRow.modelData.name
                             ContextMenuLabel { text: aurRow.modelData.name + "  " + aurRow.modelData.new }
-                            ContextMenuItem { text: "Review changes"; glyph: "\u{f0208}"; shortcut: "↵"; onTriggered: up.openReview(aurRow.modelData.name) }
+                            ContextMenuItem { text: "Review changes"; glyph: "\u{f0208}"; shortcut: "↵"; visible: !Updates.aurReadOnly; onTriggered: up.openAurRow(aurRow) }
                             ContextMenuCheckboxItem {
                                 text: "Include in this update"
                                 shortcut: "Space"
@@ -499,6 +503,7 @@ FocusScope {
                             }
                             ContextMenuCheckboxItem {
                                 text: "Trust its future updates"
+                                visible: !Updates.aurReadOnly
                                 checked: Updates.trusted.indexOf(aurRow.modelData.name) >= 0
                                 onToggled: on => Updates.setTrusted(aurRow.modelData.name, on)
                             }
@@ -529,6 +534,7 @@ FocusScope {
                             readonly property var look: {
                                 const s = aurRow.st, r = aurRow.rv;
                                 if (Updates.isHeld(aurRow.modelData.name)) return ["Held at " + aurRow.modelData.old, Theme.textSecondary, ""];
+                                if (Updates.aurReadOnly) return ["Read-only", Theme.textSecondary, ""];
                                 if (s === "trusted") return ["Trusted", Theme.accent, "\u{f0565}"];
                                 if (s === "approved") return [Updates.autoApproved.indexOf(aurRow.modelData.name) >= 0 ? "Version bump · auto" : "Approved", Theme.green, "\u{f012c}"];
                                 if (s === "loading" || !r) return ["Reading…", Theme.textSecondary, ""];   // tertiary read 3.7:1 on a row
@@ -642,6 +648,7 @@ FocusScope {
             elide: Text.ElideRight
             text: Updates.waitingReview > 0
                 ? Updates.waitingReview + " AUR " + (Updates.waitingReview === 1 ? "package waits" : "packages wait") + " for your review"
+                : Updates.aurReadOnly && Updates.chosenCount === 0 ? ""
                 : "Sleep and shutdown wait until it's done"
             size: Theme.tFootnote; color: Theme.textTertiary
         }

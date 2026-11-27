@@ -7,12 +7,14 @@ function updates(over = {}) {
     running: false, lowSpace: false, bin: "kuwai-update", plan: null, ownedRun: false, installPending: "", installAsk: "",
     reviews: { "localsend-bin": { head: "abc123" } }, approvedSha: {}, autoApproved: [], trusted: [], mutationError: "",
     mutationCurrent: null, starter: { command: [], running: false },
+    total: 1, runnableCount: 1, repoLive: [], aurLive: [{ name: "localsend-bin" }], flatpak: [], aurReadOnly: false,
+    Settings: { updatesPruneCache: false },
     resetRun() { calls.push("reset"); }, setExcluded() {}, selectable(n) { return !!this.approvedSha[n]; },
     enqueueMutation(job) { calls.push(job.args.join(" ")); this.mutationCurrent = job; },
     Island: { screen: "DP-3", open: (...a) => calls.push("open " + a.join(" ")) }
   }, over);
   s.calls = calls;
-  return functions("shell/services/Updates.qml", ["requestInstall", "approveAndInstall", "installNew", "approve", "finishMutation"], s);
+  return functions("shell/services/Updates.qml", ["requestInstall", "approveAndInstall", "installNew", "review", "approve", "unapprove", "setTrusted", "finishMutation", "runAll"], s);
 }
 
 test("a new AUR package is approved at the commit you read, then built and installed alone", () => {
@@ -52,4 +54,28 @@ test("the launcher hands over only a package name", () => {
   u.requestInstall("localsend-bin");
   expect(u.installAsk).toBe("localsend-bin");
   expect(u.calls).toEqual(["open updates DP-3 pointer"]);
+});
+
+test("helperless AUR rows are listed read-only and never start an install", () => {
+  const u = updates({ aurReadOnly: true });
+  u.requestInstall("localsend-bin");
+  expect(u.installAsk).toBe("");
+  u.approveAndInstall("localsend-bin");
+  expect(u.calls).toEqual([]);
+  expect(u.installNew("localsend-bin")).toBe(false);
+  expect(u.starter.running).toBe(false);
+  u.review("localsend-bin");
+  u.approve("localsend-bin");
+  u.unapprove("localsend-bin");
+  u.setTrusted("localsend-bin", true);
+  expect(u.calls).toEqual([]);
+});
+
+test("update-everything leaves read-only AUR packages out", () => {
+  const u = updates({ aurReadOnly: true, runnableCount: 0 });
+  u.runAll();
+  expect(u.starter.running).toBe(false);
+  const helped = updates();
+  helped.runAll();
+  expect(helped.starter.command).toEqual(["kuwai-update", "start", "--aur", "localsend-bin", "--unreviewed"]);
 });

@@ -563,7 +563,7 @@ Singleton {
     // the same, but only while it lives (30s); this works from history.
     function jumpTo(item) {
         const [pid, w] = item.jump.split(":");
-        const p = jumper.createObject(root, { command: [Quickshell.env("HOME") + "/.local/bin/kittymux", "act", JSON.stringify({ op: "jump", pid: Number(pid), w: w })] });
+        const p = jumper.createObject(root, { command: [Kittymux.muxBin(), "act", JSON.stringify({ op: "jump", pid: Number(pid), w: w })] });
         p.running = true;
         if (item.notification) item.notification.dismiss();     // its helper exits without acting
     }

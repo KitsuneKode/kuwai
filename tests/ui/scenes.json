@@ -8465,6 +8465,54 @@
    ]
   },
   {
+   "id": "updates/aur-read-only",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur",
+        "readOnly": true
+       },
+       {
+        "name": "visual-studio-code-bin",
+        "old": "1.103.1-1",
+        "new": "1.103.2-1",
+        "repo": "aur",
+        "readOnly": true
+       }
+      ],
+      "aurHelper": "",
+      "aurReadOnly": true,
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": false,
+      "flatpak": []
+     }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
+    ]
+   ]
+  },
+  {
    "id": "updates/tour",
    "name": "updates",
    "panel": "UpdatesPanel",
@@ -12154,9 +12202,12 @@
       "start": 124,
       "age": 1800,
       "agent": "Claude",
-      "local": true
+      "local": false
      }
-    ]
+    ],
+    "forcePid": 4242,
+    "forceStart": "123",
+    "stopNote": ":3000 didn't stop · Force stop ends it"
    }
   }
  ]
