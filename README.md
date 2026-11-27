@@ -4,7 +4,7 @@
 
 ## A look around
 
-Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live at 60 fps on a 2560×1440 laptop screen at 133 % scale, with no pointer and nothing personal on it:
+Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live at 60 fps on a 2560×1440 laptop screen at 133 % scale, with no pointer and nothing personal on it, over Kuwai Night's public-domain and CC night skies (NPS, ESO):
 
 <table>
 <tr>
@@ -42,7 +42,7 @@ In motion (recorded at 133 %, shown smaller, so every clip stays sharp on any sc
 <td align="center"><img src="docs/media/clips/themes.webp" alt="Themes: each theme's wallpapers with their colours" width="880"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper drawn in by its own lines, from the island" width="880"></td>
+<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="A new wallpaper arriving through a ring, from the island" width="880"></td>
 </tr>
 <tr>
 <td align="center"><img src="docs/media/clips/sound.webp" alt="Sound: every app and device, the microphone as it hears you" width="510"></td>
