@@ -107,7 +107,8 @@ Scope {
     property string mainScreen: ""
     property bool dimmedHere: false
     onShowingChanged: {
-        if (showing) { mainScreen = Screens.focusedName; filmFresh(); }
+        if (showing) { mainScreen = Screens.focusedName; filmFresh(); longFade.stop(); longLevel = 0; }
+        else longBlack = false;
         Saver.showing = showing;
         if (!showing && dimmedHere) { dimmedHere = false; if (Dim.wanted) Dim.up(); }
     }
@@ -135,7 +136,7 @@ Scope {
     // The film starts once the screen has gone dark (the black over it fades
     // out once it plays, below), so it never cuts in over the desktop.
     readonly property bool darkened: level >= 0.999
-    readonly property string wantedFilm: showing && darkened ? film : ""
+    readonly property string wantedFilm: showing && darkened && !longDark ? film : ""
     property real filmCover: 1
     property bool filmShown: false
     onActiveFilmChanged: if (activeFilm === "") { coverOut.stop(); filmCover = 1; filmShown = false; firstFrame.stop(); mpvIpc.connected = false; }
@@ -244,6 +245,16 @@ Scope {
             : ({ KUWAI_SAVER_FILE: root.activeFilm, KUWAI_SAVER_SCREEN: "*", QSG_RENDER_LOOP: "basic" })
         onExited: (exitCode, exitStatus) => root.filmExited(exitCode)
     }
+    property bool longBlack: false
+    property real longLevel: 0
+    readonly property bool longDark: longLevel >= 0.999
+    Timer {
+        interval: Idle.saverLongAfter * 1000
+        running: root.showing && Idle.saverLongAfter > 0 && !root.longBlack
+        onTriggered: root.longBlack = true
+    }
+    onLongBlackChanged: if (longBlack) longFade.restart()
+    NumberAnimation { id: longFade; target: root; property: "longLevel"; to: 1; duration: Theme.saverLongFadeMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut }
     // ── Dim after a while: "Dim the screen" in, every screen down (services/Dim),
     // back where it was on wake.
     Timer {
@@ -321,7 +332,7 @@ Scope {
                     Loader {
                         id: sceneLoader
                         anchors.fill: parent
-                        active: !stage.filmHere && !stage.stillHere
+                        active: !stage.filmHere && !stage.stillHere && !root.longDark
                         sourceComponent: root.style === "borealis" ? borealisC : duskC
                         onLoaded: sceneFrame.scheduleUpdate()
                         onWidthChanged: sceneFrame.scheduleUpdate()
@@ -346,7 +357,7 @@ Scope {
                     Image {
                         visible: stage.stillHere
                         anchors.fill: parent
-                        source: stage.stillHere ? root.still : ""
+                        source: stage.stillHere && !root.longDark ? root.still : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         // Decoded once at a sensible size (and cached): it was
@@ -354,7 +365,7 @@ Scope {
                         sourceSize: Qt.size(Math.min(win.width, 1920), Math.min(win.height, 1080))
                         scale: 1.06
                         NumberAnimation on scale {
-                            running: stage.stillHere && root.showing && !Theme.reduceMotion
+                            running: stage.stillHere && root.showing && !root.longBlack && !Theme.reduceMotion
                             from: 1.06; to: 1.12; duration: Theme.saverZoomMs
                             easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
                         }
@@ -369,10 +380,13 @@ Scope {
                         }
                     }
 
+                    Rectangle { anchors.fill: parent; color: "black"; opacity: root.longLevel; visible: opacity > 0.001 }
+
                     // The clock: large, light, and somewhere new each minute.
                     Column {
                         id: face
                         spacing: 2
+                        opacity: 1 - root.longLevel * (1 - Theme.saverLongDim)
                         property date now: new Date()
                         onVisibleChanged: if (visible) now = new Date()
                         Connections {
@@ -410,7 +424,8 @@ Scope {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            visible: Weather.ok
+                            visible: Weather.ok && !root.longDark
+                            opacity: 1 - root.longLevel
                             text: Weather.glyph + "  " + Weather.temp + "°" + (Weather.desc ? " · " + Weather.desc : "")
                             font.family: Theme.fontText
                             font.pixelSize: Math.round(win.height * 0.017)
@@ -421,7 +436,8 @@ Scope {
                             readonly property var next: Calendar.nextAfter(face.now.getTime(), 12 * 3600000)
                             readonly property bool named: Settings.notifPrivacy === "never" && !Notifs.sharing
                             textFormat: Text.PlainText
-                            visible: !!next
+                            visible: !!next && !root.longDark
+                            opacity: 1 - root.longLevel
                             text: next ? "\u{f00f0}  " + (named ? Dates.time(next.start) + " · " + next.title : "Next event at " + Dates.time(next.start)) : ""
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, win.width * 0.4)
@@ -432,7 +448,8 @@ Scope {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            visible: Media.playing && !!Media.active
+                            visible: Media.playing && !!Media.active && !root.longDark
+                            opacity: 1 - root.longLevel
                             text: Media.active ? "\u{f075a}  " + (Media.title(Media.active)) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
                             elide: Text.ElideRight
                             width: Math.min(implicitWidth, win.width * 0.4)

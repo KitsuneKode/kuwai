@@ -1091,6 +1091,19 @@ FocusScope {
                     }
                 }
                 SettingsRow {
+                    key: "screensaverLongMins"
+                    label: "Then go dark"
+                    detail: Settings.screensaverLongMins <= 0 ? "The screensaver stays as it is until you come back"
+                        : Idle.saverLong.action === "screens" ? "Your screens turn off first, " + Idle.saverLongText + " in"
+                        : Idle.saverLong.action === "none" ? "Not needed here: the screen locks first"
+                        : "A dim clock on black after " + Idle.saverLongText + " on the screensaver, easier on the panel"
+                    Segmented {
+                        options: [{ id: "30", label: "30 min" }, { id: "60", label: "1 h" }, { id: "120", label: "2 h" }, { id: "0", label: "Never" }]
+                        current: String(Settings.screensaverLongMins)
+                        onPicked: id => Settings.set("screensaverLongMins", Number(id))
+                    }
+                }
+                SettingsRow {
                     key: "screensaverStyle"
                     label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals"
                         : Settings.screensaverStyle === "borealis" ? "Northern lights in your theme's colour over a night sky"

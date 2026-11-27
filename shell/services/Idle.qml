@@ -78,6 +78,9 @@ Singleton {
     readonly property bool saverAllowed: Ladder.saverAllowed(Settings.screensaverWhen, Caffeine.on)
     readonly property int saverAfter: Ladder.saverAfter(Settings.screensaverMins, lockAfter, Caffeine.on || !enabled)
     readonly property string saverAfterText: Ladder.afterText(saverAfter)
+    readonly property var saverLong: Ladder.longIdle(Settings.screensaverLongMins, saverAfter, lockAfter, offAfter, held || !enabled)
+    readonly property int saverLongAfter: saverLong.action === "clock" ? saverLong.at : 0
+    readonly property string saverLongText: Ladder.afterText(saverLong.at)
     // Caffeine, or you're dictating: talking to voxtype is no key or pointer
     // input, and the screen dimmed and locked mid-sentence. (voxtype's own
     // systemd-inhibit only spoke to hypridle; these monitors don't read it.)

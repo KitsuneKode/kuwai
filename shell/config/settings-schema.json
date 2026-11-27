@@ -401,6 +401,20 @@
       "restartScope": "live"
     },
     {
+      "key": "screensaverLongMins",
+      "type": "integer",
+      "default": 60,
+      "min": 0,
+      "max": 1440,
+      "section": "saver",
+      "label": "Then go dark",
+      "detail": "After this long on the screensaver it fades to a dim clock on black, which saves the panel; 0 never",
+      "group": "",
+      "searchTerms": "then go dark black clock oled burn-in power saving long idle hour 30 min 1 h 2 h never",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "idleOwner",
       "type": "string",
       "default": "shell",

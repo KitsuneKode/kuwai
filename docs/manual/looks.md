@@ -70,3 +70,7 @@ kuwai screensaver start                 # show now (or Super+Alt+Shift+S)
 ```
 
 Step between screensavers with **`Super+Ctrl+Alt+]`** and **`Super+Ctrl+Alt+[`**. By default, the screensaver is a step of the idle ladder: your still wallpaper with the time comes up before the screen fades and locks, and the lock keeps its usual time. While Caffeine holds the lock off, it comes after its own minutes (`Settings → Screensaver → When`: `always`, `caffeine` for only while Caffeine is on, or `off`).
+
+### Going dark after a long wait
+
+After an hour on the screensaver (`Settings → Screensaver → Then go dark`: 30 min, 1 h, 2 h or never; `screensaverLongMins`) it fades over a few seconds to a dim clock and date on black, with nothing drawn or decoded behind them: kind to an OLED panel and to the battery. It only has work to do when nothing else ends the screensaver first. If the screen locks, or your own idle settings turn the screens off, within that hour, those do it and the setting says so. Any key or movement wakes it as before.

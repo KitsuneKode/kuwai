@@ -596,6 +596,9 @@ Singleton {
     // Screensaver: ambient, minutes not milliseconds.
     readonly property int saverZoomMs: 40000     // the still's slow zoom, each way
     readonly property int saverMoveMs: 6000      // the clock gliding to its new place each minute
+    readonly property int saverFrameMs: 66
+    readonly property int saverLongFadeMs: 5000
+    readonly property real saverLongDim: 0.4
     readonly property int duskMeteorWaitMs: 14000  // Dusk: quiet sky before a shooting star…
     readonly property int duskMeteorInMs: 180      // …it flashes on…
     readonly property int duskMeteorMs: 900        // …crosses (fading over the second half)…
