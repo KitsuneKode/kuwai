@@ -3,3 +3,4 @@ slug = "garage"
 name = "Garage"
 mode = "dark"
 accent = "#ff5a3c"
+personal = true

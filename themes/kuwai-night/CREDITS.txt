@@ -1,4 +1,12 @@
-Kuwai Night wallpapers: photographs collected in Panacea (github.com/EnsixD/Panacea,
-wallpapers/, pinned to 45ddf2e), which credits ilyamiro/shell-wallpapers and the
-photographers named in each file name. Each belongs to its author. kuwai does not
-ship them: `kuwai-theme install` downloads them to your machine for personal use.
+Kuwai Night: the pictures this theme downloads, and whose they are.
+kuwai does not ship them: `install.sh`, `kuwai-look` and `kuwai-theme install` fetch each from
+Wikimedia Commons and verify its SHA-256 digest before use. Each stays under its own licence;
+none was changed except scaled to fit a screen when installed through `kuwai-theme`.
+
+Wallpapers
+  01-chisos-night-sky  NPS Photo. public domain (PD-USGov-NPS). https://commons.wikimedia.org/wiki/File:Night_Sky_Over_Chisos_Mountains_(de3b5b2d-7015-4ca5-871b-4da5a8858774).jpg
+  02-cerro-paranal-night  ESO/M. Claro. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Night_view_of_Cerro_Paranal_(vlt-7047).jpg
+  03-glacier-aurora  NPS. public domain (PD-USGov-NPS). https://commons.wikimedia.org/wiki/File:The_Aurora_Borealis_adds_green_hue_to_night_skies_over_Glacier_National_Park,_Montana._(0d18dad7-1dd8-b71b-0ba2-394f5a8d3ff8).jpg
+  04-rocky-mountain-milky-way  NPS/Jeremy M. White. public domain (PD-USGov-NPS). https://commons.wikimedia.org/wiki/File:Milky_Way_Over_Rocky_Mountain_National_Park_(26367177284).jpg
+  05-la-silla-starry-night  ESO/H. Dahle. CC BY 4.0. https://commons.wikimedia.org/wiki/File:Starry_Night_at_La_Silla.jpg
+  06-andorra-starry-mountains  Korney Violin (reka). CC0 1.0 (pre-2017 Unsplash archive on Commons). https://commons.wikimedia.org/wiki/File:Starry_sky_over_rough_mountains_(Unsplash).jpg

@@ -125,19 +125,50 @@ def test_all_shipped_themes_have_native_toml_and_apply_cleanly(tmp_path):
     env = look_env(tmp_path)
     themes = sorted(p for p in (ROOT / "themes").iterdir() if p.is_dir())
     assert len(themes) >= 11
+    default_themes = [t for t in themes if "personal = true" not in (t / "theme.toml").read_text()]
+    assert [t.name for t in default_themes] == ["deep-field", "earthlight", "kuwai-night"]
     for theme in themes:
         assert (theme / "theme.toml").is_file(), theme.name
         assert (theme / "palette.toml").is_file(), theme.name
         r = run_look(env, "theme", theme.name, "--no-apply")
         assert r.returncode == 0, f"{theme.name}: {r.stderr}"
-        pal = json.loads(r.stdout)["palette"]
+        out = json.loads(r.stdout)
+        pal = out["palette"]
+        assert pal["mode"] == "theme" and out["state"]["mode"] == "theme", theme.name
         role = pal["role"]
         assert contrast_ratio(role["fg"], role["bg"]) >= 7.0, theme.name
         assert contrast_ratio(role["accent"], role["bg"]) >= 3.5, theme.name
+    run_look(env, "theme", "kuwai-night", "--no-apply")
     listed = json.loads(run_look(env, "list").stdout)
-    assert len(listed["themes"]) == len(themes)
+    assert [t["name"] for t in listed["themes"]] == [t.name for t in default_themes]
+    assert listed["mode"] == 0 and listed["modes"][listed["mode"]] == "theme"
     assert listed["modes"] == ["theme", "auto", "dark", "light"]
     assert all(t["bg"].startswith("#") and t["accent"].startswith("#") and t["palette"] for t in listed["themes"])
+    listed_all = json.loads(run_look(env, "list", "--all").stdout)
+    assert len(listed_all["themes"]) == len(themes)
+
+
+def test_fresh_install_state_wallpaper_is_listed_and_thumbs_kuwai_night(tmp_path):
+    env = look_env(tmp_path)
+    walls_dir = tmp_path / "state" / "kuwai" / "wallpapers"
+    walls_dir.mkdir(parents=True)
+    first_name = next(
+        l.split("\t")[0]
+        for l in (ROOT / "themes/kuwai-night/wallpapers.tsv").read_text().splitlines()
+        if l.strip() and not l.startswith("#")
+    )
+    img = walls_dir / f"{first_name}.jpg"
+    img.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 32)
+    (tmp_path / "state" / "kuwai" / "wallpaper").symlink_to(img)
+    r = run_look(env, "theme", "kuwai-night", "--no-apply")
+    assert r.returncode == 0, r.stderr
+    listed = json.loads(run_look(env, "list").stdout)
+    assert listed["mode"] == 0 and listed["current"] == "kuwai-night"
+    kn = next(t for t in listed["themes"] if t["name"] == "kuwai-night")
+    assert kn["thumb"] == str(img.resolve())
+    ef = next(t for t in listed["themes"] if t["name"] == "earthlight")
+    assert ef["thumb"] == "" and ef["downloadable"] is True
+    assert any(w["path"] == str(img.resolve()) and w["current"] is True for w in listed["wallpapers"])
 
 
 def init_git_repo(repo_dir):

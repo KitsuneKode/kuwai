@@ -3,3 +3,4 @@ slug = "sakura-night"
 name = "Sakura Night"
 mode = "dark"
 accent = "#f5a9c8"
+personal = true

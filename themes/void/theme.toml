@@ -3,3 +3,4 @@ slug = "void"
 name = "Void"
 mode = "dark"
 accent = "#8ab4ff"
+personal = true

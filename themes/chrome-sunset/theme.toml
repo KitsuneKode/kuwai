@@ -3,3 +3,4 @@ slug = "chrome-sunset"
 name = "Chrome Sunset"
 mode = "dark"
 accent = "#ff3fb0"
+personal = true

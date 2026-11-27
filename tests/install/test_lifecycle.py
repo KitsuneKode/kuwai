@@ -489,9 +489,11 @@ def test_a_planted_link_never_redirects_a_new_config(install_env, tmp_path):
 
 def test_a_fresh_install_without_hyde_gets_a_wallpaper_once(install_env):
     """The VM's first login was a flat grey desktop: no HyDE, so no wallpaper."""
+    import hashlib
+    digest = hashlib.sha256(b'JPEG').hexdigest()
     themes = install_env.repo / 'themes/kuwai-night'
     themes.mkdir(parents=True)
-    (themes / 'wallpapers.tsv').write_text('# name\turl\n01-night\thttps://example.invalid/night.jpg\n')
+    (themes / 'wallpapers.tsv').write_text(f'# name\turl\tpin\n01-night\thttps://example.invalid/night.jpg\tsha256:{digest}\n')
     (themes / 'CREDITS.txt').write_text('credits\n')
     tools = Path(install_env.env['PATH'].split(':')[0])
     (tools / 'curl').write_text('#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && { printf JPEG > "$2"; }; shift; done\n')
@@ -506,13 +508,33 @@ def test_a_fresh_install_without_hyde_gets_a_wallpaper_once(install_env):
 
 
 def test_a_wallpaper_that_isnt_an_image_is_not_used(install_env):
+    import hashlib
+    digest = hashlib.sha256(b'<html>').hexdigest()
     themes = install_env.repo / 'themes/kuwai-night'
     themes.mkdir(parents=True)
-    (themes / 'wallpapers.tsv').write_text('01-night\thttps://example.invalid/night.jpg\n')
+    (themes / 'wallpapers.tsv').write_text(f'01-night\thttps://example.invalid/night.jpg\tsha256:{digest}\n')
     (themes / 'CREDITS.txt').write_text('credits\n')
     tools = Path(install_env.env['PATH'].split(':')[0])
     (tools / 'curl').write_text('#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && { printf "<html>" > "$2"; }; shift; done\n')
     (tools / 'file').write_text('#!/bin/sh\necho text/html\n')
     out = install_env.run()
     assert "isn't an image" in out
+    assert not (install_env.home / '.local/state/kuwai/wallpaper').exists()
+
+
+def test_an_unpinned_or_wrong_digest_default_wallpaper_is_not_used(install_env):
+    themes = install_env.repo / 'themes/kuwai-night'
+    themes.mkdir(parents=True)
+    (themes / 'wallpapers.tsv').write_text('01-night\thttps://example.invalid/night.jpg\n')
+    (themes / 'CREDITS.txt').write_text('credits\n')
+    tools = Path(install_env.env['PATH'].split(':')[0])
+    (tools / 'curl').write_text('#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && { printf JPEG > "$2"; }; shift; done\n')
+    (tools / 'file').write_text('#!/bin/sh\necho image/jpeg\n')
+    out = install_env.run()
+    assert 'no checksum pin' in out
+    assert not (install_env.home / '.local/state/kuwai/wallpaper').exists()
+
+    (themes / 'wallpapers.tsv').write_text('01-night\thttps://example.invalid/night.jpg\tsha256:' + '0' * 64 + '\n')
+    out2 = install_env.run()
+    assert "isn't the file Kuwai Night lists" in out2
     assert not (install_env.home / '.local/state/kuwai/wallpaper').exists()

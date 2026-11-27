@@ -266,12 +266,12 @@ FocusScope {
             const nice = picker.applyingName.replace(/-/g, " ");
             if (code === 0) {
                 picker.applyError = "";
-                picker.said(nice + " applied");
+                picker.said(nice ? nice + " applied" : "Colours updated");
                 if (picker.useLook) { Theme.reloadLook(); Hyde.refresh(); }
             }
             else {
                 const why = String(applyErr.text || "").split("\n").map(x => x.trim()).filter(x => x).pop() || "";
-                picker.applyError = "Couldn't apply " + nice + (why ? ": " + why.slice(0, 120) : "") + " · ↩ tries again";
+                picker.applyError = "Couldn't apply " + (nice || "colours") + (why ? ": " + why.slice(0, 120) : "") + " · ↩ tries again";
             }
             picker.applyingName = "";
             lister.running = true;
@@ -288,8 +288,9 @@ FocusScope {
         Settings.set("favoriteThemes", f);
     }
 
+    readonly property int cols: Theme.textScale > 1.5 ? 2 : 4
     Keys.onPressed: event => {
-        const k = event.key, cols = 4;
+        const k = event.key, cols = picker.cols;
         if ([Qt.Key_Right, Qt.Key_Left, Qt.Key_Down, Qt.Key_Up].indexOf(k) >= 0) touched = true;
         if (k === Qt.Key_Right) current = Math.min(items.length - 1, current + 1);
         else if (k === Qt.Key_Left) current = Math.max(0, current - 1);
@@ -349,19 +350,40 @@ FocusScope {
         readonly property var it: picker.items[picker.current] || null
         ClippingRectangle {
             id: big
-            width: parent.width; height: Math.round(width * 0.5625)
+            width: parent.width; height: Math.round(width * (Theme.textScale > 1.5 ? 0.36 : 0.5625))
             radius: Theme.r3
             color: preview.it && preview.it.bg ? preview.it.bg : Theme.pill
             Image {
                 id: bigImg
                 anchors.fill: parent
-                source: preview.it && (preview.it.thumb || preview.it.path) ? "file://" + (preview.it.thumb || preview.it.path) : ""
+                source: preview.it && (preview.it.thumb || (picker.mode !== "themes" && preview.it.path)) ? "file://" + (preview.it.thumb || preview.it.path) : ""
                 sourceSize: Qt.size(620, 349)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 // A quick crossfade as the selection moves (not a slide: you're comparing).
                 opacity: status === Image.Ready ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: Theme.quickMs } }
+            }
+            Column {
+                visible: picker.mode === "themes" && !!preview.it && !preview.it.thumb
+                anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: Theme.s4 }
+                spacing: Theme.s2
+                Text {
+                    visible: Theme.textScale <= 1.25
+                    textFormat: Text.PlainText
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "\u{f01da}"
+                    font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphL
+                    color: Theme.textSecondary
+                }
+                Label {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                    text: "Downloads on first use"
+                    size: Theme.tSub
+                    color: Theme.textSecondary
+                }
             }
             // Live: the selected one plays here, muted (the panel's only decoder;
             // the cards are stills). A short wait so arrowing past doesn't decode each.
@@ -431,7 +453,7 @@ FocusScope {
             // The palette, as one strip: the theme's own colours (its terminal
             // palette), or the wallpaper's wallbash colours.
             Item {
-                width: parent.width; height: 34
+                width: parent.width; height: 22 + palCaption.implicitHeight
                 visible: !!(preview.it && preview.it.palette && preview.it.palette.length)
                 ClippingRectangle {
                     y: 4; width: parent.width; height: 14; radius: 7
@@ -449,12 +471,12 @@ FocusScope {
                         }
                     }
                 }
-                Label { y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: Theme.tFootnote; color: Theme.textTertiary }
+                Label { id: palCaption; y: 22; text: picker.mode === "themes" ? "Theme palette" : "Wallpaper colours"; size: Theme.tFootnote; color: Theme.textTertiary }
             }
             Row {
                 id: applyLine
                 readonly property bool busy: applicator.running
-                readonly property string words: busy ? "Applying " + picker.applyingName.replace(/-/g, " ") + "…" : picker.applyError !== "" ? picker.applyError : picker.applyNote
+                readonly property string words: busy ? (picker.applyingName ? "Applying " + picker.applyingName.replace(/-/g, " ") + "…" : "Updating colours…") : picker.applyError !== "" ? picker.applyError : picker.applyNote
                 visible: words !== ""
                 spacing: 6
                 Accessible.role: Accessible.StatusBar
@@ -547,7 +569,7 @@ FocusScope {
             width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
             // Themes and their wallpapers are HyDE's (kuwai-themes says when it isn't installed).
             text: picker.info.hyde === false ? "Themes and wallpapers come from HyDE, which isn't installed"
-                : picker.mode === "themes" ? "No themes found" : "This theme has no wallpapers of its own"
+                : picker.mode === "themes" ? "No themes found" : picker.useLook ? "No wallpapers yet" : "This theme has no wallpapers of its own"
             size: Theme.tSub; weight: Theme.wSemibold; color: Theme.textSecondary
         }
         Label {
@@ -568,8 +590,8 @@ FocusScope {
         x: 16; y: 66
         width: parent.width - 32 - 330
         height: parent.height - y - 40
-        cellWidth: Math.floor(width / 4)
-        cellHeight: Math.round(cellWidth * 0.5625) + 40
+        cellWidth: Math.floor(width / picker.cols)
+        cellHeight: Math.round(cellWidth * 0.5625) + Theme.sp(40)
         opacity: picker.loading && picker.listed ? 0 : 1
         Behavior on opacity { enabled: picker.settled; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
         clip: true
@@ -597,6 +619,29 @@ FocusScope {
                     anchors.centerIn: parent
                     text: "\u{f0e09}"; font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphL
                     color: Theme.textTertiary
+                }
+                Column {
+                    visible: !card.modelData.off && picker.mode === "themes" && !card.modelData.thumb
+                    anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: Theme.s2; verticalCenterOffset: -2 }
+                    spacing: Theme.s1
+                    Text {
+                        visible: Theme.textScale <= 1.25
+                        textFormat: Text.PlainText
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "\u{f01da}"
+                        font.family: Theme.fontGlyph; font.pixelSize: Theme.glyphS
+                        color: Theme.textSecondary
+                    }
+                    Label {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        text: "Downloads on first use"
+                        size: Theme.tCaption
+                        color: Theme.textSecondary
+                    }
                 }
                 Skeleton {
                     anchors.fill: parent
@@ -663,26 +708,34 @@ FocusScope {
                 spacing: 6
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 26
+                    width: parent.width - 30
                     elide: Text.ElideRight
                     text: card.modelData.name.replace(/-/g, " ")
                     size: Theme.tSub; weight: card.on ? Theme.wMedium : Theme.wRegular
                     color: card.on ? Theme.textPrimary : Theme.textSecondary
                 }
-                Text {
-                    textFormat: Text.PlainText
+                Item {
                     visible: picker.mode === "themes"
                     anchors.verticalCenter: parent.verticalCenter
-                    text: picker.favs.includes(card.modelData.name) ? "\u{f04ce}" : "\u{f04d2}"
-                    font.family: Theme.fontGlyph; font.pixelSize: 13
-                    color: picker.favs.includes(card.modelData.name) ? Theme.yellow : (card.on ? Theme.textTertiary : "transparent")
-                    MouseArea { anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor; onClicked: picker.toggleFav(card.index) }
-                    Accessible.role: Accessible.CheckBox
-                    Accessible.name: "Favourite " + card.modelData.name.replace(/-/g, " ")
-                    Accessible.checkable: true
-                    Accessible.checked: picker.favs.includes(card.modelData.name)
-                    Accessible.onPressAction: picker.toggleFav(card.index)
-                    Accessible.onToggleAction: picker.toggleFav(card.index)
+                    width: 24; height: 24
+                    Text {
+                        textFormat: Text.PlainText
+                        anchors.centerIn: parent
+                        text: picker.favs.includes(card.modelData.name) ? "\u{f04ce}" : "\u{f04d2}"
+                        font.family: Theme.fontGlyph; font.pixelSize: Theme.tSub
+                        color: picker.favs.includes(card.modelData.name) ? Theme.yellow : (card.on ? Theme.textTertiary : "transparent")
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: picker.toggleFav(card.index)
+                        Accessible.role: Accessible.CheckBox
+                        Accessible.name: "Favourite " + card.modelData.name.replace(/-/g, " ")
+                        Accessible.checkable: true
+                        Accessible.checked: picker.favs.includes(card.modelData.name)
+                        Accessible.onPressAction: picker.toggleFav(card.index)
+                        Accessible.onToggleAction: picker.toggleFav(card.index)
+                    }
                 }
             }
             MouseArea {
