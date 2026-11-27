@@ -109,39 +109,54 @@ install_code() {
     fi
 }
 
+root_alone() {
+    local perm
+    [ -e "$1" ] && [ ! -L "$1" ] && [ "$(stat -c %u -- "$1")" = "$(id -u)" ] || return 1
+    perm=$(stat -c %a -- "$1")
+    (( (8#$perm & 8#022) == 0 ))
+}
+
 mine_alone() {
-    local p perm
-    for p in "$DEST" "$KEEP" "$RECEIPT"; do
-        [ -e "$p" ] && [ ! -L "$p" ] && [ "$(stat -c %u -- "$p")" = "$(id -u)" ] || return 1
-        perm=$(stat -c %a -- "$p")
-        (( (8#$perm & 8#022) == 0 )) || return 1
-    done
+    local p
+    for p in "$DEST" "$KEEP" "$RECEIPT"; do root_alone "$p" || return 1; done
     [ -f "$RECEIPT" ]
 }
 
 kept_by_root_alone() {
-    local p perm
-    for p in "${SYS:-/}" "$SYS/var" "$SYS/var/lib" "$DEST" "$KEEP" "$KEEP"/*; do
-        [ -e "$p" ] && [ ! -L "$p" ] && [ "$(stat -c %u -- "$p")" = "$(id -u)" ] || return 1
-        perm=$(stat -c %a -- "$p")
-        (( (8#$perm & 8#022) == 0 )) || return 1
+    local p pair name
+    for p in "${SYS:-/}" "$SYS/var" "$SYS/var/lib" "$DEST" "$KEEP"; do root_alone "$p" || return 1; done
+    for pair in $SAVED; do
+        name=${pair%%:*}
+        for p in "$KEEP/$name" "$KEEP/$name.absent"; do
+            [ -e "$p" ] || [ -L "$p" ] || continue
+            root_alone "$p" || return 1
+        done
     done
+    p=$KEEP/display-manager
+    [ ! -e "$p" ] && [ ! -L "$p" ] || root_alone "$p"
+}
+
+untrusted_keep() {
+    echo "What an earlier install kept in $KEEP isn't root's alone (another account owns it or can change it, or it is a link), so nothing can be trusted to put it back. Nothing was changed: look at that folder, remove it, and install again." >&2
+    exit 1
 }
 
 write_receipt() {
     [ -e "$RECEIPT" ] && return 0
+    kept_by_root_alone || untrusted_keep
     local pair name target sum dm tmp
     tmp=$(mktemp "$KEEP/.receipt.XXXXXX")
     for pair in $SAVED; do
         name=${pair%%:*}; target=${pair#*:}
-        if [ -f "$KEEP/$name" ] && [ ! -L "$KEEP/$name" ]; then
+        if [ -f "$KEEP/$name" ] && root_alone "$KEEP/$name"; then
             sum=$(sha256sum <"$KEEP/$name" | cut -c1-64)
             printf 'restore\t%s\t%s\t%s\n' "$target" "$name" "$sum" >>"$tmp"
-        elif [ -e "$KEEP/$name.absent" ]; then
+        elif root_alone "$KEEP/$name.absent"; then
             printf 'remove\t%s\n' "$target" >>"$tmp"
         fi
     done
-    dm=$(cat "$KEEP/display-manager" 2>/dev/null || true)
+    dm=""
+    ! root_alone "$KEEP/display-manager" || dm=$(cat "$KEEP/display-manager")
     [[ $dm =~ ^[A-Za-z0-9@._-]+\.service$ ]] && printf 'display-manager\t%s\n' "$dm" >>"$tmp"
     chmod 600 "$tmp"
     mv -T -- "$tmp" "$RECEIPT"
@@ -196,6 +211,9 @@ if [ $MODE = undo ]; then
 fi
 
 was=$(basename "$(readlink -f "$SYS/etc/systemd/system/display-manager.service" 2>/dev/null)" 2>/dev/null || true)
+if { [ -e "$KEEP" ] || [ -L "$KEEP" ]; } && [ ! -e "$RECEIPT" ] && [ ! -L "$RECEIPT" ]; then
+    kept_by_root_alone || untrusted_keep
+fi
 stage_once
 cat <<PLAN
 This makes kuwai's login screen the one this machine boots to:

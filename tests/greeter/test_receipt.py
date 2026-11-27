@@ -128,6 +128,48 @@ def test_undo_without_a_trustworthy_receipt_restores_nothing(greeter, damage):
     assert "disable greetd" not in log.read_text()
 
 
+@pytest.mark.parametrize("damage", ["kept-writable", "kept-link", "marker-link", "dm-writable", "keep-writable",
+                                    "dest-writable", "var-writable"])
+def test_an_install_over_kept_copies_nobody_vouched_for_records_nothing(greeter, damage):
+    run, sysroot, log = greeter
+    assert run("--yes").returncode == 0
+    keep = sysroot / "var/lib/kuwai-greeter/original"
+    (keep / "receipt").unlink()
+    planted = sysroot / "planted"
+    planted.write_text("planted\n")
+    if damage == "kept-writable":
+        (keep / "pam-greetd").write_text("planted pam\n")
+        (keep / "pam-greetd").chmod(0o666)
+    elif damage == "kept-link":
+        (keep / "getty-tty1-override.conf").unlink()
+        (keep / "getty-tty1-override.conf").symlink_to(planted)
+    elif damage == "marker-link":
+        (keep / "greetd-config.toml.absent").unlink()
+        (keep / "greetd-config.toml.absent").symlink_to(planted)
+    elif damage == "dm-writable":
+        (keep / "display-manager").chmod(0o666)
+    else:
+        {"keep": keep, "dest": keep.parent, "var": sysroot / "var"}[damage.split("-")[0]].chmod(0o777)
+    pam = (sysroot / "etc/pam.d/greetd").read_text()
+    r = run("--yes")
+    assert r.returncode == 1 and "isn't root's alone" in r.stderr, r.stderr
+    assert not (keep / "receipt").exists() and not (keep / "receipt").is_symlink()
+    assert (sysroot / "etc/pam.d/greetd").read_text() == pam
+    if damage == "keep-writable":
+        assert keep.stat().st_mode & 0o777 == 0o777, "the folder is not taken over before it is checked"
+
+
+def test_an_install_over_kept_copies_only_root_kept_records_them(greeter):
+    run, sysroot, log = greeter
+    assert run("--yes").returncode == 0
+    keep = sysroot / "var/lib/kuwai-greeter/original"
+    first = (keep / "receipt").read_text()
+    (keep / "receipt").unlink()
+    r = run("--yes")
+    assert r.returncode == 0, r.stderr
+    assert (keep / "receipt").read_text() == first
+
+
 def test_undo_restores_only_paths_the_install_replaces_from_copies_it_recorded(greeter):
     run, sysroot, log = greeter
     assert run("--yes").returncode == 0
