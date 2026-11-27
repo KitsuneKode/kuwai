@@ -100,8 +100,8 @@ Item {
 
     readonly property var agentsHead: Agents.head
     readonly property bool asking: agentsHead.tone === "attention"
-    readonly property bool agentsWord: agentsHead.tone === "error"
-    readonly property bool agentsLive: agentStack.list.length > 0 || agentsHead.tone === "error" || agentsHead.done > 0
+    readonly property bool agentsWord: agentsHead.tone === "error" || agentsHead.tone === "limited"
+    readonly property bool agentsLive: agentStack.list.length > 0 || agentsWord || agentsHead.done > 0
     readonly property string sysKey: sysPill.stateKey + ":" + Updates.setKey + ":" + Alerts.active.map(a => a.id).join()
     property string sysHidden: ""
     readonly property bool sysLive: sysMarks.any && sysKey !== sysHidden
@@ -227,7 +227,7 @@ Item {
     }
     function glyphFor(k) {
         if (k === "sys" && Alerts.active.length) return Alerts.active[0].glyph;
-        return ({ask: "\u{f0026}", music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limits: "\u{f051f}", min: "\u{f05b6}"})[k] || "";
+        return ({ask: "\u{f0026}", music: "\u{f0387}", agents: "\u{f06a9}", sys: "\u{f06b0}", limits: "\u{f0873}", min: "\u{f05b6}"})[k] || "";
     }
     readonly property bool hovered: pills.some(p => p.enabled && p.hovered)
     Component.onCompleted: { t3FinishedWas = T3Code.finished; agentsDoneWas = agentsDone.length; if (limitsNow.items.length) limits = limitsNow; }
@@ -596,16 +596,16 @@ Item {
         panel: "agents"
         needs: false
         stateKey: [split.agentsHead.key, split.agentsHead.done > 0].join()
-        tone: split.agentsHead.tone === "error" ? Theme.red : split.agentsHead.done > 0 && !agentStack.list.length ? Theme.green : "transparent"
+        tone: split.agentsHead.tone === "error" ? Theme.red : split.agentsHead.tone === "limited" ? Theme.orange : split.agentsHead.done > 0 && !agentStack.list.length ? Theme.green : "transparent"
         attention: split.agentsHead.tone === "error"
         Row {
             spacing: 6
             AgentStack { id: agentStack; bar: split.bar; withT3: true; withDesktop: true; only: "work"; visible: list.length > 0; anchors.verticalCenter: parent.verticalCenter }
             Badge {
                 visible: split.agentsWord
-                glyph: split.agentsHead.glyph || ({ error: "\u{f0028}" })[split.agentsHead.tone] || ""
-                text: split.agentsHead.word
-                tint: ({ attention: Theme.orange, error: Theme.red })[split.agentsHead.tone] || Theme.textSecondary
+                glyph: split.agentsHead.glyph || ({ error: "\u{f0029}" })[split.agentsHead.tone] || ""
+                text: split.agentsHead.word + (split.agentsHead.tone === "limited" && Agents.backIn(split.agentsHead.reset) ? " · back in " + Agents.backIn(split.agentsHead.reset) : "")
+                tint: ({ attention: Theme.orange, error: Theme.red, limited: Theme.orange })[split.agentsHead.tone] || Theme.textSecondary
                 tip: (Agents.next ? Agents.next.title : "") + "\nClick: every agent · right-click: go there (Super+Ctrl+A)"
                 onClicked: agentsPill.openPanel()
                 onAltClicked: Agents.goNeeds()

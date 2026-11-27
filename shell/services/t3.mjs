@@ -26,18 +26,18 @@
  */
 export function stateGlyph(key) {
     return /** @type {Record<string, string>} */ ({
-        approval: "\u{f0499}",
-        question: "\u{f0186}",
-        input: "\u{f0186}",
-        request: "\u{f0013}",
-        waiting: "\u{f0625}",
-        needs: "\u{f0625}",
+        approval: "\u{f0ecd}",
+        question: "\u{f173a}",
+        input: "\u{f173a}",
+        request: "\u{f0b59}",
+        waiting: "\u{f182d}",
+        needs: "\u{f182d}",
         goal: "\u{f04fe}",
         blocked: "\u{f0150}",
         woke: "\u{f0020}",
-        failed: "\u{f0028}",
-        error: "\u{f0028}",
-        limited: "\u{f051f}",
+        failed: "\u{f0029}",
+        error: "\u{f0029}",
+        limited: "\u{f0873}",
         done: "\u{f05e0}",
         working: "\u{f0772}",
         starting: "\u{f0772}"

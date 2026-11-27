@@ -47,9 +47,13 @@ describe("one capsule says the one thing that matters most", () => {
     expect(lims.length).toBe(2);
     expect(lims[0].reset).toBe((now / 1000 + 2460) * 1000);
   });
-  test("only limited agents leave left capsule quiet while reporting limited count", () => {
-    const h = headline([], [thread({ status: "failed", limited: true })], 0, 0, now);
-    expect(h).toMatchObject({ word: "", tone: "", working: 0, limited: 1 });
+  test("agents that are only limited say so, never a finished tick", () => {
+    const h = headline([], [thread({ status: "failed", limited: true })], 2, 0, now);
+    expect(h).toMatchObject({ word: "Limited", tone: "limited", stateKey: "limited", working: 0, limited: 1, glyph: stateGlyph("limited") });
+  });
+  test("working still leads over a limit", () => {
+    const h = headline([], [thread({ status: "failed", limited: true }), thread({ thread: "b", status: "running" })], 0, 0, now);
+    expect(h.tone).toBe("working");
   });
   test("finished and unseen counts all surfaces", () => {
     expect(headline([], [], 2, 3, now, [], 1)).toMatchObject({ tone: "done", done: 6, glyph: stateGlyph("done") });

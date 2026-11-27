@@ -297,6 +297,15 @@ export function headlineOf(sessionList, doneKitty, doneT3, doneDesktop) {
         desktop: list.filter(x => x.src === "desktop").length
     };
     const top = list[0];
+    if (!working && limited > 0 && (!top || top.rank === WORKING)) {
+        const resets = all.filter(x => x.rank === LIMITED && x.reset > 0).map(x => x.reset);
+        return {
+            word: "Limited" + (limited > 1 ? " " + limited : ""),
+            glyph: stateGlyph("limited"), stateKey: "limited", tone: "limited", count: limited, working, done, limited,
+            reset: resets.length ? Math.min(...resets) : 0,
+            key: "limited", bySource
+        };
+    }
     if (!top || top.rank === WORKING) {
         const goal = top && list.some(x => x.stateKey === "goal");
         return {

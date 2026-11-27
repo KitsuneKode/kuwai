@@ -126,6 +126,7 @@ Singleton {
     function t3Agent(p) { return A.t3Agent(p); }
     function stackMarks(list, max) { return A.stackMarks(list, max); }
     function stateGlyph(key) { return A.stateGlyph(key); }
+    function backIn(at) { return A.until(at, Date.now()); }
 
     function focusDesktop(it) {
         const raw = String((it && (it.windowClass || it.window_class)) || "");
