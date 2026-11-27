@@ -100,7 +100,7 @@ Before announcing (P1/P2):
 - [ ] Cache clear via O_NOFOLLOW/fwalk (Grok P2); ports pid from /proc, not ss
       text (Grok P2); Agents Stop can force and says "on this network".
 - [x] Voxtype: clear stale cancelled takes at daemon start (Astra P2).
-- [ ] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups.
+- [x] Rehearsal scenes for Clipboard, Lock, Greeter, Assistant, Osd, Popups (the clipboard shelf is staged at 100 % and 120 % only: its geometry is fixed pixels).
 
 ## VISUALS + HEX PASS (2026-11-27, evening) — six reviews
 

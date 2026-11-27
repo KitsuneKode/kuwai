@@ -469,7 +469,7 @@ Scope {
                                         // Auto-follow bottom during stream unless user manually scrolled up
                                         if (!userScrolledUp || !OllamaService.busyHere) {
                                             Qt.callLater(() => {
-                                                scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height);
+                                                if (scroll) scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height);
                                             });
                                         }
                                     }
@@ -914,7 +914,8 @@ Scope {
                 focus: true
                 title: "Clear this chat?"
                 standardButtons: Dialog.Cancel | Dialog.Ok
-                contentItem: Label { text: "Remove this chat's messages and queued work? Other chats keep running."; wrapMode: Text.WordWrap; width: 300 }
+                width: 340
+                contentItem: Label { text: "Remove this chat's messages and queued work? Other chats keep running."; wrapMode: Text.WordWrap }
                 onOpened: standardButton(Dialog.Cancel).forceActiveFocus()
                 onAccepted: OllamaService.confirmClear()
                 onRejected: OllamaService.cancelClear()

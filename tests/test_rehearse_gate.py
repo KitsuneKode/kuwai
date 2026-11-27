@@ -137,6 +137,21 @@ def test_every_island_panel_is_rehearsed():
         assert s.get("kind", "typical") in ("typical", "worst")
 
 
+def test_a_scene_leaves_a_text_size_out_only_with_a_reason_and_only_for_the_clipboard_shelf():
+    doc = json.loads((ROOT / "tests/ui/scenes.json").read_text())
+    held = [s for s in doc["scenes"] if "scales" in s]
+    assert all(s.get("why") for s in held)
+    assert all(set(s["scales"]) <= {1, 1.2} for s in held)
+    assert {s["id"].split("/")[0] for s in held} <= {"clipboard"}
+
+
+def test_scenes_that_stage_a_window_name_a_file_that_exists():
+    doc = json.loads((ROOT / "tests/ui/scenes.json").read_text())
+    for s in doc["scenes"]:
+        if s.get("window") or s["panel"].startswith("../"):
+            assert (ROOT / "shell/modules/island" / (s["panel"] + ".qml")).resolve().is_file(), s["id"]
+
+
 def test_the_known_list_is_only_debt_at_twice_the_text():
     """At 100 % and 120 % nothing is excused. What is listed is the 200 % debt."""
     known = [l for l in (ROOT / "tests/ui/rehearsal-known.txt").read_text().splitlines() if l and not l.startswith("#")]

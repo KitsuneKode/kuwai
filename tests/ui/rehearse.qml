@@ -14,6 +14,11 @@ import qs.components
 import qs.config
 import qs.services
 import qs.modules.island
+import qs.modules.lock
+import qs.modules.clipboard
+import qs.modules.assistant
+import qs.modules.osd
+import qs.modules.notifications
 
 ShellRoot {
     Window {
@@ -21,7 +26,8 @@ ShellRoot {
         visible: true
         // The island's window on a 1080p screen (IslandBar: 1120 x 640, and a
         // panel may take all but 40 of each).
-        width: 1120; height: 640
+        width: cur && cur.size ? cur.size[0] + 40 : 1120
+        height: cur && cur.size ? cur.size[1] + 40 : 640
         // The brightest thing a wallpaper can put behind the island: the
         // island's black is 94 % opaque, so this is its lightest ground.
         color: "#ffffff"
@@ -29,6 +35,31 @@ ShellRoot {
         readonly property var scenes: /*SCENES*/[]
         property int at: -1
         property var undo: []
+        property var cur: null
+        property Item ref: island
+        property var hosted: null
+
+        QtObject {
+            id: fakeLock
+            property color accent: Theme.accent
+            property bool checking: false
+            property int failures: 0
+            property string desktopWall: ""
+            property string error: ""
+            property string face: ""
+            property string farewell: ""
+            property bool leaving: false
+            property string name: "Kit"
+            property string password: ""
+            property bool powered: false
+            property string wallpaper: ""
+            property string challenge: ""
+            property string note: ""
+            property bool fingerReady: false
+            property var openAfter: null
+            function power(what) {}
+            function submit() {}
+        }
 
         function service(name) {
             switch (name) {
@@ -40,8 +71,8 @@ ShellRoot {
         Item {
             id: island
             anchors.horizontalCenter: parent.horizontalCenter
-            width: panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
-            height: panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
+            width: stage.cur && stage.cur.size ? Math.min(stage.cur.size[0], stage.width - 40) : panel.item ? Math.min(panel.item.implicitWidth, stage.width - 40) : 0
+            height: stage.cur && stage.cur.size ? Math.min(stage.cur.size[1], stage.height - 40) : panel.item ? Math.min(panel.item.implicitHeight, stage.height - 40) : 0
             Rectangle { anchors.fill: parent; radius: Theme.r4; color: Qt.rgba(0, 0, 0, 0.94) }
             Loader { id: panel; anchors.fill: parent; focus: true }
         }
@@ -49,7 +80,7 @@ ShellRoot {
         function fail(reason) { console.log("UI_SMOKE_FAILED: " + reason); Qt.quit(); }
         function r1(v) { return Math.round(v * 10) / 10; }
         function box(item, x, y, w, h) {
-            const r = item.mapToItem(island, x, y, w, h);
+            const r = item.mapToItem(ref, x, y, w, h);
             return [r1(r.x), r1(r.y), r1(r.width), r1(r.height)];
         }
         function meet(a, b) {            // two boxes' common part
@@ -87,8 +118,9 @@ ShellRoot {
                 const ha = item.effectiveHorizontalAlignment, va = item.verticalAlignment;
                 const cx = item.leftPadding + (ha === Text.AlignHCenter ? freeW / 2 : ha === Text.AlignRight ? freeW : 0);
                 const cy = item.topPadding + (va === Text.AlignVCenter ? freeH / 2 : va === Text.AlignBottom ? freeH : 0);
+                const morphed = item.parent && item.parent.capH !== undefined;
                 out.texts.push({
-                    t: item.text.slice(0, 60), box: box(item, cx, cy, cw, ch), own: box(item, 0, 0, item.width, item.height),
+                    t: item.text.slice(0, 60), box: morphed ? box(item.parent, 0, 0, item.parent.width, item.parent.height) : box(item, cx, cy, cw, ch), own: morphed ? box(item.parent, 0, 0, item.parent.width, item.parent.height) : box(item, 0, 0, item.width, item.height),
                     size: item.font.pixelSize, weight: item.font.weight, family: item.font.family, drawn: item.fontInfo.family,
                     color: String(item.color), op: r1(here.op), on: item.enabled,
                     cut: item.truncated, elides: item.elide !== Text.ElideNone, wraps: item.wrapMode !== Text.NoWrap,
@@ -111,14 +143,42 @@ ShellRoot {
         }
 
         function restore() {
+            if (hosted) { hosted.destroy(); hosted = null; }
+            for (const c of Array.from(holder.children)) c.destroy();
+            clipper.width = 0; clipper.height = 0;
+            RehearsalWindows.store.list = [];
+            ref = island;
             for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
             undo = [];
         }
+        Item {
+            id: clipper
+            x: 20; y: 20
+            clip: true
+            visible: stage.hosted !== null
+            Item { id: holder }
+        }
+        function panelUrl(s) { return Qt.resolvedUrl(s.panel.indexOf("../") === 0 ? "modules/" + s.panel.slice(3) + ".qml" : "modules/island/" + s.panel + ".qml"); }
+        function wordsIn(item) {
+            let n = item instanceof Text && item.text !== "" ? 1 : 0;
+            const kids = item.visible ? item.children || [] : [];
+            for (let i = 0; i < kids.length; i++) n += wordsIn(kids[i]);
+            return n;
+        }
+        function windowsOf() { return RehearsalWindows.store.list.filter(w => w && w.contentItem && w.visible); }
         function applySets(s, sets) {
             for (const one of sets) {
                 const svc = service(one[0]);
                 if (!svc) { fail("scene " + s.id + " names an unknown service: " + one[0]); return false; }
                 if (one[1] === "call") { svc[one[2]].apply(svc, one[3] || []); continue; }
+                if (one[1] === "at") {
+                    const path = one[2].split(".");
+                    let holder = svc;
+                    for (let i = 0; i < path.length - 1; i++) holder = holder[path[i]];
+                    undo.push([holder, path[path.length - 1], holder[path[path.length - 1]]]);
+                    holder[path[path.length - 1]] = one[3];
+                    continue;
+                }
                 if (!(one[1] in svc)) { fail("scene " + s.id + ": " + one[0] + " has no " + one[1]); return false; }
                 undo.push([svc, one[1], svc[one[1]]]);
                 svc[one[1]] = one[2];
@@ -131,16 +191,33 @@ ShellRoot {
             lateDone = false;
             panel.source = "";
             if (++at >= scenes.length) { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); return; }
+            gap.restart();
+        }
+        Timer { id: gap; interval: 60; onTriggered: stage.stageScene() }
+        function stageScene() {
             const s = scenes[at];
+            cur = s;
             if (!applySets(s, [["Island", "panel", s.name]].concat(s.set || []))) return;
+            for (const k in (s.fake || {})) { undo.push([fakeLock, k, fakeLock[k]]); fakeLock[k] = s.fake[k]; }
             // A property given as "@date:2026-11-18T10:10:00" is that moment (a
             // panel that shows today would otherwise differ every day).
             const props = {};
             for (const k in (s.props || {})) {
                 const v = s.props[k];
-                props[k] = typeof v === "string" && v.indexOf("@date:") === 0 ? new Date(v.slice(6)) : v;
+                props[k] = typeof v === "string" && v.indexOf("@date:") === 0 ? new Date(v.slice(6)) : v === "@lock" ? fakeLock : v;
             }
-            panel.setSource(Qt.resolvedUrl("modules/island/" + s.panel + ".qml"), props);
+            if (s.window) {
+                const comp = Qt.createComponent(stage.panelUrl(s));
+                if (comp.status !== Component.Ready) { fail("scene " + s.id + ": " + s.panel + " did not load: " + comp.errorString()); return; }
+                hosted = comp.createObject(stage, props);
+                if (!hosted) { fail("scene " + s.id + ": " + s.panel + " did not start: " + comp.errorString()); return; }
+                for (const c of (s.calls || [])) hosted[c[0]].apply(hosted, c[1] || []);
+                for (const k in (s.after || {})) hosted[k] = s.after[k] === "@screens" ? Quickshell.screens.map(x => x.name) : s.after[k];
+                settle.interval = s.settle || 900;
+                settle.restart();
+                return;
+            }
+            panel.setSource(stage.panelUrl(s), props);
             if (panel.status === Loader.Error) { fail("scene " + s.id + ": " + s.panel + " did not load"); return; }
             settle.interval = s.settle || 700;
             settle.restart();
@@ -148,7 +225,23 @@ ShellRoot {
         Timer {
             id: settle
             onTriggered: {
-                const s = stage.scenes[stage.at], it = panel.item;
+                const s = stage.scenes[stage.at];
+                let it = panel.item, grab = island;
+                if (s.window) {
+                    const wins = stage.windowsOf().filter(w => w.contentItem.width > 1 && w.contentItem.height > 1);
+                    if (!wins.length) { stage.fail("scene " + s.id + ": " + s.panel + " opened no window"); return; }
+                    it = wins[0].contentItem;
+                    const all = Array.from(it.children).filter(c => c.visible && c.width > 1 && c.height > 1);
+                    const part = all.filter(c => stage.kind(c) !== "Elevation" && c.width * c.height < 0.9 * it.width * it.height);
+                    const seen = part.length ? part : all;
+                    const x0 = Math.min(...seen.map(c => c.x)), y0 = Math.min(...seen.map(c => c.y));
+                    const x1 = Math.max(...seen.map(c => c.x + c.width)), y1 = Math.max(...seen.map(c => c.y + c.height));
+                    holder.width = it.width; holder.height = it.height;
+                    holder.x = -x0; holder.y = -y0;
+                    clipper.width = x1 - x0; clipper.height = y1 - y0;
+                    for (const c of all) c.parent = holder;
+                    it = holder; grab = clipper; stage.ref = clipper;
+                }
                 if (!it) { stage.fail("scene " + s.id + ": nothing loaded"); return; }
                 if (s.late && !stage.lateDone) {
                     stage.lateDone = true;
@@ -158,7 +251,7 @@ ShellRoot {
                     return;
                 }
                 const out = { id: s.id, panel: s.panel, kind: s.kind || "typical", scale: Theme.textScale,
-                              w: island.width, h: island.height, wants: [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
+                              w: grab.width, h: grab.height, wants: [stage.r1(it.implicitWidth), stage.r1(it.implicitHeight)],
                               texts: [], targets: [], scrolls: [], covers: [], waiting: 0 };
                 stage.walk(it, { clip: null, op: 1, scroll: false, path: [], layer: 0 }, out);
                 // In pieces: a log line has a length the logger may cut.
@@ -166,10 +259,10 @@ ShellRoot {
                 for (let i = 0, n = 0; i < json.length; i += 3000, n++) console.log("REHEARSE_PART", s.id, n, json.slice(i, i + 3000));
                 console.log("REHEARSE_END", s.id);
                 const px = Number(Quickshell.env("KUWAI_UI_PIXELS") || 1);
-                island.grabToImage(result => {
+                grab.grabToImage(result => {
                     if (!result.saveToFile("/out/" + s.id.replace(/[^\w.-]+/g, "_") + ".png")) { stage.fail("capture failed: " + s.id); return; }
                     stage.next();
-                }, px === 1 ? Qt.size(0, 0) : Qt.size(Math.round(island.width * px), Math.round(island.height * px)));
+                }, px === 1 ? Qt.size(0, 0) : Qt.size(Math.round(grab.width * px), Math.round(grab.height * px)));
             }
         }
         Timer {

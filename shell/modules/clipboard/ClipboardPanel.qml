@@ -1072,9 +1072,9 @@ Scope {
                     color: Theme.textPrimary
                     selectionColor: Qt.alpha(Theme.blue, 0.5)
                     font.family: Theme.fontText
-                    font.pixelSize: 18
-                    font.variableAxes: ({ "opsz": Theme.opszFor(18), "wght": Theme.wRegular })
-                    font.letterSpacing: Theme.tracking(18, false)
+                    font.pixelSize: Theme.sp(Theme.tTitle3)
+                    font.variableAxes: ({ "opsz": Theme.opszFor(Theme.tTitle3), "wght": Theme.wRegular })
+                    font.letterSpacing: Theme.tracking(Theme.tTitle3, false)
                     renderType: Text.NativeRendering
                     cursorDelegate: SpringCaret {}
                     clip: true

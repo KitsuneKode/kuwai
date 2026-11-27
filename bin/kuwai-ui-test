@@ -9,6 +9,7 @@ This qualifies isolated rendering/input, not the live Wayland compositor.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -45,6 +46,13 @@ def main():
         app, home = private/'app', private/'home'
         home.mkdir()
         shutil.copytree(root/'shell', app/'shell')
+        if args.case == 'rehearse':
+            for q in (app/'shell').rglob('*.qml'):
+                text = q.read_text()
+                plain = re.sub(r'^[ \t]*WlrLayershell\.\w+:.*\n(?:[ \t]*[?:].*\n)*', '', text, flags=re.M)
+                plain = re.sub(r'^([ \t]*)PanelWindow \{\n([ \t]*)id: (\w+)\n', r'\1PanelWindow {\n\2id: \3\n\2readonly property bool rehearsed: RehearsalWindows.add(\3)\n', plain, flags=re.M)
+                if plain != text: q.write_text(plain)
+            (app/'shell/services/RehearsalWindows.qml').write_text('pragma Singleton\nimport QtQuick\nimport Quickshell\nSingleton {\n    readonly property var store: ({ list: [] })\n    function add(w) { store.list.push(w); return true; }\n}\n')
         if args.case in ('island', 'gestures', 'idle', 'card-keys', 'pill', 'panel-keys', 'center-keys', 'center-clear', 'center-controls', 'notch-center') and args.backend == 'offscreen':
             for name in ('Caffeine.qml', 'WallFx.qml'):
                 shutil.copy2(root/'tests/ui/island-stubs'/name, app/'shell/services'/name)

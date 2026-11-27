@@ -326,7 +326,7 @@ Rectangle {
                 anchors.topMargin: 4
                 color: Theme.textPrimary
                 font.family: Theme.fontText
-                font.pixelSize: 15
+                font.pixelSize: Theme.sp(15)
                 wrapMode: TextEdit.Wrap
                 selectByMouse: true
                 selectionColor: Theme.accent
@@ -344,7 +344,7 @@ Rectangle {
                         : OllamaService.pendingImage !== "" ? "Ask about the screenshot" : "Ask anything"
                     color: Theme.textDim
                     font.family: Theme.fontText
-                    font.pixelSize: 15
+                    font.pixelSize: Theme.sp(15)
                     visible: !inputArea.text && !inputArea.inputMethodComposing
                 }
 
@@ -609,7 +609,7 @@ Rectangle {
                             weight: Theme.wMedium
                             color: Theme.textPrimary
                             elide: Text.ElideRight
-                            width: Math.min(implicitWidth, 130)
+                            width: Math.min(implicitWidth, Theme.sp(130))
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Icon {

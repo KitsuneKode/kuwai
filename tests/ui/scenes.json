@@ -12158,6 +12158,1080 @@
      }
     ]
    }
+  },
+  {
+   "id": "lock/rest",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   }
+  },
+  {
+   "id": "lock/asking",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "password": "hunter2"
+   }
+  },
+  {
+   "id": "lock/wrong",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "error": "Wrong password. Try again.",
+    "failures": 1
+   }
+  },
+  {
+   "id": "greeter/rest",
+   "name": "greeter",
+   "panel": "../lock/GreeterView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   }
+  },
+  {
+   "id": "greeter/asking",
+   "name": "greeter",
+   "panel": "../lock/GreeterView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "password": "hunter2"
+   }
+  },
+  {
+   "id": "greeter/wrong",
+   "name": "greeter",
+   "panel": "../lock/GreeterView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "error": "Wrong password. Try again.",
+    "failures": 1
+   }
+  },
+  {
+   "id": "lock/checking",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "password": "hunter2",
+    "checking": true
+   }
+  },
+  {
+   "id": "lock/notifications",
+   "name": "lock",
+   "panel": "../lock/LockView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "set": [
+    [
+     "Notifs",
+     "lastSeen",
+     0
+    ]
+   ]
+  },
+  {
+   "id": "greeter/checking",
+   "name": "greeter",
+   "panel": "../lock/GreeterView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "typical",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "password": "hunter2",
+    "checking": true,
+    "note": "Checking…"
+   }
+  },
+  {
+   "id": "greeter/long-name",
+   "name": "greeter",
+   "panel": "../lock/GreeterView",
+   "size": [
+    1920,
+    1080
+   ],
+   "kind": "worst",
+   "props": {
+    "lock": "@lock",
+    "preview": true
+   },
+   "fake": {
+    "name": "Alexandria Montgomery-Featherstonehaugh the Third"
+   }
+  },
+  {
+   "id": "osd/brightness",
+   "name": "osd",
+   "panel": "../osd/Osd",
+   "window": true,
+   "kind": "typical",
+   "calls": [
+    [
+     "showBrightness",
+     [
+      {
+       "kind": "brightness",
+       "value": 62,
+       "label": "Built-in Display",
+       "output": ""
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "osd/brightness-limit",
+   "name": "osd",
+   "panel": "../osd/Osd",
+   "window": true,
+   "kind": "typical",
+   "calls": [
+    [
+     "showBrightness",
+     [
+      {
+       "kind": "brightness",
+       "value": 100,
+       "label": "Built-in Display",
+       "output": "",
+       "limit": true
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "osd/brightness-unavailable",
+   "name": "osd",
+   "panel": "../osd/Osd",
+   "window": true,
+   "kind": "typical",
+   "calls": [
+    [
+     "showBrightness",
+     [
+      {
+       "kind": "brightness",
+       "value": null,
+       "label": "Studio Display",
+       "output": "",
+       "error": "Brightness unavailable"
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "popups/one",
+   "name": "popups",
+   "panel": "../notifications/Popups",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.0.popup",
+     true
+    ]
+   ],
+   "after": {
+    "targets": "@screens"
+   }
+  },
+  {
+   "id": "popups/stack",
+   "name": "popups",
+   "panel": "../notifications/Popups",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.0.popup",
+     true
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.1.popup",
+     true
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.3.popup",
+     true
+    ]
+   ],
+   "after": {
+    "targets": "@screens"
+   }
+  },
+  {
+   "id": "popups/critical",
+   "name": "popups",
+   "panel": "../notifications/Popups",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.4.severity",
+     "critical"
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.4.popup",
+     true
+    ]
+   ],
+   "after": {
+    "targets": "@screens"
+   }
+  },
+  {
+   "id": "popups/worst",
+   "name": "popups",
+   "panel": "../notifications/Popups",
+   "window": true,
+   "kind": "worst",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Notifs",
+     "at",
+     "items.2.popup",
+     true
+    ]
+   ],
+   "after": {
+    "targets": "@screens"
+   }
+  },
+  {
+   "id": "clipboard/shelf",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Welcome",
+     "collectText",
+     "clipboard=on\nfeeds=off\n"
+    ],
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      [
+       {
+        "id": "9",
+        "preview": "npm run dev",
+        "pin": "",
+        "kind": "text",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "8",
+        "preview": "https://kuwai.dev",
+        "pin": "",
+        "kind": "link",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "7",
+        "preview": "git status -sb",
+        "pin": "",
+        "kind": "code",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "6",
+        "preview": "#66c7ff",
+        "pin": "",
+        "kind": "color",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       }
+      ]
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
+     true
+    ]
+   ],
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet"
+  },
+  {
+   "id": "clipboard/secret",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Welcome",
+     "collectText",
+     "clipboard=on\nfeeds=off\n"
+    ],
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      [
+       {
+        "id": "9",
+        "preview": "ghp_16C7e42F292c6912E7710c838347Ae178B4a",
+        "pin": "",
+        "kind": "text",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": true
+       },
+       {
+        "id": "8",
+        "preview": "Lunch on Thursday?",
+        "pin": "",
+        "kind": "text",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "7",
+        "preview": "https://kuwai.dev",
+        "pin": "",
+        "kind": "link",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       }
+      ]
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
+     true
+    ]
+   ],
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet"
+  },
+  {
+   "id": "clipboard/worst",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "worst",
+   "set": [
+    [
+     "Welcome",
+     "collectText",
+     "clipboard=on\nfeeds=off\n"
+    ],
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      [
+       {
+        "id": "9",
+        "preview": "npm run dev -- --port 4321 --host 0.0.0.0 --open --strictPort --logLevel info",
+        "pin": "",
+        "kind": "text",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "8",
+        "preview": "https://github.com/KitsuneKode/kuwai/pull/61/files?diff=split&w=1#diff-ab12cd34ef56",
+        "pin": "",
+        "kind": "link",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "7",
+        "preview": "const reply = await fetch(url, { signal });\nreturn reply.json();\n// and a long comment line that does not stop for a very long time indeed",
+        "pin": "",
+        "kind": "code",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "6",
+        "preview": "~/Pictures/Screenshots/2026-11-27_17-41-09_a-very-long-screenshot-name.png",
+        "pin": "",
+        "kind": "path",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       }
+      ]
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
+     true
+    ]
+   ],
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet"
+  },
+  {
+   "id": "clipboard/no-match",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Welcome",
+     "collectText",
+     "clipboard=on\nfeeds=off\n"
+    ],
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      [
+       {
+        "id": "9",
+        "preview": "npm run dev",
+        "pin": "",
+        "kind": "text",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "8",
+        "preview": "https://kuwai.dev",
+        "pin": "",
+        "kind": "link",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "7",
+        "preview": "git status -sb",
+        "pin": "",
+        "kind": "code",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       },
+       {
+        "id": "6",
+        "preview": "#66c7ff",
+        "pin": "",
+        "kind": "color",
+        "ext": "",
+        "size": "",
+        "dims": "",
+        "secret": false
+       }
+      ]
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
+     true
+    ]
+   ],
+   "after": {
+    "query": "zzzz"
+   },
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet"
+  },
+  {
+   "id": "clipboard/off",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Welcome",
+     "collectText",
+     ""
+    ],
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      []
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
+     true
+    ]
+   ],
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet"
+  },
+  {
+   "id": "clipboard/empty",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Welcome",
+     "collectText",
+     "clipboard=on\nfeeds=off\n"
+    ],
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      []
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
+     true
+    ]
+   ],
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet"
+  },
+  {
+   "id": "assistant/opt-in",
+   "name": "assistant",
+   "panel": "../assistant/AssistantOverlay",
+   "window": true,
+   "kind": "typical",
+   "settle": 1400,
+   "set": [
+    [
+     "Assistant",
+     "open",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "assistant/empty",
+   "name": "assistant",
+   "panel": "../assistant/AssistantOverlay",
+   "window": true,
+   "kind": "typical",
+   "settle": 1400,
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "assistantOptIn",
+      true
+     ]
+    ],
+    [
+     "Assistant",
+     "open",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "assistant/chat",
+   "name": "assistant",
+   "panel": "../assistant/AssistantOverlay",
+   "window": true,
+   "kind": "typical",
+   "settle": 1400,
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "assistantOptIn",
+      true
+     ]
+    ],
+    [
+     "OllamaService",
+     "messages",
+     [
+      {
+       "role": "user",
+       "text": "What is eating my disk?",
+       "html": "",
+       "reasoning": "",
+       "tools": [],
+       "image": "",
+       "time": "17:42",
+       "timestamp": 1764249990000,
+       "model": "qwen3.5:4b",
+       "tokensPerSec": 0
+      },
+      {
+       "role": "assistant",
+       "text": "Mostly the AUR build cache: 6.1 GB. The next biggest is old Docker layers at 2.3 GB.\n\nWant me to look at what is safe to clear?",
+       "image": "",
+       "time": "17:42",
+       "timestamp": 1764250000000,
+       "model": "qwen3.5:4b",
+       "status": "completed",
+       "parts": [
+        {
+         "id": "m0",
+         "kind": "text",
+         "itemType": "assistant_message",
+         "title": "",
+         "input": {},
+         "text": "Mostly the AUR build cache: 6.1 GB. The next biggest is old Docker layers at 2.3 GB.\n\nWant me to look at what is safe to clear?",
+         "output": "",
+         "status": "completed",
+         "request": null
+        }
+       ],
+       "stats": {
+        "tokensPerSec": 31
+       },
+       "error": ""
+      }
+     ]
+    ],
+    [
+     "Assistant",
+     "open",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "assistant/worst",
+   "name": "assistant",
+   "panel": "../assistant/AssistantOverlay",
+   "window": true,
+   "kind": "worst",
+   "settle": 1400,
+   "set": [
+    [
+     "Settings",
+     "call",
+     "set",
+     [
+      "assistantOptIn",
+      true
+     ]
+    ],
+    [
+     "OllamaService",
+     "messages",
+     [
+      {
+       "role": "user",
+       "text": "Explain the difference between a systemd user unit and a system unit, and when I should prefer one over the other for a desktop helper that must survive a shell restart but never run as root.",
+       "html": "",
+       "reasoning": "",
+       "tools": [],
+       "image": "",
+       "time": "17:42",
+       "timestamp": 1764249990000,
+       "model": "qwen3.5:4b",
+       "tokensPerSec": 0
+      },
+      {
+       "role": "assistant",
+       "text": "A user unit runs as you inside your own manager; a system unit runs as root or a named service user. For a desktop helper that must survive a shell restart but never run as root, prefer a user unit with `Restart=on-failure` and `PartOf=graphical-session.target` so it stops with your session.\n\n- Keep anything that needs privileges in a separate, narrowly scoped system unit.\n- Have your helper ask for it through a pinned prompt rather than by running as root itself.\n- Never let a user-writable file decide what root runs.",
+       "image": "",
+       "time": "17:42",
+       "timestamp": 1764250000000,
+       "model": "qwen3.5:4b",
+       "status": "completed",
+       "parts": [
+        {
+         "id": "m0",
+         "kind": "text",
+         "itemType": "assistant_message",
+         "title": "",
+         "input": {},
+         "text": "A user unit runs as you inside your own manager; a system unit runs as root or a named service user. For a desktop helper that must survive a shell restart but never run as root, prefer a user unit with `Restart=on-failure` and `PartOf=graphical-session.target` so it stops with your session.\n\n- Keep anything that needs privileges in a separate, narrowly scoped system unit.\n- Have your helper ask for it through a pinned prompt rather than by running as root itself.\n- Never let a user-writable file decide what root runs.",
+         "output": "",
+         "status": "completed",
+         "request": null
+        }
+       ],
+       "stats": {
+        "tokensPerSec": 28
+       },
+       "error": ""
+      }
+     ]
+    ],
+    [
+     "Assistant",
+     "open",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "osd/brightness-worst",
+   "name": "osd",
+   "panel": "../osd/Osd",
+   "window": true,
+   "kind": "worst",
+   "calls": [
+    [
+     "showBrightness",
+     [
+      {
+       "kind": "brightness",
+       "value": 38,
+       "label": "Dell UltraSharp U3224KB on HDMI 2 (Studio, left of the window wall)",
+       "output": ""
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "osd/dnd",
+   "name": "osd",
+   "panel": "../osd/Osd",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "dnd",
+     true
+    ]
+   ],
+   "calls": [
+    [
+     "showDnd",
+     []
+    ]
+   ]
+  },
+  {
+   "id": "usage/loading",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "typical"
+  },
+  {
+   "id": "usage/empty",
+   "name": "usage",
+   "panel": "UsagePanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Limits",
+     "loaded",
+     true
+    ],
+    [
+     "Limits",
+     "providers",
+     []
+    ]
+   ]
+  },
+  {
+   "id": "updates/check-failed",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "checkError",
+     "Couldn't reach the package mirrors"
+    ]
+   ]
+  },
+  {
+   "id": "updates/check-failed-stale",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "a-package-with-an-unusually-long-name-for-testing-bin",
+        "old": "2026.11.01.r1234.gabcdef0-1",
+        "new": "2026.11.17.r1301.g0123abc-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": true,
+      "flatpak": []
+     }
+    ],
+    [
+     "Updates",
+     "checkError",
+     "Couldn't reach the package mirrors"
+    ]
+   ],
+   "kind": "typical"
+  },
+  {
+   "id": "agents/loading",
+   "name": "agents",
+   "panel": "AgentsPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Kittymux",
+     "available",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "cleanup/error",
+   "name": "cleanup",
+   "panel": "CleanupPanel",
+   "kind": "typical",
+   "props": {
+    "loading": false,
+    "error": "Couldn't look through your agents' skills"
+   }
   }
  ]
 }
