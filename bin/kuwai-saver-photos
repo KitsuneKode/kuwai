@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""kuwai-saver-photos: the pictures the Photos screensaver shows, as a JSON list of paths.
+
+  kuwai-saver-photos [FOLDER]
+
+With a folder, its pictures (one level). Without one, the current theme's
+wallpapers (HyDE: ~/.config/hyde/themes/THEME/wallpapers), else the folder of
+the wallpaper you have now. A folder that isn't there lists nothing, and the
+saver shows the still wallpaper instead. The list is capped; hidden files,
+empty files and anything but a picture are left out.
+"""
+import json
+import os
+import sys
+
+PICTURES = (".jpg", ".jpeg", ".png", ".webp")
+LIMIT = 400
+BIGGEST = 64 << 20
+
+
+def home():
+    return os.environ.get("HOME") or os.path.expanduser("~")
+
+
+def theme():
+    try:
+        for line in open(os.path.join(home(), ".local/state/hyde/staterc")):
+            if line.startswith("HYDE_THEME="):
+                return line.split("=", 1)[1].strip().strip('"')
+    except OSError:
+        pass
+    return ""
+
+
+def pictures(folder):
+    out = []
+    try:
+        names = sorted(os.listdir(folder), key=str.lower)
+    except OSError:
+        return out
+    for name in names:
+        path = os.path.join(folder, name)
+        if name.startswith(".") or not name.lower().endswith(PICTURES):
+            continue
+        try:
+            size = os.stat(path).st_size
+        except OSError:
+            continue
+        if 0 < size <= BIGGEST and os.path.isfile(path):
+            out.append(os.path.abspath(path))
+        if len(out) >= LIMIT:
+            break
+    return out
+
+
+def current_folder():
+    state = os.environ.get("XDG_STATE_HOME") or os.path.join(home(), ".local/state")
+    for link in (os.path.join(state, "kuwai", "wallpaper"), os.path.join(home(), ".cache/hyde/wall.set")):
+        if os.path.exists(link):
+            return os.path.dirname(os.path.realpath(link))
+    return ""
+
+
+def listing(folder=""):
+    if folder:
+        return pictures(os.path.expanduser(folder))
+    name = theme()
+    found = pictures(os.path.join(home(), ".config/hyde/themes", name, "wallpapers")) if name else []
+    return found or pictures(current_folder() or os.devnull)
+
+
+def main(argv):
+    if len(argv) > 1:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    print(json.dumps(listing(argv[0] if argv else "")))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

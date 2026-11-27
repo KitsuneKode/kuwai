@@ -53,7 +53,7 @@ Live wallpapers are stored in `~/Pictures/live-wallpapers/` (or a theme's `wallp
 
 ## Screensavers
 
-Five styles are available in **`Themes → Screensaver`** or **`Settings → Screensaver`**:
+Several styles are available in **`Themes → Screensaver`** or **`Settings → Screensaver`**:
 
 - **Dusk** and **Borealis** — live shaders (Borealis follows your theme accent; no video decoding).
 - **Night** — seamless half-speed looping films stored in `~/.local/share/kuwai-data/screensavers/`, played in a separate `shell-saver` process whose memory is reclaimed immediately on wake.
@@ -74,3 +74,7 @@ Step between screensavers with **`Super+Ctrl+Alt+]`** and **`Super+Ctrl+Alt+[`**
 ### Going dark after a long wait
 
 After an hour on the screensaver (`Settings → Screensaver → Then go dark`: 30 min, 1 h, 2 h or never; `screensaverLongMins`) it fades over a few seconds to a dim clock and date on black, with nothing drawn or decoded behind them: kind to an OLED panel and to the battery. It only has work to do when nothing else ends the screensaver first. If the screen locks, or your own idle settings turn the screens off, within that hour, those do it and the setting says so. Any key or movement wakes it as before.
+
+### Photos
+
+The **Photos** look shows one picture at a time, fading slowly into the next every few minutes (`Settings → Screensaver → Change photo`: 1, 5, 15 or 30 min). By default the pictures are your current theme's wallpapers; to use a folder instead, `kuwai set screensaverFolder "~/Pictures/favourites"` (one level of the folder, `jpg`, `png` and `webp`; `kuwai set screensaverFolder ""` goes back). Each screen follows its own shuffle. Only the picture on screen and the next one are held in memory, decoded at screen size; between changes nothing moves. A folder with no pictures shows the still wallpaper.

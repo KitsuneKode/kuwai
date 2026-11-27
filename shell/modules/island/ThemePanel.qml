@@ -75,7 +75,8 @@ FocusScope {
                 { name: "Borealis", style: "borealis", thumb: Quickshell.shellDir + "/assets/screensaver/borealis.jpg", current: st === "borealis" }]
             .concat(clips.map(c => ({ name: "Night · " + clipName(c), style: "night", clip: c, thumb: saverDir + "/" + c + ".jpg", current: st === "night" && clip === c })))
             .concat([{ name: "Live wallpaper", style: "live", thumb: liveThumb, current: st === "live" },
-                     { name: "Still wallpaper", style: "still", thumb: Hyde.wallpaper, current: st === "still" }]);
+                     { name: "Still wallpaper", style: "still", thumb: Hyde.wallpaper, current: st === "still" },
+                     { name: "Photos", style: "photos", thumb: Quickshell.shellDir + "/assets/screensaver/photos.jpg", current: st === "photos" }]);
     }
     // What the preview pane can play for the one you're on: a live wallpaper's
     // loop, a screensaver's film, or a drawn scene (Dusk, Borealis) run small.

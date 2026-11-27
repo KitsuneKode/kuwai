@@ -1108,12 +1108,31 @@ FocusScope {
                     label: "Look"; detail: Settings.screensaverStyle === "dusk" ? "A slow dusk sky with drifting petals"
                         : Settings.screensaverStyle === "borealis" ? "Northern lights in your theme's colour over a night sky"
                         : Settings.screensaverStyle === "night" ? "A dark film on the screen you were using; black on the others"
-                        : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen" : "Your wallpaper, still, with the time"
+                        : Settings.screensaverStyle === "live" ? "Your live wallpaper, full screen"
+                        : Settings.screensaverStyle === "photos" ? "Your theme's wallpapers, or a folder of pictures, one at a time"
+                        : "Your wallpaper, still, with the time"
                     Segmented {
-                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }]
+                        options: [{ id: "dusk", label: "Dusk" }, { id: "borealis", label: "Borealis" }, { id: "night", label: "Night" }, { id: "live", label: "Live" }, { id: "still", label: "Still" }, { id: "photos", label: "Photos" }]
                         current: Settings.screensaverStyle
                         onPicked: id => Settings.set("screensaverStyle", id)
                     }
+                }
+                SettingsRow {
+                    key: "screensaverPhotoMins"
+                    visible: Settings.screensaverStyle === "photos"
+                    label: "Change photo"; detail: "Each one fades into the next, slowly"
+                    Segmented {
+                        options: [1, 5, 15, 30].map(n => ({ id: String(n), label: n + " min" }))
+                        current: String(Settings.screensaverPhotoMins)
+                        onPicked: id => Settings.set("screensaverPhotoMins", Number(id))
+                    }
+                }
+                SettingsRow {
+                    key: "screensaverFolder"
+                    visible: Settings.screensaverStyle === "photos"
+                    label: "Photos from"
+                    detail: (Settings.screensaverFolder || "Your theme's wallpapers") + "  ·  kuwai set screensaverFolder \"~/Pictures\""
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Theme wallpapers"; visible: Settings.screensaverFolder !== ""; onClicked: Settings.set("screensaverFolder", "") }
                 }
                 SettingsRow {
                     key: "screensaverClip"

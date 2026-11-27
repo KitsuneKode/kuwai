@@ -21,6 +21,7 @@ import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
 import qs.services
+import "saverPhotos.mjs" as Photos
 
 Scope {
     id: root
@@ -81,7 +82,7 @@ Scope {
         onLoadFailed: root.video = ""
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
-    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night"
+    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night" · "photos"
     // Night: a dark film from ~/.local/share/kuwai-data/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
     readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai-data/screensavers"
@@ -113,6 +114,22 @@ Scope {
         if (!showing && dimmedHere) { dimmedHere = false; if (Dim.wanted) Dim.up(); }
     }
     readonly property string still: Hyde.wallpaper ? "file://" + Hyde.wallpaper : ""   // none: black
+    property var photoPaths: []
+    property bool photosListed: false
+    readonly property var photoSet: photoPaths.length ? photoPaths : (Hyde.wallpaper ? [Hyde.wallpaper] : [])
+    Process {
+        running: root.showing && root.style === "photos"
+        command: [Paths.bin + "/kuwai-saver-photos", Settings.screensaverFolder]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let got = [];
+                try { got = JSON.parse(text); } catch (e) {}
+                if (!Array.isArray(got)) got = [];
+                if (got.join("\n") !== root.photoPaths.join("\n")) root.photoPaths = got;
+                root.photosListed = true;
+            }
+        }
+    }
 
     // ── The film (Night, Live) plays in its own process ──────────────────
     // A player inside the shell kept ~110 MB for good after it stopped
@@ -320,6 +337,7 @@ Scope {
                     // What fills the screen: the Dusk scene (default, drawn live,
                     // nothing to decode), your live wallpaper, or the still one.
                     readonly property bool stillHere: root.style === "still"
+                    readonly property bool photosHere: root.style === "photos"
                     // Night and Live: the film on every screen (the saver process).
                     // The drawn scenes are ambient: clouds that cross the sky in
                     // minutes, stars, petals. Drawn at the screen's own rate they
@@ -332,7 +350,7 @@ Scope {
                     Loader {
                         id: sceneLoader
                         anchors.fill: parent
-                        active: !stage.filmHere && !stage.stillHere && !root.longDark
+                        active: !stage.filmHere && !stage.stillHere && !stage.photosHere && !root.longDark
                         sourceComponent: root.style === "borealis" ? borealisC : duskC
                         onLoaded: sceneFrame.scheduleUpdate()
                         onWidthChanged: sceneFrame.scheduleUpdate()
@@ -354,6 +372,15 @@ Scope {
                     }
                     Component { id: duskC; DuskScene { running: root.showing } }
                     Component { id: borealisC; BorealisScene { running: root.showing } }
+                    Loader {
+                        anchors.fill: parent
+                        active: stage.photosHere && root.photosListed && !root.longDark
+                        sourceComponent: PhotoShuffle {
+                            paths: root.photoSet
+                            running: root.showing && !root.longBlack
+                            holdMs: Photos.holdMs(Settings.screensaverPhotoMins)
+                        }
+                    }
                     Image {
                         visible: stage.stillHere
                         anchors.fill: parent

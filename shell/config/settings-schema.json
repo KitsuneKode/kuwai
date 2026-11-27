@@ -363,14 +363,15 @@
         "borealis",
         "night",
         "live",
-        "still"
+        "still",
+        "photos"
       ],
       "maxLength": 512,
       "section": "saver",
       "label": "Look",
       "detail": "",
       "group": "",
-      "searchTerms": "look  dusk borealis aurora northern lights night live still ",
+      "searchTerms": "look  dusk borealis aurora northern lights night live still photos photo shuffle slideshow wallpapers ",
       "requires": [],
       "restartScope": "live"
     },
@@ -397,6 +398,33 @@
       "detail": "Files in ~/.local/share/kuwai-data/screensavers",
       "group": "",
       "searchTerms": "film files in ~/.local/share/kuwai-data/screensavers smoke aurora stars ",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "screensaverPhotoMins",
+      "type": "integer",
+      "default": 5,
+      "min": 1,
+      "max": 120,
+      "section": "saver",
+      "label": "Change photo",
+      "detail": "How long each picture stays before the next fades in",
+      "group": "",
+      "searchTerms": "change photo every minutes 1 min 5 min 15 min 30 min slideshow shuffle",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "screensaverFolder",
+      "type": "string",
+      "default": "",
+      "maxLength": 512,
+      "section": "saver",
+      "label": "Photos from",
+      "detail": "A folder of pictures; empty is your theme's wallpapers",
+      "group": "",
+      "searchTerms": "photos from folder pictures directory wallpapers slideshow",
       "requires": [],
       "restartScope": "live"
     },
