@@ -203,7 +203,7 @@ def test_held_names_are_package_names_only(ur, hold):
 def test_held_packages_stay_out_of_the_plan_and_the_upgrade(ur, monkeypatch):
     ran, printed = [], []
     monkeypatch.setattr(ur, "pacman", lambda args: ran.append(args) or 0)
-    monkeypatch.setattr(ur.subprocess, "run", lambda cmd, **kw: printed.append(cmd) or type("R", (), {"stdout": "linux 7.3-1\n"})())
+    monkeypatch.setattr(ur.subprocess, "run", lambda cmd, **kw: printed.append(cmd) or type("R", (), {"returncode": 0, "stdout": "linux 7.3-1\n"})())
     monkeypatch.setattr(ur, "say", lambda **kw: None)
     ignore = ["--ignore", ",".join(ur.names({"hold": ["nvidia-dkms", "linux"]}, "hold"))]
     assert ur.resolved(ignore) == ["linux 7.3-1"]
@@ -245,7 +245,7 @@ def test_both_halves_name_a_plan_the_same_way(ur):
         ["upgrade=1:" + "a" * 64, "hold=y,z", "install=foo"]
 
 
-def run_main(ur, monkeypatch, argv, requests, plan=PLAN, names=("foo",)):
+def run_main(ur, monkeypatch, argv, requests, plan=PLAN, names=("foo",), resolve=None):
     ran, said = [], []
     monkeypatch.setattr(ur.os, "geteuid", lambda: 0)
     monkeypatch.setattr(ur.os, "umask", lambda m: 0o022)
@@ -253,7 +253,7 @@ def run_main(ur, monkeypatch, argv, requests, plan=PLAN, names=("foo",)):
     monkeypatch.setattr(ur.signal, "alarm", lambda n: None)
     monkeypatch.setattr(ur.signal, "signal", lambda *a: None)
     monkeypatch.setattr(ur, "pacman", lambda args: ran.append(args) or 0)
-    monkeypatch.setattr(ur, "resolved", lambda ignore=(): list(plan))
+    monkeypatch.setattr(ur, "resolved", resolve or (lambda ignore=(): list(plan)))
     monkeypatch.setattr(ur, "files", lambda req, home, uid: [("/home/x/foo-1-1-any.pkg.tar.zst", "0" * 64)])
     monkeypatch.setattr(ur, "taken", lambda wanted, d, uid: [os.path.join(d, "foo-1-1-any.pkg.tar.zst")])
     monkeypatch.setattr(ur, "package_names", lambda paths: list(names))
@@ -278,6 +278,22 @@ def test_a_change_between_the_prompt_and_the_run_is_refused(ur, monkeypatch):
     assert rcs == [ur.PLAN_CHANGED]
     assert ran == [["-Sy"]], "nothing installed once pacman resolves something the prompt didn't name"
     assert "changed after the password prompt" in log
+
+
+@pytest.mark.parametrize("failure", ["exit", "timeout", "missing"])
+def test_a_plan_pacman_couldnt_resolve_is_never_an_empty_one(ur, monkeypatch, failure):
+    def run(cmd, **kw):
+        if failure == "timeout":
+            raise ur.subprocess.TimeoutExpired(cmd, 300)
+        if failure == "missing":
+            raise FileNotFoundError(cmd[0])
+        return type("R", (), {"returncode": 1, "stdout": "", "stderr": "error: failed to prepare transaction"})()
+    real = ur.resolved
+    monkeypatch.setattr(ur.subprocess, "run", run)
+    assert real() is None
+    ran, rcs, log = run_main(ur, monkeypatch, [f"upgrade={ur.plan_token([])}"], [{"op": "upgrade"}], resolve=real)
+    assert rcs == [ur.PLAN_CHANGED] and ran == [["-Sy"]], "an approved '0 packages' never runs -Su on a failed resolution"
+    assert "nothing was installed" in log
 
 
 @pytest.mark.parametrize("argv, requests", [

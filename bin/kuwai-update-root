@@ -128,12 +128,14 @@ def pacman(args):
 
 
 def resolved(ignore=()):
-    """What -Su would install now, as pacman itself resolved it."""
+    """What -Su would install now, as pacman itself resolved it; None when pacman couldn't say."""
     try:
         r = subprocess.run([PACMAN, "-Su", *ignore, "--print", "--print-format", "%n %v"], env=ENV,
                            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.TimeoutExpired):
-        return []
+        return None
+    if r.returncode != 0:
+        return None
     return [l.strip() for l in r.stdout.splitlines() if PLAN_LINE.match(l.strip())][:2000]
 
 
@@ -391,8 +393,11 @@ def main():
                 rc = pacman(["-Sy"])
                 if rc == 0:
                     plan = resolved(ignore)
-                    say(plan=plan)
-                    if plan_token(plan) != named:
+                    say(plan=plan or [])
+                    if plan is None:
+                        say(log="kuwai-update-root: refused: pacman couldn't work out what the update would install; nothing was installed")
+                        rc = PLAN_CHANGED
+                    elif plan_token(plan) != named:
                         say(log="kuwai-update-root: refused: Arch's packages changed after the password prompt named them; nothing was installed")
                         rc = PLAN_CHANGED
                     else:
