@@ -343,11 +343,10 @@ Scope {
                         // full size, uncached, on every appearance.
                         sourceSize: Qt.size(Math.min(win.width, 1920), Math.min(win.height, 1080))
                         scale: 1.06
-                        SequentialAnimation on scale {
+                        NumberAnimation on scale {
                             running: stage.stillHere && root.showing && !Theme.reduceMotion
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 1.12; duration: Theme.saverZoomMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
-                            NumberAnimation { to: 1.06; duration: Theme.saverZoomMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine }
+                            from: 1.06; to: 1.12; duration: Theme.saverZoomMs
+                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
                         }
                     }
                     // A soft vignette so the clock reads on any wallpaper.

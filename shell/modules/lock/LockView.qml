@@ -86,7 +86,7 @@ Item {
                 asynchronous: true
                 visible: false
             }
-            MultiEffect { anchors.fill: parent; source: wall; blurEnabled: true; blur: 1; blurMax: 48; saturation: 0.25 }
+            MultiEffect { anchors.fill: parent; source: wall; blurEnabled: true; blur: 1; blurMax: 48; saturation: 0.55 }
         }
         // While music plays, its cover over the wallpaper: blurred a long way
         // and darkened, so it's the room's colour, not a picture to read. One
