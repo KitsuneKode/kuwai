@@ -1,5 +1,5 @@
 {
- "about": "The rehearsal's scenes (bin/kuwai-rehearse, docs/design/REHEARSAL.md). Each scene is one panel in one state: `set` puts services in that state ([service, property, value] or [service, \"call\", function, arguments]) and is undone after the frame. `kind: worst` is data longer than ordinary, where shortening with an ellipsis is the right answer. `seed` are files written into the private home before the shell starts (paths under that home, e.g. \".local/state/kuwai/notifications.json\": Notifs keeps its store under HOME, not XDG_STATE_HOME). A string \"@now-300s\" or \"@now+5400000ms\" becomes that moment (epoch seconds or milliseconds); \"@now-300iso\" the same as ISO text. `running` are helpers a service keeps alive: their stand-in stays up silently (the others exit at once, as on a machine where they are missing). `props` are the panel's own properties; \"@date:2026-11-18T10:10:00\" is that moment.",
+ "about": "The rehearsal's scenes (bin/kuwai-rehearse, docs/design/REHEARSAL.md). Each scene is one panel in one state: `set` puts services in that state ([service, property, value] or [service, \"call\", function, arguments]) and is undone after the frame. `kind: worst` is data longer than ordinary, where shortening with an ellipsis is the right answer. `seed` are files written into the private home before the shell starts (paths under that home, e.g. \".local/state/kuwai/notifications.json\": Notifs keeps its store under HOME, not XDG_STATE_HOME). A string \"@now-300s\" or \"@now+5400000ms\" becomes that moment (epoch seconds or milliseconds); \"@now-300iso\" the same as ISO text. `running` are helpers a service keeps alive: their stand-in stays up silently (the others exit at once, as on a machine where they are missing). `props` are the panel's own properties; \"@date:2026-11-18T10:10:00\" is that moment. A seed value \"copy:tests/ui/fixtures/x.png\" copies that repository file instead of writing JSON. `late` are sets (same form as `set`) applied once the panel is up, for a reading a helper the panel starts would overwrite (SystemStats).",
  "running": [
   "kuwai-usage"
  ],
@@ -209,7 +209,8 @@
      "replyable": false
     }
    ]
-  }
+  },
+  "cover-sample.png": "copy:tests/ui/fixtures/cover-sample.png"
  },
  "scenes": [
   {
@@ -374,9 +375,9 @@
        "identity": "Spotify",
        "desktopEntry": "spotify",
        "dbusName": "org.mpris.MediaPlayer2.spotify",
-       "trackTitle": "Midnight City",
-       "trackArtist": "M83",
-       "trackArtUrl": "",
+       "trackTitle": "Slow Tide",
+       "trackArtist": "The Paper Lanterns",
+       "trackArtUrl": "file:///home/test/cover-sample.png",
        "metadata": {},
        "playbackState": 1,
        "isPlaying": true,
@@ -537,7 +538,7 @@
       {
        "start": 1795023000000,
        "end": 1795024800000,
-       "title": "Call with Priya",
+       "title": "Product sync",
        "location": "",
        "allDay": false
       },
@@ -2260,6 +2261,55 @@
      }
     ]
    }
+  },
+  {
+   "id": "launcher/tour",
+   "name": "launcher",
+   "panel": "LauncherPanel",
+   "kind": "worst",
+   "props": {
+    "query": "+ ripgrep",
+    "pkgLoaded": true,
+    "armedPkg": "ripgrep-all",
+    "pkgHits": [
+     {
+      "name": "ripgrep",
+      "repo": "extra",
+      "version": "14.1.1-1",
+      "desc": "A search tool that combines the usability of ag with the raw speed of grep",
+      "installed": true,
+      "aur": false
+     },
+     {
+      "name": "ripgrep-all",
+      "repo": "extra",
+      "version": "0.10.6-2",
+      "desc": "rga: ripgrep, but also search in PDFs, E-Books, Office documents, zip, tar.gz",
+      "installed": false,
+      "aur": false
+     },
+     {
+      "name": "ripgrep-git",
+      "repo": "aur",
+      "version": "14.1.0.r12-1",
+      "desc": "A search tool (git version)",
+      "installed": false,
+      "aur": true
+     }
+    ]
+   },
+   "set": [
+    [
+     "Island",
+     "lastQuery",
+     ""
+    ],
+    [
+     "Island",
+     "prefill",
+     "+ ripgrep"
+    ]
+   ]
   },
   {
    "id": "switcher/new-machine",
@@ -8415,6 +8465,104 @@
    ]
   },
   {
+   "id": "updates/tour",
+   "name": "updates",
+   "panel": "UpdatesPanel",
+   "set": [
+    [
+     "Updates",
+     "data",
+     {
+      "checkedAt": "@now-600s",
+      "repo": [
+       {
+        "name": "linux-zen",
+        "old": "7.3.4.zen2-2",
+        "new": "7.3.5.zen1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "mesa",
+        "old": "26.2.1-1",
+        "new": "26.2.2-1",
+        "repo": "extra"
+       },
+       {
+        "name": "qt6-base",
+        "old": "6.12.0-2",
+        "new": "6.12.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "firefox",
+        "old": "151.0-1",
+        "new": "151.0.1-1",
+        "repo": "extra"
+       },
+       {
+        "name": "hyprland",
+        "old": "0.57.0-1",
+        "new": "0.57.1-1",
+        "repo": "extra"
+       }
+      ],
+      "aur": [
+       {
+        "name": "quickshell-git",
+        "old": "0.3.2.r12-1",
+        "new": "0.3.2.r19-1",
+        "repo": "aur"
+       },
+       {
+        "name": "visual-studio-code-bin",
+        "old": "1.103.1-1",
+        "new": "1.103.2-1",
+        "repo": "aur"
+       }
+      ],
+      "repoError": false,
+      "lastUpgrade": "@now-432000s",
+      "news": [],
+      "freeBytes": 48000000000,
+      "power": {
+       "ac": true,
+       "battery": 100
+      },
+      "kernel": false,
+      "flatpak": []
+     }
+    ],
+    [
+     "Updates",
+     "checkError",
+     ""
+    ],
+    [
+     "Updates",
+     "trusted",
+     [
+      "quickshell-git"
+     ]
+    ],
+    [
+     "Updates",
+     "reviews",
+     {
+      "visual-studio-code-bin": {
+       "pkg": "visual-studio-code-bin",
+       "packageBase": "visual-studio-code-bin",
+       "head": "1f3a5c7e9b2d4f6a8c0e1d3b5a7c9e2f4b6d8a0c",
+       "firstTime": false,
+       "routine": true,
+       "flags": [],
+       "files": []
+      }
+     }
+    ]
+   ],
+   "kind": "typical"
+  },
+  {
    "id": "updates/menu",
    "name": "updates",
    "panel": "UpdatesPanel",
@@ -9411,6 +9559,150 @@
    "id": "system/typical",
    "name": "system",
    "panel": "SystemPanel"
+  },
+  {
+   "id": "system/calm",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "memApps": [
+     {
+      "app": "Firefox",
+      "mb": 4600,
+      "count": 14
+     },
+     {
+      "app": "Steam",
+      "mb": 2100,
+      "count": 9
+     },
+     {
+      "app": "Code",
+      "mb": 1700,
+      "count": 11
+     },
+     {
+      "app": "Spotify",
+      "mb": 780,
+      "count": 6
+     },
+     {
+      "app": "Quickshell",
+      "mb": 520,
+      "count": 1
+     },
+     {
+      "app": "Kitty",
+      "mb": 330,
+      "count": 3
+     }
+    ]
+   },
+   "late": [
+    [
+     "SystemStats",
+     "cpu",
+     0.21
+    ],
+    [
+     "SystemStats",
+     "cores",
+     [
+      0.34,
+      0.12,
+      0.08,
+      0.41,
+      0.19,
+      0.07,
+      0.26,
+      0.15,
+      0.52,
+      0.09,
+      0.11,
+      0.22,
+      0.05,
+      0.18,
+      0.3,
+      0.14
+     ]
+    ],
+    [
+     "SystemStats",
+     "cpuTemp",
+     54
+    ],
+    [
+     "SystemStats",
+     "fans",
+     []
+    ],
+    [
+     "SystemStats",
+     "load",
+     "1.42 1.18 0.97"
+    ],
+    [
+     "SystemStats",
+     "memTotal",
+     34359738368
+    ],
+    [
+     "SystemStats",
+     "memUsed",
+     15032385536
+    ],
+    [
+     "SystemStats",
+     "swapUsed",
+     0
+    ],
+    [
+     "SystemStats",
+     "gpuState",
+     "active"
+    ],
+    [
+     "SystemStats",
+     "gpuVendor",
+     "nvidia"
+    ],
+    [
+     "SystemStats",
+     "gpu",
+     0.12
+    ],
+    [
+     "SystemStats",
+     "gpuTemp",
+     46
+    ],
+    [
+     "SystemStats",
+     "gpuPower",
+     14
+    ],
+    [
+     "SystemStats",
+     "gpuMemUsed",
+     1450
+    ],
+    [
+     "SystemStats",
+     "gpuMemTotal",
+     8192
+    ],
+    [
+     "SystemStats",
+     "igpuMax",
+     0
+    ],
+    [
+     "SystemStats",
+     "igpuMHz",
+     0
+    ]
+   ]
   },
   {
    "id": "sweep/typical",
@@ -10831,6 +11123,439 @@
       "canon": "SUPER+E",
       "why": ""
      }
+    ]
+   ]
+  },
+  {
+   "id": "settings/shortcuts-tour",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 6
+   },
+   "set": [
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b65",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Workspace 1",
+       "keys": "SUPER + 1",
+       "aid": "SUPER+CODE:10",
+       "def": "SUPER + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b66",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Move window to workspace 1",
+       "keys": "SUPER + SHIFT + 1",
+       "aid": "SUPER+SHIFT+CODE:10",
+       "def": "SUPER + SHIFT + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b67",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Send window to workspace 1 (stay)",
+       "keys": "SUPER + ALT + 1",
+       "aid": "SUPER+ALT+CODE:10",
+       "def": "SUPER + ALT + 1",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b68",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Workspace 2",
+       "keys": "SUPER + 2",
+       "aid": "SUPER+CODE:11",
+       "def": "SUPER + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b69",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Move window to workspace 2",
+       "keys": "SUPER + SHIFT + 2",
+       "aid": "SUPER+SHIFT+CODE:11",
+       "def": "SUPER + SHIFT + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b70",
+       "kind": "bind",
+       "group": "Workspaces",
+       "text": "Send window to workspace 2 (stay)",
+       "keys": "SUPER + ALT + 2",
+       "aid": "SUPER+ALT+CODE:11",
+       "def": "SUPER + ALT + 2",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b113",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal",
+       "keys": "SUPER + T",
+       "aid": "SUPER+T",
+       "def": "SUPER + T",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b114",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal",
+       "keys": "SUPER + RETURN",
+       "aid": "SUPER+RETURN",
+       "def": "SUPER + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b115",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Terminal here (focused terminal's folder)",
+       "keys": "SUPER + SHIFT + RETURN",
+       "aid": "SUPER+SHIFT+RETURN",
+       "def": "SUPER + SHIFT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b116",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Claude here (kittymux tab in this folder)",
+       "keys": "SUPER + ALT + RETURN",
+       "aid": "SUPER+ALT+RETURN",
+       "def": "SUPER + ALT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b117",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Codex here (kittymux tab in this folder)",
+       "keys": "SUPER + ALT + SHIFT + RETURN",
+       "aid": "SUPER+ALT+SHIFT+RETURN",
+       "def": "SUPER + ALT + SHIFT + RETURN",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b118",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Files",
+       "keys": "SUPER + E",
+       "aid": "SUPER+E",
+       "def": "SUPER + E",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b119",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Editor",
+       "keys": "SUPER + C",
+       "aid": "SUPER+C",
+       "def": "SUPER + C",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b120",
+       "kind": "bind",
+       "group": "Launch",
+       "text": "Browser",
+       "keys": "SUPER + SHIFT + B",
+       "aid": "SUPER+SHIFT+B",
+       "def": "SUPER + SHIFT + B",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b124",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Launcher",
+       "keys": "SUPER + A",
+       "aid": "SUPER+A",
+       "def": "SUPER + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b125",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "AI Assistant",
+       "keys": "SUPER + CTRL + SHIFT + A",
+       "aid": "SUPER+CTRL+SHIFT+A",
+       "def": "SUPER + CTRL + SHIFT + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b126",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Notifications",
+       "keys": "SUPER + N",
+       "aid": "SUPER+N",
+       "def": "SUPER + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b127",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Agents: every pane and thread",
+       "keys": "SUPER + SHIFT + N",
+       "aid": "SUPER+SHIFT+N",
+       "def": "SUPER + SHIFT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b128",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Agents: go to the one that needs you",
+       "keys": "SUPER + CTRL + A",
+       "aid": "SUPER+CTRL+A",
+       "def": "SUPER + CTRL + A",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b129",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Do not disturb",
+       "keys": "SUPER + ALT + N",
+       "aid": "SUPER+ALT+N",
+       "def": "SUPER + ALT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b130",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Bluetooth",
+       "keys": "SUPER + ALT + B",
+       "aid": "SUPER+ALT+B",
+       "def": "SUPER + ALT + B",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b131",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Wi-Fi and controls",
+       "keys": "SUPER + CTRL + ALT + W",
+       "aid": "SUPER+CTRL+ALT+W",
+       "def": "SUPER + CTRL + ALT + W",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b132",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Open the newest notification",
+       "keys": "SUPER + SHIFT + ALT + N",
+       "aid": "SUPER+ALT+SHIFT+N",
+       "def": "SUPER + SHIFT + ALT + N",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b133",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Island: answer its card (a notification, an alarm) from the keyboard",
+       "keys": "SUPER + CTRL + Return",
+       "aid": "SUPER+CTRL+RETURN",
+       "def": "SUPER + CTRL + Return",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b134",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Quick note (jot)",
+       "keys": "SUPER + CTRL + J",
+       "aid": "SUPER+CTRL+J",
+       "def": "SUPER + CTRL + J",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b135",
+       "kind": "bind",
+       "group": "Shell",
+       "text": "Remind me",
+       "keys": "SUPER + CTRL + SHIFT + J",
+       "aid": "SUPER+CTRL+SHIFT+J",
+       "def": "SUPER + CTRL + SHIFT + J",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b163",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Volume up",
+       "keys": "XF86AudioRaiseVolume",
+       "aid": "XF86AUDIORAISEVOLUME",
+       "def": "XF86AudioRaiseVolume",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b164",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Volume down",
+       "keys": "XF86AudioLowerVolume",
+       "aid": "XF86AUDIOLOWERVOLUME",
+       "def": "XF86AudioLowerVolume",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b165",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Mute",
+       "keys": "XF86AudioMute",
+       "aid": "XF86AUDIOMUTE",
+       "def": "XF86AudioMute",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b167",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Microphone on/off",
+       "keys": "XF86AudioMicMute",
+       "aid": "XF86AUDIOMICMUTE",
+       "def": "XF86AudioMicMute",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b168",
+       "kind": "bind",
+       "group": "Hardware|Audio",
+       "text": "Microphone on/off",
+       "keys": "CTRL + ALT + M",
+       "aid": "CTRL+ALT+M",
+       "def": "CTRL + ALT + M",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b169",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Play / pause",
+       "keys": "XF86AudioPlay",
+       "aid": "XF86AUDIOPLAY",
+       "def": "XF86AudioPlay",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b170",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Play / pause",
+       "keys": "XF86AudioPause",
+       "aid": "XF86AUDIOPAUSE",
+       "def": "XF86AudioPause",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b171",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Next track",
+       "keys": "XF86AudioNext",
+       "aid": "XF86AUDIONEXT",
+       "def": "XF86AudioNext",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b172",
+       "kind": "bind",
+       "group": "Hardware|Media",
+       "text": "Previous track",
+       "keys": "XF86AudioPrev",
+       "aid": "XF86AUDIOPREV",
+       "def": "XF86AudioPrev",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b900",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      }
+     ]
+    ],
+    [
+     "KeyBinds",
+     "live",
+     []
+    ],
+    [
+     "KeyBinds",
+     "replaced",
+     ""
     ]
    ]
   },

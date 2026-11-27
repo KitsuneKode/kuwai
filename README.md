@@ -4,43 +4,51 @@
 
 ## A look around
 
-Captured from the shell's rehearsal suite (`bin/kuwai-rehearse`, sample data in an isolated window) and recorded live on a 2560×1440 session at 60 fps:
+Captured from the shell's rehearsal suite (`bin/kuwai-rehearse --pixels 2`, sample data in an isolated window, shown at their real size) and, for the clips, recorded live on a 2560×1440 session at 60 fps:
 
 <table>
 <tr>
-<td><img src="docs/media/tour/agents-typical.png" alt="Agents section with active work and waiting approvals" width="380"></td>
-<td><img src="docs/media/tour/usage-typical.png" alt="Usage section showing remaining quota and reset times per account" width="380"></td>
+<td><img src="docs/media/tour/agents-typical.png" alt="Agents section with active work and waiting approvals" width="400"></td>
+<td><img src="docs/media/tour/usage-typical.png" alt="Usage section showing remaining quota and reset times per account" width="400"></td>
 </tr>
 <tr>
-<td><img src="docs/media/tour/settings-shortcuts.png" alt="Settings Shortcuts page for rebinding kuwai shortcuts" width="380"></td>
-<td><img src="docs/media/tour/updates-typical.png" alt="Software Update panel showing official and AUR updates" width="380"></td>
+<td><img src="docs/media/tour/calendar-events.png" alt="Calendar panel with events from an iCal feed" width="324"></td>
+<td><img src="docs/media/tour/media-playing.png" alt="Now Playing panel with album art, scrubber and transport controls" width="460"></td>
 </tr>
 <tr>
-<td><img src="docs/media/tour/calendar-events.png" alt="Calendar panel with events from an iCal feed" width="380"></td>
-<td><img src="docs/media/tour/system-typical.png" alt="System panel showing CPU and proportional memory by app" width="380"></td>
+<td colspan="2" align="center"><img src="docs/media/tour/system-typical.png" alt="System panel showing CPU, GPU and proportional memory by app" width="640"></td>
 </tr>
 <tr>
-<td><img src="docs/media/tour/launcher-packages.png" alt="Launcher searching Arch and AUR packages" width="380"></td>
-<td><img src="docs/media/tour/media-playing.png" alt="Now Playing panel" width="380"></td>
+<td colspan="2" align="center"><img src="docs/media/tour/launcher-packages.png" alt="Launcher searching Arch and AUR packages" width="640"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><img src="docs/media/tour/settings-shortcuts.png" alt="Settings Shortcuts page for rebinding kuwai shortcuts" width="720"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><img src="docs/media/tour/updates-typical.png" alt="Software Update panel showing official and AUR updates" width="720"></td>
 </tr>
 </table>
 
-In motion:
+In motion (each clip at its recorded size, one per row so none is scaled down):
 
 <table>
 <tr>
-<td colspan="2"><img src="docs/media/clips/island-hover.webp" alt="Hovering the island opens the glance row" width="780"></td>
+<td align="center"><img src="docs/media/clips/island-hover.webp" alt="Hovering the island opens the glance row" width="840"></td>
 </tr>
 <tr>
-<td><img src="docs/media/clips/launcher.webp" alt="Launcher calculating inline" width="380"></td>
-<td><img src="docs/media/clips/themes.webp" alt="Switching themes from the island" width="380"></td>
+<td align="center"><img src="docs/media/clips/launcher.webp" alt="Launcher calculating inline" width="840"></td>
 </tr>
 <tr>
-<td><img src="docs/media/clips/wallpaper.webp" alt="Wallpaper transition growing out of the notch" width="380"></td>
-<td><img src="docs/media/clips/sound.webp" alt="Sound mixer and device switching" width="380"></td>
+<td align="center"><img src="docs/media/clips/themes.webp" alt="Switching themes from the island" width="780"></td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/media/clips/island-timer.webp" alt="Running timer inside the island" width="600"></td>
+<td align="center"><img src="docs/media/clips/wallpaper.webp" alt="Wallpaper transition growing out of the notch" width="720"></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/media/clips/sound.webp" alt="Sound mixer and device switching" width="600"></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/media/clips/island-timer.webp" alt="Running timer inside the island" width="800"></td>
 </tr>
 </table>
 
