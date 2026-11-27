@@ -155,6 +155,132 @@ def apps(hits, allp, cpu, pm):
     return out
 
 
+USER_CGROUP = "/sys/fs/cgroup/user.slice/user-%d.slice/user@%d.service" % (ME, ME)
+UNIT = re.compile(r"app-[^/\x00]+\.(scope|service)")
+SKIP_SLICES = ("session", "background")
+
+
+def unit_app(name):
+    """(launcher, application id) from an app-*.scope / app-*.service name, as systemd's
+    XDG naming has it: app[-launcher]-ID[@random].service, app[-launcher]-ID-random.scope,
+    a dash inside the ID written \\x2d."""
+    base = re.sub(r"\.(scope|service)$", "", name)[4:]
+    base = re.sub(r"@[^@]*$", "", base) if name.endswith(".service") else re.sub(r"-\d+$", "", base)
+    parts = [re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), p) for p in base.split("-")]
+    if len(parts) == 1:
+        return "", parts[0]
+    return parts[0], "-".join(parts[1:])
+
+
+def find_units(root=None):
+    """{unit name: cgroup directory} for the app-*.scope and app-*.service units of this user's
+    manager, looking inside its slices (app.slice, uwsm's app-graphical.slice…), never the session's."""
+    out = {}
+    top = root or USER_CGROUP
+
+    def walk(d, depth):
+        try:
+            entries = list(os.scandir(d))
+        except OSError:
+            return
+        for e in entries:
+            if not e.is_dir(follow_symlinks=False):
+                continue
+            if UNIT.fullmatch(e.name):
+                out.setdefault(e.name, e.path)
+            elif e.name.endswith(".slice") and depth < 4 and not e.name.startswith(SKIP_SLICES):
+                walk(e.path, depth + 1)
+
+    walk(top, 0)
+    return out
+
+
+def unit_pids(path):
+    """Every process in a unit's cgroup and the groups under it."""
+    pids = []
+    for d, _, files in os.walk(path):
+        if "cgroup.procs" in files:
+            try:
+                with open(d + "/cgroup.procs") as f:
+                    pids.extend(int(x) for x in f.read().split())
+            except (OSError, ValueError):
+                pass
+    return pids
+
+
+def unit_kept(unit, comms, own=False):
+    """A unit the session lives on: kuwai's own, a portal, a key or login agent, or the one this helper runs in."""
+    app = unit_app(unit)[1]
+    return (own or app.lower().startswith("kuwai") or "portal" in app.lower() or unit in SESSION_UNITS
+            or bool(SESSION.fullmatch(app)) or any(SESSION.fullmatch(c) for c in comms))
+
+
+def alive(pid):
+    try:
+        with open("/proc/%d/stat" % pid) as f:
+            st = f.read()
+        return st[st.rindex(")") + 2] != "Z"
+    except (OSError, ValueError, IndexError):
+        return False
+
+
+def own_unit():
+    try:
+        with open("/proc/self/cgroup") as f:
+            return f.read().strip().rsplit("/", 1)[-1]
+    except OSError:
+        return ""
+
+
+def end_unit(unit, force, root=None):
+    """Stop (SIGTERM) or force-quit (SIGKILL) every process of one app unit, never one that holds
+    the session or this launcher, and say whether it is gone."""
+    if not UNIT.fullmatch(unit):
+        return {"ok": False, "why": "that is not an app"}
+    path = find_units(root).get(unit)
+    pids = [p for p in unit_pids(path) if alive(p)] if path else []
+    if not pids:
+        return {"ok": True, "why": "already gone"}
+    if set(pids) & ancestors() or unit == own_unit():
+        return {"ok": False, "why": "it runs this launcher"}
+    comms = []
+    for pid in pids:
+        try:
+            if os.stat("/proc/%d" % pid).st_uid != ME:
+                return {"ok": False, "why": "not yours (another user's process needs sudo)"}
+            with open("/proc/%d/stat" % pid) as f:
+                st = f.read()
+            comms.append(st[st.index("(") + 1:st.rindex(")")])
+        except (OSError, ValueError):
+            continue
+    if unit_kept(unit, comms) or any(protected(p, c) for p, c in zip(pids, comms)):
+        return {"ok": False, "why": "your session needs it"}
+    sig = signal.SIGKILL if force else signal.SIGTERM
+    deadline = time.monotonic() + (1.5 if force else 3.0)
+    sent = False
+    while True:
+        left = [p for p in unit_pids(path) if alive(p)] if os.path.isdir(path) else []
+        if not left:
+            return {"ok": True, "gone": True}
+        if force or not sent:
+            for pid in left:
+                try:
+                    fd = os.pidfd_open(pid)
+                except OSError:
+                    continue
+                try:
+                    if pid in unit_pids(path):
+                        signal.pidfd_send_signal(fd, sig)
+                except (OSError, ValueError):
+                    pass
+                finally:
+                    os.close(fd)
+            sent = True
+        if time.monotonic() >= deadline:
+            return {"ok": True, "gone": False, "why": "it's still running; force quit ends it"}
+        time.sleep(0.1)
+
+
 def started(pid):
     with open("/proc/%d/stat" % pid) as f:
         st = f.read()
@@ -248,6 +374,14 @@ def main(argv):
                 print(json.dumps({"ok": False, "why": "bad start time"}))
                 return
         print(json.dumps(end(pid, "--force" in argv, start)))
+        return
+    if argv[:1] == ["--end-unit"]:
+        if len(argv) < 2:
+            print(json.dumps({"ok": False, "why": "no app"}))
+            return
+        at = argv.index("--cgroup-root") + 1 if "--cgroup-root" in argv else 0
+        root = argv[at] if 0 < at < len(argv) else None
+        print(json.dumps(end_unit(argv[1], "--force" in argv, root)))
         return
     q = " ".join(argv).strip()
     a = procs()
