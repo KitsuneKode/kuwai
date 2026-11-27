@@ -15,6 +15,8 @@ layout(std140, binding = 0) uniform buf {
     vec2 size;      // px
     vec2 origin;    // px, where it grows from (the notch)
     float t;        // 0..1, eased by the caller
+    vec4 cropA;
+    vec4 cropB;
 };
 layout(binding = 1) uniform sampler2D before;
 layout(binding = 2) uniform sampler2D after;
@@ -26,15 +28,16 @@ void main() {
     // Far enough to cover the farthest corner, plus the band.
     float far = length(max(origin, size - origin)) * 1.08;
     float band = 0.06 * length(size);
-    float r = mix(-band, far, t);
+    float s = t * t * (3.0 - 2.0 * t);
+    float r = mix(-band, far, sqrt(s));
     // 0 outside (old), 1 well inside (new); the band between.
     float inside = clamp((r - dist) / band, 0.0, 1.0);
     float lens = sin(3.14159265 * inside) * sin(3.14159265 * t);   // the front, only mid-change
     vec2 dir = dist > 0.5 ? d / dist : vec2(0.0, 1.0);
     // Refraction: the new picture, near the front, sampled from further in.
     vec2 uvNew = qt_TexCoord0 - dir * (lens * 0.018);
-    vec4 a = texture(before, qt_TexCoord0);
-    vec4 b = texture(after, clamp(uvNew, vec2(0.0), vec2(1.0)));
+    vec4 a = texture(before, cropA.xy + qt_TexCoord0 * cropA.zw);
+    vec4 b = texture(after, cropB.xy + clamp(uvNew, vec2(0.0), vec2(1.0)) * cropB.zw);
     float k = smoothstep(0.0, 1.0, inside);
     vec4 c = mix(a, b, k);
     // The rim: a thin bright line at the front, strongest facing the notch.

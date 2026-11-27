@@ -29,6 +29,8 @@ layout(std140, binding = 0) uniform buf {
     float t;        // 0..1
     float mode;     // 0 shards, 1 subject, 2 contour
     float seed;     // a new one every change: the pieces never repeat
+    vec4 cropA;
+    vec4 cropB;
 };
 layout(binding = 1) uniform sampler2D before;
 layout(binding = 2) uniform sampler2D after;
@@ -43,6 +45,9 @@ vec2 hash2(vec2 p) {
     return fract(sin(p) * 43758.5453);
 }
 float hash1(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1)) + seed * 1.7) * 23421.631); }
+
+vec2 ca(vec2 uv) { return cropA.xy + uv * cropA.zw; }
+vec2 cb(vec2 uv) { return cropB.xy + uv * cropB.zw; }
 
 void main() {
     vec2 uv = qt_TexCoord0;
@@ -77,8 +82,8 @@ void main() {
         // The piece slides the last few pixels toward its place, away from the notch.
         vec2 dir = normalize(sitePx - origin + 0.001);
         vec2 slide = dir * (1.0 - p) * cell * 0.10;
-        vec4 o = texture(before, uv);
-        vec4 n = texture(after, (px - slide) / size);
+        vec4 o = texture(before, ca(uv));
+        vec4 n = texture(after, cb((px - slide) / size));
         // A piece is either old or new: it flips over a few frames, not a crossfade.
         float flip = smoothstep(0.0, 0.35, p);
         vec4 c = mix(o, n, flip);
@@ -95,18 +100,18 @@ void main() {
     } else if (mode > 1.5) {
         vec2 o1 = 1.0 / size;
         vec3 W = vec3(0.2126, 0.7152, 0.0722);
-        float tl = dot(texture(after, uv + o1 * vec2(-1.0, -1.0)).rgb, W);
-        float tc = dot(texture(after, uv + o1 * vec2(0.0, -1.0)).rgb, W);
-        float tr = dot(texture(after, uv + o1 * vec2(1.0, -1.0)).rgb, W);
-        float ml = dot(texture(after, uv + o1 * vec2(-1.0, 0.0)).rgb, W);
-        float mr = dot(texture(after, uv + o1 * vec2(1.0, 0.0)).rgb, W);
-        float bl = dot(texture(after, uv + o1 * vec2(-1.0, 1.0)).rgb, W);
-        float bc = dot(texture(after, uv + o1 * vec2(0.0, 1.0)).rgb, W);
-        float br = dot(texture(after, uv + o1 * vec2(1.0, 1.0)).rgb, W);
+        float tl = dot(texture(after, cb(uv + o1 * vec2(-1.0, -1.0))).rgb, W);
+        float tc = dot(texture(after, cb(uv + o1 * vec2(0.0, -1.0))).rgb, W);
+        float tr = dot(texture(after, cb(uv + o1 * vec2(1.0, -1.0))).rgb, W);
+        float ml = dot(texture(after, cb(uv + o1 * vec2(-1.0, 0.0))).rgb, W);
+        float mr = dot(texture(after, cb(uv + o1 * vec2(1.0, 0.0))).rgb, W);
+        float bl = dot(texture(after, cb(uv + o1 * vec2(-1.0, 1.0))).rgb, W);
+        float bc = dot(texture(after, cb(uv + o1 * vec2(0.0, 1.0))).rgb, W);
+        float br = dot(texture(after, cb(uv + o1 * vec2(1.0, 1.0))).rgb, W);
         float gx = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl);
         float gy = (bl + 2.0 * bc + br) - (tl + 2.0 * tc + tr);
         float e = length(vec2(gx, gy));
-        vec4 n = texture(after, uv);
+        vec4 n = texture(after, cb(uv));
         float lum = dot(n.rgb, W);
         float far = length(max(origin, size - origin));
         float dist = clamp(length(px - origin) / far, 0.0, 1.0);
@@ -117,17 +122,17 @@ void main() {
         float ord = 0.60 * dist + 0.25 * (1.0 - lum) + 0.15 * (1.0 - clamp(e * 3.0, 0.0, 1.0));
         float front = mix(-0.08, 1.08, clamp((t - 0.18) / 0.82, 0.0, 1.0));
         float k = smoothstep(front + 0.03, front - 0.03, ord + wob);
-        vec4 c = mix(texture(before, uv), n, k);
+        vec4 c = mix(texture(before, ca(uv)), n, k);
         c.rgb = mix(c.rgb, vec3(1.0), 0.5 * edge * (1.0 - k) * env);
         fragColor = c * qt_Opacity;
     } else {
         // ── subject ─────────────────────────────────────────────────────
-        vec4 m = texture(order, uv);
+        vec4 m = texture(order, cb(uv));
         // An organic front: the order nudged by a little noise per 4 px block.
         float wob = (hash1(floor(px / 4.0)) - 0.5) * 0.025;
         float front = mix(-0.06, 1.06, t);
         float k = smoothstep(front + 0.02, front - 0.02, m.r + wob);
-        vec4 c = mix(texture(before, uv), texture(after, uv), k);
+        vec4 c = mix(texture(before, ca(uv)), texture(after, cb(uv)), k);
         // The line along the subject's outline, drawn in the first 40 %.
         float draw = sin(PI * clamp(t / 0.4, 0.0, 1.0));
         float line = smoothstep(0.82, 0.97, m.g) * draw;

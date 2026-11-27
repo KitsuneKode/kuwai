@@ -480,6 +480,7 @@ Singleton {
     readonly property var easeInOut: [0.77, 0, 0.175, 1, 1, 1]
     readonly property var easeDrawer: [0.32, 0.72, 0, 1, 1, 1]
     readonly property var easeSine: [0.37, 0, 0.63, 1, 1, 1]
+    readonly property var easeLinear: [0, 0, 1, 1, 1, 1]
     readonly property var easeIn: [0.55, 0.085, 0.68, 0.53, 1, 1]
     function innerRadius(outer, inset) { return Math.max(4, Math.round(outer - inset)); }
     readonly property int durInstant: 80
@@ -526,7 +527,9 @@ Singleton {
     readonly property int ringDrawMs: 480       // a ring drawing itself closed
     readonly property int swingMs: durGentle          // a bell's damped swing, all of it
     readonly property int breathOutMs: 1100
-    readonly property int wallRevealMs: 700
+    readonly property int wallRevealMs: 1100
+    readonly property int wallCutMs: 1400
+    readonly property int wallFadeMs: 120
     readonly property int handoffMs: 30          // one swap's new content waits this long for the old to start leaving
     readonly property int settleMs: durSettle          // settling into a new place or size, not arriving: a surface resizing to fit, a pulled one let go, a farewell undone
     readonly property int kickMs: durInstant             // the quick first half of a there-and-back: a rubber band's stretch, a typed dot's pop, a bump, a miss
