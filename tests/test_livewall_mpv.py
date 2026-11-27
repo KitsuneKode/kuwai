@@ -57,7 +57,7 @@ def test_play_starts_one_player_per_screen_then_stop_ends_it(tmp_path):
     assert wait_for(log, "mpvpaper")
     line = log.read_text()
     assert f"input-ipc-server={sock}/mpvpaper-DP-3.sock" in line and "no-audio" in line
-    assert ("hwdec=vaapi-copy" in line or "hwdec=no" in line) and "hwdec=auto" not in line
+    assert ("hwdec=vaapi-copy" in line or "hwdec=nvdec-copy" in line or "hwdec=no" in line) and "hwdec=auto" not in line
     assert f"DP-3 {video}" in line and " pause " not in line + " "
     pid = int((sock / "mpvpaper-DP-3.pid").read_text())
     assert Path(f"/proc/{pid}/comm").read_text().strip() == "mpvpaper"

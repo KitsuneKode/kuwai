@@ -38,7 +38,7 @@ mpv_detect_hwdec() {
             0x10de) MPV_HWDEC="hwdec=nvdec-copy"; return 0 ;;
         esac
     done
-    MPV_HWDEC="hwdec=auto-copy-safe"
+    MPV_HWDEC="hwdec=no"
 }
 mpv_detect_hwdec
 MPV_OPTS="no-audio loop $MPV_HWDEC panscan=1.0 input-ipc-server=$SOCK_PREFIX.sock"
