@@ -22,4 +22,6 @@ def test_the_lock_osd_brightness_watcher_is_expected():
 
 def test_other_brightness_watchers_are_still_strays():
     assert not matches("/usr/bin/python3 /home/u/.local/share/kuwai/lib/brightness/brightness-client.py watch --part waybar ")
+    assert not matches("/usr/bin/python3 /home/u/.local/share/kuwai/lib/brightness/brightness-client.py watch --part osd2 ")
+    assert not matches("/usr/bin/python3 /home/u/.local/share/kuwai/lib/brightness/brightness-client.py watch --part osd extra ")
     assert not matches("/usr/bin/python3 /home/u/.local/share/kuwai/lib/brightness/brightness-client.py watch ")
