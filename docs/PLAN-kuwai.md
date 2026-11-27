@@ -5,6 +5,50 @@ they land. User wants: extremely secure, premium, tasteful, fast, Apple-grade.
 
 **2026-11-16: the order of work toward a public launch is in [PLAN-launch.md](PLAN-launch.md)** (in-flight worktrees, the 12 reported issues, references, pstack verification, clips).
 
+## VISUALS + HEX PASS (2026-11-27, evening) — six reviews
+
+Reviews: Grok 4.7 (lock/login), Composer 2.5 (screensavers), Neon 4 medium
+(wallpapers, live), Sonnet 5.5 (the whole visual journey), Sol 6.2 (cost and
+correctness), Neon 4 high (Hex for voxtype/shuush; Hex is MIT).
+Landed: README clips (docs/media/clips, recorded live on an empty workspace,
+nothing personal); greeter plain error + 8 s launch timeout; lock hides a hidden
+message's title, lock art only from the local cache; theme pins sha1:/sha256: +
+a named User-Agent; live-wallpaper GPU decode on AMD/NVIDIA; wallpaper change
+'Lines' (Sobel contour, no model); lock keeps colour (saturation 0.55); Still
+saver settles; shuush: browser site → profile by title, rules never touch
+code/links/paths/vocabulary.
+
+Next, by severity then value:
+- [ ] P1 lock: logind suspend releases its inhibitor only on a confirmed lock and
+      reacquires on PrepareForSleep(false) (Sol 1); a crash while locked always
+      has a locker (marker written before the lock; standalone locker in the
+      failure unit) (Sol 2).
+- [ ] P1 login: first PAM question may not be the password (fingerprint): show
+      the real prompt, submit only to a password prompt (Grok 1); lockout
+      countdown on the lock (faillock, from shell-auth) (Grok 2).
+- [ ] Lock: a sampled plate behind media and notifications (Grok 3); next event
+      on the lock, title only under the privacy rule (Grok 4); dismissing a
+      hidden or code notification needs an unlock (Grok 5).
+- [ ] One ClockFace for lock, login and saver (Sonnet 3); login ClockGround zone.
+- [ ] Saver as a real idle step: saver → fade → lock, default Still with the
+      current wallpaper (Sonnet 4); long-idle ladder: after an hour, clock on
+      black or DPMS (Composer 1); photo shuffle (Composer 2); one throttled GLSL
+      style (Composer 3); a quiet media pulse (Composer 5).
+- [ ] Live wallpaper: Qt fallback obeys the 10 s release (Sol 4); per-connector
+      mpvpaper ops serialized, success only when playing (Sol 5); DPMS state from
+      the compositor (Sol 6); a still frame under a paused live wallpaper (Neon).
+- [ ] Wallpapers: replace or mark the 11 unlicensed theme sets (Neon; Sonnet's
+      per-theme picks); wallcheck --default gate in tests; 'Get more' packs with
+      pins; day/night variants via K.sun_hours; per-monitor wallpapers.
+- [ ] WallFx: fixed participant set, abandon on hotplug or a decode error,
+      canonical path match (Sol 11); picture and accent land together (Sonnet 7).
+- [ ] Voxtype (Hex): multi-MIME clipboard snapshot + restore only if unchanged;
+      adaptive release tail + warm mic with pre-roll; queued dictations with
+      ordered delivery; per-entry audio + 'Re-clean' in Studio; 'my clipboard' /
+      'rewrite this' / 'stop dictation' phrases; usage rollup with real WPM.
+- [ ] Earlier: Activity tab; API keys → keyring; Docker/journald in Caches.
+- [ ] Boot: a minimal Plymouth theme (black, one accent ring) (Sonnet 8).
+
 ## INSPIRATION PASS (2026-11-27) — Clove and pocket-dots, with Neon 4 and Sol 6.2
 
 Landed: Night Shift's switch starts hyprsunset itself; the focused border at half
