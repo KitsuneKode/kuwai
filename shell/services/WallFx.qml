@@ -35,6 +35,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.config
+import "wallOutcome.mjs" as Outcome
 
 Singleton {
     id: root
@@ -59,6 +60,8 @@ Singleton {
     property bool toLive: false
     property var frozen: ({})
     property var queued: null
+    property var shownBefore: ({})
+    property string failure: ""
 
     function play(path, start, live) {
         if (!path) return;
@@ -69,7 +72,9 @@ Singleton {
         // Stream callbacks from a cancelled transition can still arrive.
         // Allow the next wallpaper through immediately while they drain.
         if (liveProbe.running || query.running || check.running || mapLookup.running || Theme.reduceMotion) { start(); return; }
+        verifyLater.stop();
         toLive = !!live;
+        shownBefore = ({}); failure = "";
         next = path; startFn = start; ready = 0; t = 0; before = ({}); known = false; swapped = false; needMap = false; fade = 0;
         startedAt = Date.now();
         mapPath = ""; seed = Math.random() * 100;
@@ -94,6 +99,7 @@ Singleton {
         cancelTransition();
         lastRun = "fallback: " + why;
         if (start) start();
+        verify();
         drain();
     }
     function drain() {
@@ -138,6 +144,7 @@ Singleton {
                 if (root.phase !== "loading") return;
                 const m = root.parse(text);
                 if (!Object.keys(m).length) { if (root.phase === "loading") root.bail("awww shows nothing"); return; }
+                root.shownBefore = root.parse(text);
                 for (const k in root.frozen) m[k] = root.frozen[k];
                 root.before = m;
                 root.known = true;
@@ -280,6 +287,7 @@ Singleton {
         startFn = null;
         liveHeld = false;
         lastRun = "forced: " + why;
+        verify();
         after.restart();
     }
     Timer { id: after; interval: 300; onTriggered: { root.cancelTransition(); root.drain(); } }
@@ -287,8 +295,38 @@ Singleton {
         lastRun = how + " (" + mode + ") " + ((Date.now() - startedAt) / 1000).toFixed(2) + " s";
         const map = needMap ? next : "";
         cancelTransition();
+        verify();
         if (queued) drain();
         else if (map) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", map]);
+    }
+    function unreadable(path) {
+        Qt.callLater(() => {
+            if (root.phase !== "loading" || root.next !== path) return;
+            root.failure = "unreadable";
+            root.bail("can't read the new picture");
+        });
+    }
+    function verify() {
+        if (toLive || !next || !Object.keys(shownBefore).length) return;
+        verifier.path = next; verifier.before = shownBefore; verifier.why = failure; verifier.tries = 0;
+        verifyLater.restart();
+    }
+    function verified(text) {
+        const wanted = (String(text).match(/^kuwai-wanted (.*)$/m) || ["", ""])[1].trim();
+        if (!Outcome.unchanged(verifier.before, parse(text), wanted)) return;
+        if (++verifier.tries < 4) { verifyLater.restart(); return; }
+        lastRun += " · unchanged";
+        Moments.show({ kind: "note", glyph: "\u{f02ee}", label: Outcome.sentence(verifier.why), value: "", ring: -1, tone: Theme.textPrimary }, 3200);
+    }
+    Timer { id: verifyLater; interval: 2500; onTriggered: if (root.phase === "" && !verifier.running) verifier.running = true }
+    Process {
+        id: verifier
+        property string path: ""
+        property var before: ({})
+        property string why: ""
+        property int tries: 0
+        command: ["sh", "-c", 'awww query 2>/dev/null; printf "kuwai-wanted %s\\n" "$(realpath -e -- "$1" 2>/dev/null)"', "sh", path]
+        stdout: StdioCollector { onStreamFinished: root.verified(text) }
     }
     Timer { id: watchdog; interval: 8000; onTriggered: if (root.phase !== "") { if (root.startFn) root.bail("stuck before the hand-off"); else root.force("stuck"); } }
 
@@ -361,7 +399,10 @@ Singleton {
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     cache: false
-                    onStatusChanged: w.check()
+                    onStatusChanged: {
+                        if (status === Image.Error) { root.unreadable(root.next); return; }
+                        w.check();
+                    }
                 }
                 // The subject map (mode subject): small, read at the screen's size.
                 Image {
