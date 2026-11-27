@@ -161,7 +161,7 @@ Scope {
                 running: root.video !== "" && !root.obscured && !slot.shouldPlay && !slot.released
                 onTriggered: slot.released = true
             }
-            readonly property string want: root.video === "" || root.obscured || (slot.released && !shouldPlay) ? "stop" : shouldPlay ? "play" : "pause"
+            readonly property string want: root.video === "" || root.obscured || (slot.released && !shouldPlay) ? "stop" : shouldPlay && !WallFx.liveHeld ? "play" : "pause"
 
             // Window geometry (lastIpcObject) is a snapshot: refresh it a
             // moment after windows open, close or move.

@@ -38,7 +38,8 @@ def test_wallpapers_step_and_wrap(tmp_path):
 def test_live_and_saver_step(tmp_path):
     bin_, log, env = setup(tmp_path, {"hyde": False, "wallpapers": []}, ["1-a.mp4", "2-b.mp4"], last="/lib/2-b.mp4")
     subprocess.run([str(bin_ / "kuwai-wallstep"), "live", "next"], env=env, timeout=30)
-    assert "wall play 1-a.mp4" in log.read_text()
+    assert "qs ipc -p" in log.read_text() and "call wallfx live 1-a.mp4" in log.read_text(), "the shell plays the change into it"
+    assert "wall play" not in log.read_text()
     (tmp_path / "style").write_text("dusk")
     subprocess.run([str(bin_ / "kuwai-wallstep"), "saver", "prev"], env=env, timeout=30)
     assert (tmp_path / "style").read_text() == "still"

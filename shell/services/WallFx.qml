@@ -55,9 +55,13 @@ Singleton {
     property real fade: 0
     property bool swapped: false
     property bool needMap: false
+    property bool liveHeld: false
+    property bool toLive: false
+    property var frozen: ({})
 
-    function play(path, start) {
+    function play(path, start, live) {
         if (!path) return;
+        toLive = !!live;
         if (phase !== "") {
             cancelTransition();
             start();
@@ -70,7 +74,7 @@ Singleton {
         startedAt = Date.now();
         mapPath = ""; seed = Math.random() * 100;
         phase = "loading";
-        liveThumb = "";
+        liveThumb = ""; frozen = ({});
         liveProbe.running = true;
         mapLookup.command = [Paths.bin + "/kuwai-wallmap", "--cached", path];
         mapLookup.running = true;
@@ -79,6 +83,7 @@ Singleton {
     }
     function cancelTransition() {
         phase = "";
+        liveHeld = false;
         startFn = null;
         loadLimit.stop(); watchdog.stop(); settleLimit.stop();
         handOff.stop(); go.stop(); recheck.stop(); landed.stop(); after.stop();
@@ -103,8 +108,19 @@ Singleton {
     property string liveThumb: ""
     Process {
         id: liveProbe
-        command: ["sh", "-c", 's="${XDG_STATE_HOME:-$HOME/.local/state}/live-wallpaper"; [ -f "$s/enabled" ] && pgrep -x mpvpaper >/dev/null || exit 1; f=$(basename "$(cat "$s/last")"); t="${XDG_CACHE_HOME:-$HOME/.cache}/kuwai/live-thumbs/${f%.*}.jpg"; [ -s "$t" ] && printf %s "$t"']
-        stdout: StdioCollector { onStreamFinished: root.liveThumb = text.trim() }
+        command: [Paths.bin + "/kuwai-livewall", "freeze"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const m = {};
+                for (const l of text.split("\n")) {
+                    const x = l.match(/^(\S+) (\/.+)$/);
+                    if (x) m[x[1]] = x[2];
+                }
+                root.frozen = m;
+                root.liveThumb = Object.keys(m).length ? "1" : "";
+                if (root.liveThumb) root.liveHeld = true;
+            }
+        }
         onExited: if (root.phase === "loading") query.running = true
     }
     Process {
@@ -115,7 +131,7 @@ Singleton {
                 if (root.phase !== "loading") return;
                 const m = root.parse(text);
                 if (!Object.keys(m).length) { if (root.phase === "loading") root.bail("awww shows nothing"); return; }
-                if (root.liveThumb) for (const k in m) m[k] = root.liveThumb;
+                for (const k in root.frozen) m[k] = root.frozen[k];
                 root.before = m;
                 root.known = true;
             }
@@ -154,7 +170,11 @@ Singleton {
         id: handOff
         interval: 16
         onTriggered: {
-            if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
+            if (root.toLive) {
+                root.liveHeld = true;
+                if (root.startFn) root.startFn();
+                root.startFn = null;
+            } else if (root.liveThumb) Quickshell.execDetached([Paths.bin + "/kuwai-wall", "off"]);
             swap.command = ["awww", "img", root.next, "--transition-type", "none"];
             swap.running = true;
             go.restart();
@@ -186,6 +206,25 @@ Singleton {
             else if (!swap.running) check.running = true;
         }
     }
+    function playLive(name) {
+        if (!name || poster.running) return;
+        poster.name = name;
+        poster.command = [Paths.bin + "/kuwai-wall", "poster", name];
+        poster.running = true;
+    }
+    Process {
+        id: poster
+        property string name: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const p = text.trim();
+                const name = poster.name;
+                const start = () => Quickshell.execDetached([Paths.bin + "/kuwai-wall", "play", name]);
+                if (p) root.play(p, start, true);
+                else start();
+            }
+        }
+    }
     property int frames: 0
     property real worstMs: 0
     property real fps: 0
@@ -204,6 +243,7 @@ Singleton {
         phase = "leaving";
         if (startFn) startFn();
         startFn = null;
+        liveHeld = false;
         fadeOut.restart();
     }
     // At t = 1 the layer is the new picture; it may go once awww is too.
@@ -246,6 +286,7 @@ Singleton {
             root.play(path, () => Quickshell.execDetached(Hyde.present ? ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-themes", "wallpaper", path]
                                                                       : ["env", "WALLPAPER_AWWW_TRANSITION_DEFAULT=none", Paths.bin + "/kuwai-look", "set-wallpaper", path]));
         }
+        function live(name: string): void { root.playLive(name); }
         function stats(): string { return JSON.stringify({ phase: root.phase, lastRun: root.lastRun, frames: root.frames, fps: Math.round(root.fps), worstMs: Math.round(root.worstMs) }); }
     }
 

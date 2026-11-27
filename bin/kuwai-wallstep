@@ -76,7 +76,8 @@ def live(step):
     if not pick:
         say("No live wallpapers yet")
         return 1
-    run([os.path.join(BIN, "kuwai-wall"), "play", pick])
+    if ipc("wallfx", "live", pick).returncode != 0:
+        run([os.path.join(BIN, "kuwai-wall"), "play", pick])
     say("Live wallpaper: " + os.path.splitext(pick)[0].split("-", 1)[-1].replace("-", " "))
     return 0
 
