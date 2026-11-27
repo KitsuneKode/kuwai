@@ -6,8 +6,8 @@ pragma Singleton
 // inhibit) is respected; while music plays the machine never sleeps on its
 // own (it still locks: you walked away).
 //
-//   on charger   dim 4:00 · fade 4:45 · lock 5:00 · screens off 5:30 · sleep never
-//   on battery   dim 2:00 · fade 2:45 · lock 3:00 · screens off 3:30 · sleep 15:00
+//   on charger   dim 3:00 · saver 3:00 · fade 4:45 · lock 5:00 · screens off 5:30
+//   on battery   dim 2:00 · saver 2:30 · fade 2:45 · lock 3:00 · screens off 3:30 · sleep 15:00
 //
 // Before any sleep (lid, power menu, `systemctl suspend`) the screen locks
 // first: a logind "delay" inhibitor is held and let go only once the lock is
@@ -21,6 +21,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.UPower
 import qs.config
+import "idleLadder.mjs" as Ladder
 
 Singleton {
     id: root
@@ -74,6 +75,9 @@ Singleton {
     readonly property int lockAfter: battery ? Settings.idleLockBattery : Settings.idleLockAc
     readonly property int offAfter: battery ? Settings.idleOffBattery : Settings.idleOffAc
     readonly property int sleepAfter: battery ? Settings.idleSleepBattery : Settings.idleSleepAc
+    readonly property bool saverAllowed: Ladder.saverAllowed(Settings.screensaverWhen, Caffeine.on)
+    readonly property int saverAfter: Ladder.saverAfter(Settings.screensaverMins, lockAfter, Caffeine.on || !enabled)
+    readonly property string saverAfterText: Ladder.afterText(saverAfter)
     // Caffeine, or you're dictating: talking to voxtype is no key or pointer
     // input, and the screen dimmed and locked mid-sentence. (voxtype's own
     // systemd-inhibit only spoke to hypridle; these monitors don't read it.)
@@ -114,7 +118,7 @@ Singleton {
     // ── Fade, 15 s before the lock: any input cancels it (modules/lock)
     IdleMonitor {
         enabled: root.enabled && !root.held && root.lockAfter > 20
-        timeout: root.lockAfter - 15
+        timeout: root.lockAfter - Ladder.fadeLead
         respectInhibitors: true
         property bool fading: false
         onIsIdleChanged: {

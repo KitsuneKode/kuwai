@@ -112,7 +112,7 @@ def live(step):
 
 
 def saver(step):
-    cur = run([os.path.join(BIN, "kuwai"), "get", "screensaverStyle"]).stdout.strip() or "dusk"
+    cur = run([os.path.join(BIN, "kuwai"), "get", "screensaverStyle"]).stdout.strip() or "still"
     pick = turn(STYLES, cur, step)
     run([os.path.join(BIN, "kuwai"), "set", "screensaverStyle", pick])
     say("Screensaver: " + pick.capitalize())

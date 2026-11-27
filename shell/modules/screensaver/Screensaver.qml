@@ -1,12 +1,12 @@
-// The screensaver. While Caffeine keeps the machine awake nothing dims or
-// locks, so after Settings.screensaverMins idle minutes this fades in: your
-// live wallpaper full screen (or the still wallpaper, slowly drifting), a
-// large clock that moves a little every minute (no burn-in), the date and
-// what's playing. Any key, click, scroll or move dismisses it; that first
-// input is swallowed, so it never lands on a window.
+// The screensaver: a step of the idle ladder (services/Idle: saver → fade →
+// lock, the lock at its usual time), and while Caffeine keeps the machine
+// awake it comes after Settings.screensaverMins alone. It fades in your
+// wallpaper, still (the default) or live, a scene or a film, with a large
+// clock that moves a little every minute (no burn-in), the date and what's
+// playing. Any key, click, scroll or move dismisses it, swallowed.
 //
-//   Settings.screensaverWhen: "caffeine" (default: only while Caffeine is on)
-//                             "always"   (also before the idle lock)
+//   Settings.screensaverWhen: "always"   (default: before the fade and lock)
+//                             "caffeine" (only while Caffeine is on)
 //                             "off"
 // Never over a fullscreen window (a film with Caffeine on stays a film).
 // `kuwai screensaver` shows it now.
@@ -25,8 +25,7 @@ import qs.services
 Scope {
     id: root
 
-    readonly property string when: Settings.screensaverWhen || "caffeine"
-    readonly property bool allowed: when === "always" || (when === "caffeine" && Caffeine.on)
+    readonly property bool allowed: Idle.saverAllowed
     property bool forced: false
     onFullscreenAnywhereChanged: if (fullscreenAnywhere) { forced = false; wakeGrace = false; }
     // hasFullscreen is live (Hyprland events). lastIpcObject was a snapshot
@@ -47,7 +46,7 @@ Scope {
         // Not while you're dictating: speaking is no input, and the saver
         // came up mid-sentence.
         enabled: root.allowed && !Activities.voxBusy
-        timeout: Math.max(1, Settings.screensaverMins || 3) * 60
+        timeout: Idle.saverAfter
         // Caffeine is an inhibitor of our own: idle still counts here.
         respectInhibitors: false
         onIsIdleChanged: {
@@ -82,7 +81,7 @@ Scope {
         onLoadFailed: root.video = ""
     }
     readonly property bool useVideo: video !== "" && (!UPower.onBattery || Settings.liveOnBattery)
-    readonly property string style: Settings.screensaverStyle || "dusk"   // dusk · borealis · night · live · still
+    readonly property string style: Settings.screensaverStyle || "still"   // "still" · "live" · "dusk" · "borealis" · "night"
     // Night: a dark film from ~/.local/share/kuwai-data/screensavers (seamless
     // half-speed loops, ~3–7 Mbit/s: cheap to decode, made by kuwai's setup).
     readonly property string clipDir: Quickshell.env("HOME") + "/.local/share/kuwai-data/screensavers"

@@ -325,10 +325,10 @@
     {
       "key": "screensaverWhen",
       "type": "string",
-      "default": "caffeine",
+      "default": "always",
       "enum": [
-        "caffeine",
         "always",
+        "caffeine",
         "off"
       ],
       "maxLength": 512,
@@ -357,7 +357,7 @@
     {
       "key": "screensaverStyle",
       "type": "string",
-      "default": "dusk",
+      "default": "still",
       "enum": [
         "dusk",
         "borealis",
