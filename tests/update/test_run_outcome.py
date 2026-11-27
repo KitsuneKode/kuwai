@@ -21,17 +21,19 @@ def m(tmp_path, monkeypatch):
     monkeypatch.setattr(mod, "EVENTS", str(tmp_path / "events.jsonl"))
     monkeypatch.setattr(mod, "APPROVED", str(tmp_path / "approved.json"))
     monkeypatch.setattr(mod, "TRUSTED", str(tmp_path / "trusted.json"))
+    monkeypatch.setattr(mod, "HELD", str(tmp_path / "held.json"))
     monkeypatch.setattr(mod.os, "statvfs", lambda p: SimpleNamespace(f_bavail=10 ** 9, f_frsize=4096))
     monkeypatch.setattr(mod, "sh", lambda cmd, **kw: SimpleNamespace(stdout="", returncode=0))
     monkeypatch.setattr(mod.shutil, "which", lambda x: None)
+    monkeypatch.setattr(mod, "expected_plan", lambda hold=(): ["linux 7.3-1"])
     mod.calls = []
 
     class FakeRoot:
         def __init__(self, R):
             self.helper, self.p, self.prompts, self.transaction = True, True, 1, ["linux 7.3-1"]
 
-        def open(self, ops=()):
-            mod.opened = list(ops)
+        def open(self, binding=None):
+            mod.opened = dict(binding or {})
             return 0
 
         def run(self, op, **kw):
@@ -58,7 +60,8 @@ def test_upgrade_ok_then_deps_fail_is_partial_not_nothing(m):
     assert m.run_locked(["--repo", "--aur", "fixture"]) == 1
     done, errors = m.done()
     assert m.calls == ["upgrade", "deps"], "upgrade and its build deps are separate, recorded steps"
-    assert m.opened == ["upgrade", "deps", "install"], "the password prompt names every operation the run may do, and no other"
+    assert m.opened == {"upgrade": m.plan_token(["linux 7.3-1"]), "hold": [], "deps": ["meson"], "install": ["fixture"]}, \
+        "the password prompt names the whole transaction the run may do, and no other"
     assert done["repo"] is True and done["deps"] is False and done["partial"] is True
     assert [p["id"] for p in done["phases"]] == ["repo", "deps"]
     assert done["phases"][0]["transaction"] == ["linux 7.3-1"]

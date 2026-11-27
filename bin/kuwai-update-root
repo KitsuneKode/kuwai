@@ -3,20 +3,30 @@
 
 kuwai-update starts it once per update as
 
-    pkexec /usr/local/lib/kuwai/kuwai-update-root
+    pkexec /usr/local/lib/kuwai/kuwai-update-root upgrade=N:HEX hold=A,B deps=C,D install=E,F clean-cache=K
 
-from where `kuwai update install-helper` put it: owned by root, writable only by root. It is
-never run from your home folder, which anything running as you could rewrite.
+from where `kuwai update install-helper` put it (root's checked copy of a signed release): owned
+by root, writable only by root. It is never run from your home folder, which anything running as
+you could rewrite.
+
+The command line is the whole transaction, and the password prompt shows it: upgrade=N:HEX is
+how many Arch packages and the sha256 of exactly which "NAME VERSION"s (sorted, one per line);
+hold= the packages left alone; deps= the build dependencies; install= the AUR packages by name;
+clean-cache= how many cached versions stay; pacnew alone allows config file choices. Each named
+operation runs once; a request for anything else, or for something other than what is named, is
+refused before pacman starts.
 
 It reads one JSON request per line on stdin and only ever runs pacman:
 
     {"op": "upgrade", "deps": [PKG...], "hold": [PKG...]}
                                           pacman -Sy, then {"plan": ["NAME VERSION"...]}: the
                                           transaction pacman resolved against the fresh
-                                          databases (replacements and new dependencies too),
-                                          then pacman -Su --noconfirm --needed (--ignore the held
+                                          databases (replacements and new dependencies too).
+                                          Only when that is the one the prompt named:
+                                          pacman -Su --noconfirm --needed (--ignore the held
                                           packages: they stay at the version installed); with deps,
                                           pacman -S --noconfirm --needed --asdeps PKG...
+                                          Otherwise {"rc": 92} and nothing is installed.
     {"op": "deps", "deps": [PKG...]}      pacman -S --noconfirm --needed --asdeps PKG...
     {"op": "install", "files": [{"path": FILE, "sha256": HEX}...]}
                                           pacman -U --noconfirm --needed on copies: each package
@@ -24,7 +34,8 @@ It reads one JSON request per line on stdin and only ever runs pacman:
                                           through a descriptor that refuses links, into a folder
                                           only root can open, and must hash to the digest taken
                                           when it was built, so a file changed or swapped after
-                                          the build is never the one installed
+                                          the build is never the one installed; each one
+                                          must be a package the prompt named
     {"op": "clean-cache", "keep": 2}      paccache -rk<keep> and paccache -ruk0 (0 <= keep <= 5)
     {"op": "pacnew", "items": [{"path": "/etc/X", "action": "keep"|"take"}]}
                                           a config file's .pacnew after an update: keep yours
@@ -58,6 +69,9 @@ PACMAN = "/usr/bin/pacman"
 PACCACHE = "/usr/bin/paccache"
 OUT_DIR = "/run"
 NAME = re.compile(r"^[a-z0-9@_+][a-z0-9@._+-]*$")
+PLAN_LINE = re.compile(r"^\S+ \S+$")
+PLAN_TOKEN = re.compile(r"\d{1,4}:[0-9a-f]{64}")
+PLAN_CHANGED = 92
 PKGFILE = re.compile(r"\.pkg\.tar(\.[a-z0-9]+)?$")
 ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C", "PACMAN_COLOR": "never", "HOME": "/root"}
 
@@ -120,7 +134,24 @@ def resolved(ignore=()):
                            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.TimeoutExpired):
         return []
-    return [l.strip() for l in r.stdout.splitlines() if l.strip() and " " in l.strip()][:2000]
+    return [l.strip() for l in r.stdout.splitlines() if PLAN_LINE.match(l.strip())][:2000]
+
+
+def plan_token(plan):
+    lines = sorted(set(plan))
+    return f"{len(lines)}:{hashlib.sha256(chr(10).join(lines).encode()).hexdigest()}"
+
+
+def package_names(paths):
+    """The package each file is, as pacman reads it from the file itself."""
+    out = []
+    for p in paths:
+        r = subprocess.run([PACMAN, "-Qqp", "--", p], env=ENV, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120)
+        name = r.stdout.strip()
+        if r.returncode != 0 or not NAME.match(name):
+            raise ValueError(f"{os.path.basename(p)} isn't a package pacman can read")
+        out.append(name)
+    return out
 
 
 def clean_cache(req):
@@ -285,10 +316,48 @@ def pacnew(req):
 OPS = frozenset({"upgrade", "deps", "pacnew", "install", "clean-cache"})
 
 
-def allowed_ops(argv):
-    """The operations named on pkexec's command line (what the password prompt showed); None if any is unknown or none is named."""
-    ops = set(argv)
-    return ops if ops and ops <= OPS else None
+def prompt_terms(argv):
+    """What pkexec's command line (the password prompt) named: {op: value}; None if anything on
+    it is unknown, repeated or malformed, or it names no operation."""
+    out = {}
+    for arg in argv:
+        op, eq, value = arg.partition("=")
+        if op not in OPS | {"hold"} or op in out:
+            return None
+        if op == "upgrade":
+            if not PLAN_TOKEN.fullmatch(value):
+                return None
+        elif op in ("deps", "install", "hold"):
+            items = value.split(",") if value else []
+            if not items or not all(NAME.match(x) for x in items):
+                return None
+            value = sorted(items)
+        elif op == "clean-cache":
+            if not re.fullmatch(r"[0-5]", value):
+                return None
+            value = int(value)
+        elif eq:
+            return None
+        else:
+            value = True
+        out[op] = value
+    return out if set(out) - {"hold"} else None
+
+
+def as_named(req, op, terms):
+    """The request is the one the prompt named for op, or ValueError."""
+    if op == "upgrade":
+        if sorted(names(req, "hold")) != terms.get("hold", []):
+            raise ValueError("the held packages aren't the ones the password prompt named")
+        deps = names(req)
+        if deps and sorted(deps) != terms.get("deps"):
+            raise ValueError("the build dependencies aren't the ones the password prompt named")
+        if deps:
+            terms.pop("deps")
+    elif op == "deps" and sorted(names(req)) != terms["deps"]:
+        raise ValueError("the build dependencies aren't the ones the password prompt named")
+    elif op == "clean-cache" and req.get("keep", 2) != terms["clean-cache"]:
+        raise ValueError("the cache count isn't the one the password prompt named")
 
 
 def main():
@@ -299,9 +368,10 @@ def main():
     if os.geteuid() != 0 or "PKEXEC_UID" not in os.environ:
         print("kuwai-update-root: run by kuwai-update through pkexec", file=sys.stderr)
         return 2
-    allowed = allowed_ops(sys.argv[1:])
-    if allowed is None:
-        print("kuwai-update-root: name the operations this run may do: " + " ".join(sorted(OPS)), file=sys.stderr)
+    terms = prompt_terms(sys.argv[1:])
+    if terms is None:
+        print("kuwai-update-root: name the transaction this run may do: upgrade=N:HEX hold=… deps=… install=… clean-cache=K pacnew",
+              file=sys.stderr)
         return 2
     uid = int(os.environ["PKEXEC_UID"])
     home = os.path.realpath(pwd.getpwuid(uid).pw_dir)
@@ -310,16 +380,23 @@ def main():
         try:
             req = json.loads(line)
             op = req.get("op")
-            if op not in allowed:
+            if op not in terms or op == "hold":
                 raise ValueError(f"{op!r} wasn't named at the password prompt")
+            as_named(req, op, terms)
+            named = terms.pop(op)
             if op == "upgrade":
                 deps = names(req)
                 hold = names(req, "hold")
                 ignore = ["--ignore", ",".join(hold)] if hold else []
                 rc = pacman(["-Sy"])
                 if rc == 0:
-                    say(plan=resolved(ignore))
-                    rc = pacman(["-Syu", "--noconfirm", "--needed", *ignore])
+                    plan = resolved(ignore)
+                    say(plan=plan)
+                    if plan_token(plan) != named:
+                        say(log="kuwai-update-root: refused: Arch's packages changed after the password prompt named them; nothing was installed")
+                        rc = PLAN_CHANGED
+                    else:
+                        rc = pacman(["-Su", "--noconfirm", "--needed", *ignore])
                 if rc == 0 and deps:
                     rc = pacman(["-S", "--noconfirm", "--needed", "--asdeps", "--", *deps])
             elif op == "deps":
@@ -329,7 +406,11 @@ def main():
             elif op == "install":
                 wanted = files(req, home, uid)
                 with tempfile.TemporaryDirectory(prefix="kuwai-update-root-", dir="/var/tmp" if os.path.isdir("/var/tmp") else None) as d:
-                    rc = pacman(["-U", "--noconfirm", "--needed", "--", *taken(wanted, d, uid)])
+                    copies = taken(wanted, d, uid)
+                    other = sorted(set(package_names(copies)) - set(named))
+                    if other:
+                        raise ValueError("not named at the password prompt: " + ", ".join(other))
+                    rc = pacman(["-U", "--noconfirm", "--needed", "--", *copies])
             elif op == "clean-cache":
                 rc = clean_cache(req)
             else:
