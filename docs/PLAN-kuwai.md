@@ -24,14 +24,27 @@ Outside kuwai: kittymux #61 (Kiro); shuush dictation pass (40 % faster
 post-processing, Re-clean, real WPM, "my clipboard"); voxtype warm mic + queued
 takes + notify-send timeout (reviewed twice, options off by default).
 
+Then, by 02:40: signed releases (two Fable reviews, the real-root container test
+40/40; VERSION 0.2.0), one ClockFace for lock/login/saver with the login's
+ClockGround, Docker and the journal in Caches, per-monitor and day/night
+wallpapers with licensed "Get more" packs, the Hyprland crash on every logout
+(window handlers stand down at hyprland.shutdown; VM: 1 core dump per logout
+→ 0 in 3), ~/.local/bin on the session PATH, kuwai auth unpin after the unit
+is gone. Fresh-install container 55/55; pytest 1113, bun 814, rehearsal 462 frames.
+
 Left:
-- [ ] Signed releases: the re-check's last fixes (receipt of kept copies, umask),
-      then the owner's one-time steps (key → promote → --trust-clone → tag v0.2.0
-      → verify → push → AUR → kuwai setup --system → greeter install → auth pin).
-- [ ] Running: one ClockFace + login ClockGround; Docker/journal in Caches;
-      per-monitor and day/night wallpapers, Get more packs.
+- [ ] The owner's one-time release steps: release-signers/kuwai-release.asc →
+      promote → `kuwai update install-helper --trust-clone` → `kuwai release
+      v0.2.0` → `kuwai setup --verify-only --tag v0.2.0 --source ~/Projects/rice`
+      → push main + tag → AUR PKGBUILD/.SRCINFO → `kuwai setup --verify-only`
+      then `--system --tag v0.2.0` (check the fingerprint 7C78…0270; never plain
+      `kuwai setup` here) → `sudo /usr/local/lib/kuwai/current/greeter/install`
+      → `kuwai auth pin` → `kuwai update install-helper`.
 - [ ] Real hardware only: Plymouth at boot, lock plate and swipe, saver styles,
-      live wallpaper pause/resume, DPMS, Activity Stop/Force quit, warm mic.
+      live wallpaper pause/resume, DPMS, Activity Stop/Force quit, warm mic,
+      per-monitor wallpapers on two screens, Docker prune from Caches.
+- [ ] A greetd login in the fresh VM (a third harness, t3/e9adfe54, drove it;
+      port it to tests/fresh when there's time).
 - [ ] After release: sweep's island panel (option A, thin), kitty pane-title
       default (kittymux), notification centre in the island look, read
       hotwatch captures if the shell gets busy again.
