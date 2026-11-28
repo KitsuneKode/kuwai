@@ -26,7 +26,7 @@ bind("SUPER + CTRL + D", "Dictate (again to stop)", TOGGLE)
 bind("SUPER + SHIFT + F23", "Dictate (again to stop)", TOGGLE)
 bind("SUPER + SHIFT + D", "Cancel dictation", CANCEL .. " now")
 bind("SUPER + CTRL + ALT + D", "Bring back the cancelled dictation",
-	"sh -c 'voxtype record recover 2>/dev/null || \"$1\" -a Dictation \"Nothing to bring back\" \"A cancelled take is kept for 10 minutes when it held 2 seconds of speech\"' sh "
+	"sh -c '{ if command -v shuush >/dev/null; then shuush recover; else voxtype record recover; fi; } 2>/dev/null || \"$1\" -a Dictation \"Nothing to bring back\" \"A cancelled take is kept for 10 minutes when it held 2 seconds of speech\"' sh "
 		.. K.bin .. "/kuwai-notify")
 bind("SUPER + CTRL + SHIFT + D", "Teach a dictation fix", SCRIPTS .. "voxtype_learn.py fix")
 if K.exists(SCRIPTS .. "voxtype-studio.py") then
