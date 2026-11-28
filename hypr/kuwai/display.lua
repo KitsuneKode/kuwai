@@ -624,11 +624,16 @@ hl.on("window.update_rules", function(w)
 		D.reconcile(nil, w)
 	end
 end)
-hl.on("window.destroy", function(w)
-	if K.shutting_down or not w then
+local destroy_pending = false
+hl.on("window.destroy", function()
+	if K.shutting_down or destroy_pending then
 		return
 	end
-	D.reconcile(w)
+	destroy_pending = true
+	hl.timer(function()
+		destroy_pending = false
+		D.reconcile()
+	end, { timeout = 1, type = "oneshot" })
 end)
 K.defer(function()
 	D.reconcile()

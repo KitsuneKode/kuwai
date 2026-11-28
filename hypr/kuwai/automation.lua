@@ -206,13 +206,15 @@ if K.feature("auto_game") then
 		end
 	end
 	hl.on("window.fullscreen", sync)
-	hl.on("window.destroy", function(w)
-		if K.shutting_down then
+	hl.on("window.destroy", function()
+		if K.shutting_down or not gaming then
 			return
 		end
-		if gaming and is_game(w) then
-			sync(nil)
-		end
+		hl.timer(function()
+			if gaming then
+				sync(nil)
+			end
+		end, { timeout = 1, type = "oneshot" })
 	end)
 end
 

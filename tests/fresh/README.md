@@ -22,6 +22,7 @@ Two ways to run it, the same checks (`inside.sh`):
 | greetd starts the login screen, which logs the user in and hands off to their session | **no** | yes |
 | the lock opened by typing the password, a wrong one first | **no** | yes |
 | real logind/PAM session on tty1 | no | yes |
+| logging out through the exit dispatcher and by stopping the session (Restart, Shut Down) leaves no Hyprland core dump | no | yes |
 | suspend and resume while locked | no | `--suspend` |
 | needs | docker | docker (builds the disk), qemu, KVM |
 

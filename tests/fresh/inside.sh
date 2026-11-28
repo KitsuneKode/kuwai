@@ -383,7 +383,25 @@ sleep 3
 no_orphans() { ! pgrep -u "$U" -f "$STABLE/shell|kuwai-" -a | grep -v 'systemd' | grep -q .; }
 if no_orphans; then pass "nothing of kuwai's keeps running after logout"
 else fail "kuwai helpers outlive the session: $(pgrep -u "$U" -a | grep -iE 'kuwai|qs ' | head -5 | tr '\n' ';')"; fi
+hypr_dumps() { journalctl -b -q --no-pager -o json --output-fields=COREDUMP_PID COREDUMP_UID="$UID_" COREDUMP_COMM=Hyprland | grep -c . || true; }
+sleep 5
+check "Hyprland left no core dump on logout" [ "$(hypr_dumps)" -eq 0 ]
 journalctl -u kuwai-fresh-session --no-pager >"$OUT/session.journal" 2>&1
+
+phase "log out by stopping the session, the way Restart and Shut Down end it (SIGTERM, no exit dispatcher)"
+rm -rf "$RT/hypr"
+SIG=
+systemctl start kuwai-fresh-session.service
+check "a second session starts" wait_for 60 sock_up
+WLD=$(find "$RT" -maxdepth 1 -regex '.*/wayland-[0-9]+' -printf '%f\n' | head -1)
+shell_unit_up() { [ "$(as_user 'systemctl --user is-active kuwai-shell.service' 2>/dev/null)" = active ]; }
+check "the shell runs in the second session" wait_for 60 shell_unit_up
+sleep 5
+systemctl stop kuwai-fresh-session.service
+check "stopping the session ends Hyprland" wait_for 30 gone
+sleep 5
+check "Hyprland left no core dump when its session was stopped" [ "$(hypr_dumps)" -eq 0 ]
+journalctl -u kuwai-fresh-session --no-pager >"$OUT/session-stop.journal" 2>&1
 fi
 
 phase "greeter: greeter/install --yes writes the login screen's config here, then --undo puts it back"

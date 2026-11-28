@@ -80,12 +80,23 @@ clear_modules()
 local K = base_core({ auto_display = true })
 package.loaded['kuwai.core'] = K
 local dp = { name = 'DP-1', width = 1920, height = 1080, available_modes = { { width = 1920, height = 1080, refresh_rate = 120 } } }
-local handlers = reset(K, {
+local handlers, dtimers = reset(K, {
     get_monitors = function() return { dp } end,
 })
 package.loaded['kuwai.core'] = K
 local D = require('kuwai.display')
 assert(type(D) == 'table', 'display fake loads')
+hl.get_windows = function() error('windows touched during shutdown') end
+hl.get_active_window = function() error('active window touched during shutdown') end
+local armed = #dtimers
+handlers['window.destroy']({ address = '0xs', class = 'kitty' })
+handlers['window.destroy']({ address = '0xt', class = 'mpv' })
+assert(#dtimers == armed + 1, 'a destroy before the flag is set (SIGTERM never sends hyprland.shutdown) only arms one timer')
+local walked = 0
+hl.get_windows = function() walked = walked + 1; return {} end
+hl.get_active_window = function() return nil end
+dtimers[#dtimers].fn()
+assert(walked > 0, 'the deferred reconcile runs once the event loop is still going')
 hl.get_windows = function() error('windows touched during shutdown') end
 hl.get_active_window = function() error('active window touched during shutdown') end
 handlers['window.destroy'](nil)
@@ -116,10 +127,13 @@ dofile('hypr/kuwai/automation.lua')
 local game = { address = '0xg', class = 'cs2', fullscreen = 1 }
 handlers['window.fullscreen'](game)
 local before = #dispatched
-K.shutting_down = true
 hl.get_windows = function() error('windows touched during shutdown') end
+local armed_game = #timers
 handlers['window.destroy'](game)
-assert(#dispatched == before, 'automation destroy is a shutdown no-op')
+assert(#timers == armed_game + 1 and #dispatched == before, 'a destroy while gaming defers the window walk to a timer')
+K.shutting_down = true
+handlers['window.destroy'](game)
+assert(#timers == armed_game + 1 and #dispatched == before, 'automation destroy is a shutdown no-op')
 
 clear_modules()
 K = base_core({ remember_place = true })
