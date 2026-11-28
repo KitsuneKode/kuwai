@@ -48,7 +48,7 @@ Item {
 
     // ── What's out ──
     readonly property bool musicLive: !!player && player.isPlaying && Settings.restMedia
-        && ["vox", "rec", "timer", "update"].indexOf(activity) >= 0
+        && ["vox", "meet", "rec", "timer", "update"].indexOf(activity) >= 0
     // ── What state each is in: the light and the glyph say which ──
     //   waiting on you  orange  edge + halo, steady   (the agent's own ring)
     //   error           red     edge + halo, steady   ⚠

@@ -40,7 +40,7 @@ Item {
     // like a live activity. Music doesn't: it plays for hours beside them.
     // "minimal": only what's alive, always. Either way, nearing the top edge,
     // hovering or Super+Alt+I brings the details back.
-    readonly property bool takeover: ["auth", "update", "vox", "rec", "timer", "shazam", "moment"].indexOf(activity) >= 0
+    readonly property bool takeover: ["auth", "update", "vox", "meet", "rec", "timer", "shazam", "moment"].indexOf(activity) >= 0
     // A live activity has the stage: the other activities step aside (it sat
     // between a ring and its own value); privacy dots and warnings stay.
     readonly property bool stageTaken: compact && !mini
@@ -51,7 +51,7 @@ Item {
     // island holds still over them. T3 in the middle (t3centre, while music
     // has the stage) and its mini wordmark were missing: resting on them
     // opened Now Playing.
-    readonly property bool marksHovered: agents.hovered || agents.open || leadSys.hovered || trailSys.hovered || t3mark.hovered || t3centre.hovered || t3word.hovered || missedHover.hovered || micHover.hovered || camHover.hovered
+    readonly property bool marksHovered: agents.hovered || agents.open || leadSys.hovered || trailSys.hovered || t3mark.hovered || t3centre.hovered || t3word.hovered || missedHover.hovered || micHover.hovered || camHover.hovered || meetAsideHover.hovered
     // The mini notch: compact with nothing alive shows the time, and only
     // the time (plus a privacy dot when one is lit). Anything alive (music,
     // a moment, a password, dictation, a recording) takes its place.
@@ -123,7 +123,7 @@ Item {
     implicitHeight: 32
     readonly property int gap: 22
     // Activities whose value sits beside their icon when the full row shows.
-    readonly property bool joined: !compact && ["update", "vox", "auth", "rec", "timer"].indexOf(activity) >= 0
+    readonly property bool joined: !compact && ["update", "vox", "meet", "auth", "rec", "timer"].indexOf(activity) >= 0
     // Paused a while (10 min): the music leaves the notch until it plays
     // again (a dim cover and a still waveform sat there all afternoon).
     readonly property bool restMusic: bar.player && Settings.restMedia && !!Media.active && (Media.playing || !pauseStale)
@@ -157,6 +157,7 @@ Item {
         const line = s => { s = String(s || "").trim(); return s.length > 70 ? s.slice(0, 69) + "…" : s; };
         if (activity === "update") return [Updates.phaseLabel || "Updating", line(Updates.currentLine)].filter(x => x).join(" · ") + " · click for details";
         if (activity === "vox") return Activities.voxListening ? "Dictating · click to finish · right-click to cancel" : "Writing out what you said…";
+        if (activity === "meet") return (Meeting.paused ? "Meeting paused · right-click to resume" : "Recording a meeting · right-click to pause") + " · click for the transcript";
         if (activity === "auth") return "A password is needed · click to bring it here";
         if (activity === "rec") return "Recording " + (Clipboard.recTarget || "the screen") + " · click to stop";
         if (activity === "timer" && Timers.next) return Timers.next.label + " · " + timerLeft + " left" + (Timers.timers.length > 1 ? " · " + (Timers.timers.length - 1) + " more" : "") + " · right-click to cancel";
@@ -172,6 +173,7 @@ Item {
     Accessible.name: activity === "moment" && Moments.now ? [Moments.now.label, Moments.now.value].filter(x => x).join(", ")
         : activity === "auth" ? "A password is needed"
         : activity === "vox" ? "Dictation"
+        : activity === "meet" ? (Meeting.paused ? "Meeting paused, " : "Recording a meeting, ") + Meeting.clock(rest.meetNow)
         : activity === "rec" ? "Screen recording"
         : activity === "timer" && Timers.next ? Timers.next.label + ", " + timerLeft + " left"
         : activity === "update" ? "Updating"
@@ -186,6 +188,7 @@ Item {
         if (activity === "update") { Island.open("updates", bar.screenName, "pointer", "island"); return; }
         if (activity === "rec") { Clipboard.recordKey(); return; }
         if (activity === "vox") { Activities.voxToggle(); return; }
+        if (activity === "meet") { Meeting.openOn(bar.screenName); return; }
         if (activity === "shazam" && Activities.shazamFound) { Activities.shazamOpen(); return; }
         if (activity === "media") { Island.open("media", bar.screenName, "pointer", "island"); return; }
         bar.full = true; bar.grown = true;
@@ -195,6 +198,7 @@ Item {
     readonly property string activity: Island.authPending ? "auth"
         : Moments.now ? "moment"
         : Activities.voxActive ? "vox"
+        : Meeting.active ? "meet"
         : Clipboard.recSince > 0 ? "rec"
         : Timers.next ? "timer"
         : Updates.running ? "update"
@@ -241,6 +245,12 @@ Item {
     }
     NumberAnimation { id: actIn; target: rest; property: "actReveal"; to: 1; duration: Theme.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
+    property real meetNow: Date.now()
+    Timer {
+        running: Meeting.active && rest.onScreen
+        interval: 1000; repeat: true; triggeredOnStart: true
+        onTriggered: rest.meetNow = Date.now()
+    }
     property real voxSecs: 0
     Timer {
         running: Activities.voxListening
@@ -399,6 +409,13 @@ Item {
                     loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs
                 }
             }
+            MeetingMark {
+                visible: rest.activity === "meet"
+                anchors.centerIn: parent
+                lead: true
+                moving: rest.onScreen
+                time: false
+            }
             // A warning that hasn't cleared: its mark, in its colour.
             Text {
                 textFormat: Text.PlainText
@@ -448,6 +465,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: rest.activity === "update" ? Math.round(Updates.progress * 100) + "%"
                 : rest.activity === "vox" ? (Activities.voxListening ? Math.floor(rest.voxSecs / 60) + ":" + String(Math.floor(rest.voxSecs % 60)).padStart(2, "0") : "Writing")
+                : rest.activity === "meet" ? Meeting.clock(rest.meetNow)
                 : rest.activity === "auth" ? "Password"
                 : rest.activity === "rec" ? rest.clockOf(rest.recSecs)
                 : rest.activity === "timer" ? rest.timerLeft : ""
@@ -590,6 +608,19 @@ Item {
       x: rest.mini ? (soonLabel.visible ? soonLabel.x + soonLabel.width : clock.x + clock.width) + 12
          : rest.width - width
       spacing: 10
+    MeetingMark {
+        visible: Meeting.active && rest.activity !== "meet"
+        anchors.verticalCenter: parent.verticalCenter
+        lead: true
+        moving: rest.onScreen
+        now: rest.meetNow
+        HoverHandler { id: meetAsideHover; margin: Theme.s2; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: Meeting.openOn(rest.bar.screenName) }
+        Tip { text: (Meeting.paused ? "Meeting paused · " : "Recording a meeting · ") + Meeting.clock(rest.meetNow) + " · click for the transcript"; shown: meetAsideHover.hovered; below: true }
+        Accessible.role: Accessible.Button
+        Accessible.name: (Meeting.paused ? "Meeting paused, " : "Recording a meeting, ") + Meeting.clock(rest.meetNow)
+        Accessible.onPressAction: Meeting.openOn(rest.bar.screenName)
+    }
     Row {
         visible: Activities.micInUse || Activities.camInUse || (Notifs.shareKnown && Notifs.dndMute)
         spacing: 7
@@ -795,6 +826,15 @@ Item {
                 color: Theme.red
                 tabular: true
             }
+            MeetingMark {
+                visible: rest.activity === "meet"
+                anchors.verticalCenter: parent.verticalCenter
+                lead: false
+                line: true
+                bars: Meeting.live && rest.onScreen && !Theme.reduceMotion
+                moving: rest.onScreen
+                now: rest.meetNow
+            }
             Label {
                 visible: rest.activity === "vox"
                 anchors.verticalCenter: parent.verticalCenter
@@ -966,13 +1006,14 @@ Item {
     // A click on an activity acts on it: stop dictation, open the song.
     // (Music: its art and waveform open Now Playing; see musicTap.)
     TapHandler {
-        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "update" || rest.activity === "rec" || rest.activity === "timer" || (rest.activity === "shazam" && !!Activities.shazamFound)
+        enabled: rest.activity === "auth" || rest.activity === "vox" || rest.activity === "meet" || rest.activity === "update" || rest.activity === "rec" || rest.activity === "timer" || (rest.activity === "shazam" && !!Activities.shazamFound)
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onTapped: (point, button) => {
             if (rest.activity === "auth") { Island.summonAuth(rest.bar.screenName); return; }
             if (rest.activity === "update") { Island.open("updates", rest.bar.screenName, "pointer", "island"); return; }
             if (rest.activity === "rec") { Clipboard.recordKey(); return; }
             if (rest.activity === "timer") { if (button === Qt.RightButton && Timers.next) Timers.cancel(Timers.next.id); return; }
+            if (rest.activity === "meet") { if (button === Qt.RightButton) Meeting.togglePause(); else Meeting.openOn(rest.bar.screenName); return; }
             if (rest.activity === "vox") { if (button === Qt.RightButton) Activities.voxCancel(); else Activities.voxToggle(); }
             else Activities.shazamOpen();
         }

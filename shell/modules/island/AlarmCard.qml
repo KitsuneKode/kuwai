@@ -26,7 +26,7 @@ Item {
     required property var item
     required property var bar
     implicitWidth: Theme.cardW
-    implicitHeight: 84
+    implicitHeight: Math.max(84, words.implicitHeight + Theme.s5)
 
     readonly property string kind: item ? item.kind || "" : ""
     readonly property color tone: kind === "timer" ? Theme.green : Theme.orange
@@ -143,7 +143,7 @@ Item {
         Text {
             textFormat: Text.PlainText
             anchors.centerIn: parent
-            text: card.kind === "timer" ? "\u{f012c}" : card.kind === "reminder" ? "\u{f009a}" : "\u{f0020}"
+            text: card.kind === "timer" ? "\u{f012c}" : card.kind === "reminder" ? "\u{f009a}" : card.kind === "meeting" ? "\u{f036c}" : "\u{f0020}"
             font.family: Theme.fontGlyph; font.pixelSize: 24
             color: card.tone
             // The bell swings from its top, where it would hang.
@@ -153,10 +153,12 @@ Item {
 
     // ── What and when ────────────────────────────────────────────────────
     Column {
+        id: words
         anchors { left: mark.right; leftMargin: 14; right: acts.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
         spacing: 3
         Label {
             width: parent.width; elide: Text.ElideRight
+            wrapMode: Text.Wrap; maximumLineCount: 2
             text: card.item ? card.item.title || "" : ""
             size: Theme.tHeadline; weight: Theme.wSemibold
             opacity: card.line1
@@ -164,6 +166,7 @@ Item {
         }
         Label {
             width: parent.width; elide: Text.ElideRight
+            wrapMode: Text.Wrap; maximumLineCount: 2
             text: card.item ? card.item.sub || "" : ""
             size: Theme.tBody; weight: Theme.wMedium; rounded: true
             color: card.tone
@@ -214,9 +217,9 @@ Item {
             Text {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
-                text: acts.a.primary && acts.a.primary[0] === "Done" ? "\u{f012c}" : "\u{f0156}"
+                text: acts.a.primary && acts.a.primary[0] === "Done" ? "\u{f012c}" : card.kind === "meeting" ? "\u{f044a}" : "\u{f0156}"
                 font.family: Theme.fontGlyph; font.pixelSize: 20
-                color: Theme.textPrimary
+                color: card.kind === "meeting" ? Theme.red : Theme.textPrimary
             }
             MouseArea { id: priArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: acts.answer("primary") }
             id: priBtn

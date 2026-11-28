@@ -67,6 +67,7 @@ ShellRoot {
     Blank {}
     Overview {}
     VoxtypeHost {}
+    PrivacyOverFilm {}
     VoxTarget {}
     AssistantOverlay {}
     Shortcuts {}

@@ -22,7 +22,7 @@ def has_runtime_failure(log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'saver'], default='primitives')
+    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'saver', 'meeting'], default='primitives')
     parser.add_argument('--compile-components', action='store_true', help='requires a real PanelWindow backend; otherwise UNQUALIFIED')
     parser.add_argument('--self-test-isolation', action='store_true')
     parser.add_argument('--text-scale', type=float, choices=[1, 1.2, 2], default=1)
@@ -85,6 +85,9 @@ def main():
                 stub.write_text('#!/bin/sh\nexit 99\n')
                 stub.chmod(0o755)
         shutil.copy2(root/'bin/kuwai-settings', helpers/'kuwai-settings')
+        if args.case == 'meeting':
+            shutil.copy2(root/'tests/ui/fixtures/meeting/fake-voxtype', helpers/'voxtype')
+            shutil.copytree(root/'tests/ui/fixtures/meeting', helpers/'meeting-fixtures')
         for name in (staged.get('running', []) if args.case == 'rehearse' and isinstance(staged, dict) else []):
             if '/' not in name and (root/'bin'/name).is_file():
                 (helpers/name).write_text('#!/bin/sh\nexec sleep infinity\n')
@@ -143,7 +146,7 @@ def main():
             print(json.dumps({'status':'FAIL','reason':'native fixture assertion failed','log':str(output/'runtime.log')}))
             return 1
         image = {'island': 'island.png', 'gestures': 'gestures.png', 'clock-ground': 'lock-sky.png', 'saver': 'flow-0.png'}.get(args.case, 'primitives.png')
-        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center') or (output/image).is_file())
+        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'meeting') or (output/image).is_file())
         print(json.dumps({'status':'PASS' if ok else 'UNQUALIFIED','scope':args.backend + (' island layout/input' if args.case == 'island' else ' ' + args.case),
                           'compiledComponents':len(json.loads(env['KUWAI_UI_COMPILE'])), 'output':str(output)}))
         return 0 if ok else 2

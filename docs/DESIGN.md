@@ -208,3 +208,45 @@ moves. A device connecting never pushes one aside. Locked, the lock island
 has the same answers.
 
 ![Alarm, reminder and timer cards](media/island-alarm-cards.gif)
+
+## Meetings (voxtype's meeting mode)
+
+kuwai is voxtype's meeting view host (`services/Meeting.qml`, logic in
+`services/meeting.mjs`). Settings → Island Behaviour → Meetings turns it off,
+and voxtype's own meeting window comes back.
+
+- **Nothing runs at rest.** The daemon's `meeting_state` file and its runtime
+  folder are watched; a reader (`setpriv --pdeathsig KILL -- voxtype meeting
+  watch --json --levels`) runs only while a meeting does, and lets go once it
+  has ended and its summary has arrived (or 10 minutes later).
+- **The live activity** (`island/MeetingMark`): a red dot that breathes, the
+  elapsed time, four level bars, and the latest line ("Dana: …", plain text,
+  cut to the island's room). Paused: orange pause bars, the bars stop.
+  Click: the panel. Right-click: pause or resume.
+- **Dictation and a meeting at once:** dictation has the stage (it is what you
+  are doing this second); the meeting keeps a small mark (● 12:04) beside the
+  status, and the panel says the meeting hears your dictation too. Music steps
+  into its capsule for a meeting as it does for dictation.
+- **Privacy:** the orange mic dot shows for the whole meeting, paused too; over
+  a fullscreen window a single dot (`island/PrivacyOverFilm`, layer
+  `kuwai.privacy`, click-through) sits in the top-right corner. While the
+  screen is shared, transcript lines are hidden in the island and the panel.
+- **The panel** (`island/MeetingPanel`): Now (status, Pause/Resume, Stop, the
+  two meters, the consent notice word for word with OK, speakers, the summary
+  and action items, the transcript following its end) and Meetings (past ones;
+  a meeting opens with Copy, Save as Markdown into Documents/Meetings, and
+  Delete, which takes two presses).
+- **Offers, never recording:** a calendar event with a call link, from a
+  minute before its start to five after, or a call app holding the mic for six
+  seconds (`voxtype meeting suggest --dry-run`, only when the daemon doesn't
+  prompt itself) brings an alarm-style card: the title, "Record this
+  meeting?", Not now · Record. Once per event or call
+  (`~/.local/state/kuwai/meeting-offers.json`); never while meetings are off.
+
+Taken from Hex (anomalyco/hex, MIT; ideas only): the offer's words and its
+two answers ("Q4 sync detected" · Not now · Record), the newest transcript line
+beside the timer in the live capsule rather than a separate window, the
+timer in tabular figures after a status dot, a destructive action that takes a
+second press, and "Copied" said by the button itself instead of a
+toast. Left out: Hex's always-dark dot-scope HUD (the island already is that
+surface) and its separate history window (the panel's Meetings section is it).
