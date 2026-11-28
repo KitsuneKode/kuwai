@@ -47,6 +47,7 @@ Singleton {
         id: inField
         path: root.runtime + "/voxtype/live_in_field"
         watchChanges: true
+        blockLoading: true
         printErrors: false
         onFileChanged: reload()
         onLoaded: root.voxInField = true
@@ -60,6 +61,7 @@ Singleton {
         onLoaded: { root.voxText = text().trim().slice(-160); inField.reload(); }
     }
     function voxToggle() { Quickshell.execDetached(["sh", "-c", 'for d in "$1" "$HOME/Scripts"; do [ -x "$d/voxtype-toggle.sh" ] && exec "$d/voxtype-toggle.sh"; done', "sh", scripts]); }
+    function voxRecheckField() { inField.reload(); }
     function voxCancel() { Quickshell.execDetached(["voxtype", "record", "cancel"]); }
 
     // ── Shazam ───────────────────────────────────────────────────────────

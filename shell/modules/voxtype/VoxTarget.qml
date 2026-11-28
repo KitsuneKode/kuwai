@@ -163,7 +163,7 @@ Scope {
                     property bool want: false
                     onWantedChanged: { if (wanted) settle.restart(); else { settle.stop(); want = false; } }
                     Component.onCompleted: if (wanted) settle.restart()
-                    Timer { id: settle; interval: Theme.enterMs * 2; onTriggered: caption.want = caption.wanted }
+                    Timer { id: settle; interval: Theme.enterMs * 2; onTriggered: { Activities.voxRecheckField(); caption.want = caption.wanted; } }
                     width: Math.min(words.implicitWidth + Theme.s4 * 2, win ? win.w * 0.7 : 0)
                     height: words.implicitHeight + Theme.s2 * 2
                     x: win ? win.x + (win.w - width) / 2 : 0
