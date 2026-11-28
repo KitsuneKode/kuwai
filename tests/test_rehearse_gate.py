@@ -91,6 +91,7 @@ def test_targets_and_panel_size():
 
 def test_a_panel_must_say_something_and_stop_waiting_when_it_failed():
     assert "says-nothing" in rules(dict(frame(), texts=[text("Open", (380, 20, 40, 16))]))
+    assert "says-nothing" not in rules(dict(frame(), texts=[], wordless=True))
     waiting = frame([text("The check didn't finish", (20, 80, 160, 16))], waiting=3)
     assert "waits-forever" in rules(waiting)
     assert "waits-forever" not in rules(dict(waiting, waiting=0))

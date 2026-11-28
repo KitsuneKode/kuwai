@@ -216,7 +216,7 @@ def judge(frame: dict, image=None) -> list[Fault]:
 
     words = [t for t in texts if not is_glyph(t)]
     said = sum(len(t["t"].split()) for t in words)
-    if said < 3:
+    if said < 3 and not frame.get("wordless"):
         add("says-nothing", "fail", "the panel has %s on it: an empty state says what is missing and what to do" % ("no words" if not said else f"{said} word{'s' if said > 1 else ''}"))
     if frame.get("waiting") and any(GAVE_UP.search(t["t"]) for t in words):
         add("waits-forever", "fail", "loading placeholders are still shown beside a message that the loading failed")

@@ -65,7 +65,11 @@ sandbox copy of the shell is made mappable without a compositor, the scope is
 created, `set` puts services in state (`["Notifs", "at", "items.0.popup", true]`
 sets a property of one list entry), `calls` runs a method of the scope once
 (`showBrightness`), `after` assigns its properties once it is up (`"@screens"`
-is every screen's name), and the picture is the window's own pixels.
+is every screen's name, `"@screen"` the first one's, in `calls` too and inside
+objects), and the picture is the window's own pixels. A window must have an
+`id` on the line after `PanelWindow {` to be found. The dictation ring
+(`voxring/*`) is staged this way: `calls` feeds `read` what `hyprctl` would
+say (a window, maximised, fullscreen) and `after` sets the voice's `peak`.
 
 A scene may carry `scales` (a list of text sizes) with a `why` when its surface
 does not follow Text size yet; today only the clipboard shelf, and a test keeps
@@ -108,6 +112,8 @@ what the frame says about itself, never from a list of panel names. A surface
 that floats over its panel (a `ContextMenu`'s card) says `floats: true`; the
 frame records the box it covers, and what lies under it is judged in the
 scenes where nothing floats (its own texts and targets are judged as usual).
+A light with no words by design (the dictation ring) says `wordless: true`, and
+`says-nothing` passes it by.
 
 ## Gestures
 

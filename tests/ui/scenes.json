@@ -16253,6 +16253,505 @@
      true
     ]
    ]
+  },
+  {
+   "id": "voxring/window",
+   "name": "voxring",
+   "panel": "../voxtype/VoxTarget",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is we cache the tokens"
+    ]
+   ],
+   "calls": [
+    [
+     "read",
+     [
+      "0xa",
+      [
+       {
+        "address": "0xa",
+        "mapped": true,
+        "hidden": false,
+        "monitor": 0,
+        "fullscreen": 0,
+        "workspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "at": [
+         400,
+         200
+        ],
+        "size": [
+         1200,
+         700
+        ]
+       }
+      ],
+      [
+       {
+        "id": 0,
+        "name": "@screen",
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1400,
+        "scale": 1,
+        "transform": 0,
+        "reserved": [
+         0,
+         36,
+         0,
+         0
+        ],
+        "activeWorkspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "specialWorkspace": {
+         "name": ""
+        }
+       }
+      ],
+      {
+       "int": 18
+      },
+      {
+       "int": 2
+      }
+     ]
+    ]
+   ],
+   "after": {
+    "peak": 0.004
+   }
+  },
+  {
+   "id": "voxring/maximised",
+   "name": "voxring",
+   "panel": "../voxtype/VoxTarget",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ]
+   ],
+   "calls": [
+    [
+     "read",
+     [
+      "0xa",
+      [
+       {
+        "address": "0xa",
+        "mapped": true,
+        "hidden": false,
+        "monitor": 0,
+        "fullscreen": 1,
+        "workspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "at": [
+         0,
+         36
+        ],
+        "size": [
+         2400,
+         1364
+        ]
+       }
+      ],
+      [
+       {
+        "id": 0,
+        "name": "@screen",
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1400,
+        "scale": 1,
+        "transform": 0,
+        "reserved": [
+         0,
+         36,
+         0,
+         0
+        ],
+        "activeWorkspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "specialWorkspace": {
+         "name": ""
+        }
+       }
+      ],
+      {
+       "int": 18
+      },
+      {
+       "int": 2
+      }
+     ]
+    ]
+   ],
+   "after": {
+    "peak": 0.004
+   }
+  },
+  {
+   "id": "voxring/fullscreen",
+   "name": "voxring",
+   "panel": "../voxtype/VoxTarget",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ]
+   ],
+   "calls": [
+    [
+     "read",
+     [
+      "0xa",
+      [
+       {
+        "address": "0xa",
+        "mapped": true,
+        "hidden": false,
+        "monitor": 0,
+        "fullscreen": 2,
+        "workspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "at": [
+         0,
+         0
+        ],
+        "size": [
+         2400,
+         1400
+        ]
+       }
+      ],
+      [
+       {
+        "id": 0,
+        "name": "@screen",
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1400,
+        "scale": 1,
+        "transform": 0,
+        "reserved": [
+         0,
+         36,
+         0,
+         0
+        ],
+        "activeWorkspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "specialWorkspace": {
+         "name": ""
+        }
+       }
+      ],
+      {
+       "int": 18
+      },
+      {
+       "int": 2
+      }
+     ]
+    ]
+   ],
+   "after": {
+    "peak": 0.004
+   }
+  },
+  {
+   "id": "voxring/loud",
+   "name": "voxring",
+   "panel": "../voxtype/VoxTarget",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ]
+   ],
+   "calls": [
+    [
+     "read",
+     [
+      "0xa",
+      [
+       {
+        "address": "0xa",
+        "mapped": true,
+        "hidden": false,
+        "monitor": 0,
+        "fullscreen": 0,
+        "workspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "at": [
+         400,
+         200
+        ],
+        "size": [
+         1200,
+         700
+        ]
+       }
+      ],
+      [
+       {
+        "id": 0,
+        "name": "@screen",
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1400,
+        "scale": 1,
+        "transform": 0,
+        "reserved": [
+         0,
+         36,
+         0,
+         0
+        ],
+        "activeWorkspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "specialWorkspace": {
+         "name": ""
+        }
+       }
+      ],
+      {
+       "int": 18
+      },
+      {
+       "int": 2
+      }
+     ]
+    ]
+   ],
+   "after": {
+    "peak": 0.05
+   }
+  },
+  {
+   "id": "voxring/quiet",
+   "name": "voxring",
+   "panel": "../voxtype/VoxTarget",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ]
+   ],
+   "calls": [
+    [
+     "read",
+     [
+      "0xa",
+      [
+       {
+        "address": "0xa",
+        "mapped": true,
+        "hidden": false,
+        "monitor": 0,
+        "fullscreen": 0,
+        "workspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "at": [
+         400,
+         200
+        ],
+        "size": [
+         1200,
+         700
+        ]
+       }
+      ],
+      [
+       {
+        "id": 0,
+        "name": "@screen",
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1400,
+        "scale": 1,
+        "transform": 0,
+        "reserved": [
+         0,
+         36,
+         0,
+         0
+        ],
+        "activeWorkspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "specialWorkspace": {
+         "name": ""
+        }
+       }
+      ],
+      {
+       "int": 18
+      },
+      {
+       "int": 2
+      }
+     ]
+    ]
+   ],
+   "after": {
+    "peak": 0.0025
+   }
+  },
+  {
+   "id": "voxring/writing",
+   "name": "voxring",
+   "panel": "../voxtype/VoxTarget",
+   "window": true,
+   "kind": "typical",
+   "set": [
+    [
+     "Activities",
+     "voxState",
+     "transcribing"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ]
+   ],
+   "calls": [
+    [
+     "read",
+     [
+      "0xa",
+      [
+       {
+        "address": "0xa",
+        "mapped": true,
+        "hidden": false,
+        "monitor": 0,
+        "fullscreen": 0,
+        "workspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "at": [
+         400,
+         200
+        ],
+        "size": [
+         1200,
+         700
+        ]
+       }
+      ],
+      [
+       {
+        "id": 0,
+        "name": "@screen",
+        "x": 0,
+        "y": 0,
+        "width": 2400,
+        "height": 1400,
+        "scale": 1,
+        "transform": 0,
+        "reserved": [
+         0,
+         36,
+         0,
+         0
+        ],
+        "activeWorkspace": {
+         "id": 1,
+         "name": "1"
+        },
+        "specialWorkspace": {
+         "name": ""
+        }
+       }
+      ],
+      {
+       "int": 18
+      },
+      {
+       "int": 2
+      }
+     ]
+    ]
+   ]
   }
  ]
 }

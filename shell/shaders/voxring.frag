@@ -8,6 +8,8 @@ layout(std140, binding = 0) uniform buf {
     float pad;
     float radius;
     float stroke;
+    float inward;
+    float still;
     float mode;
     float phase;
     vec4 hist0;
@@ -43,37 +45,36 @@ void main() {
     vec2 p = px - hs;
     vec2 box = max(hs - vec2(pad), vec2(1.0));
     float d = sdBox(p, box, min(radius, min(box.x, box.y)));
-    if (d < -stroke - 1.0 || d > pad) {
+    if (d > pad || d < -stroke - pad) {
         fragColor = vec4(0.0);
         return;
     }
+    float side = inward > 0.5 ? -stroke - d : d;
     vec2 q = p / box;
     float around = atan(q.x, -q.y) / 3.14159265;
+    float centre = abs(d + stroke * 0.5);
 
     float s = abs(around);
-    float amp = level(s) * (1.0 - 0.35 * s);
+    float travel = 1.0 - still;
+    float lv = mix(hist0.x, level(s) * (1.0 - 0.3 * s), travel);
     float ripple = 0.5 + 0.5 * sin(s * 46.0 - hist0.x * 3.0);
-    float wave = amp * (0.75 + 0.25 * ripple);
-    float half_ = stroke * 0.5 + wave * stroke * 1.6;
-    float line = smoothstep(half_ + 0.75, half_ - 0.75, abs(d + stroke * 0.5));
-    float halo = (d > 0.0 ? exp(-d / (2.5 + 9.0 * wave)) : 0.0) * wave * 0.85;
+    float wave = lv * mix(1.0, 0.8 + 0.2 * ripple, travel);
+    float half_ = stroke * 0.5 + wave * stroke * 0.9 * travel;
+    float line = smoothstep(half_ + 0.75, half_ - 0.75, centre);
+    float halo = side > 0.0 ? exp(-side / (3.0 + 10.0 * wave)) * (0.14 + 0.7 * wave) : 0.0;
     vec3 hot = mix(listenColor.rgb, vec3(1.0, 0.72, 0.62), clamp(wave * 0.6, 0.0, 0.5));
-    float la = clamp(line * (0.55 + 0.45 * wave) + halo, 0.0, 1.0) * listenColor.a;
+    float la = clamp(line * (0.72 + 0.28 * wave) + halo, 0.0, 1.0) * listenColor.a;
     vec4 listen = vec4(hot * la, la);
 
     float u = fract(around * 0.5 + 0.5);
-    float h1 = fract(phase - u);
-    float h2 = fract(phase + 0.5 - u);
-    float c1 = smoothstep(0.30, 0.04, h1) * smoothstep(0.0, 0.04, h1);
-    float c2 = smoothstep(0.30, 0.04, h2) * smoothstep(0.0, 0.04, h2);
-    float comet = max(c1, c2);
-    float tail = c1 > c2 ? h1 : h2;
-    vec3 wc = mix(writeColor.rgb, writeColor2.rgb, clamp(tail * 3.5, 0.0, 1.0));
-    float w_half = stroke * 0.5 + comet * stroke * 0.6;
-    float wline = smoothstep(w_half + 0.75, w_half - 0.75, abs(d + stroke * 0.5));
-    float wglow = (d > 0.0 ? exp(-d / (2.0 + 4.0 * comet)) : 0.0) * comet * comet * 0.6;
+    float h = fract(phase - u);
+    float comet = travel * smoothstep(0.4, 0.0, h) * smoothstep(0.0, 0.03, h);
+    vec3 wc = mix(writeColor.rgb, writeColor2.rgb, clamp(h * 2.5, 0.0, 1.0));
+    float w_half = stroke * 0.5 + comet * stroke * 0.4;
+    float wline = smoothstep(w_half + 0.75, w_half - 0.75, centre);
+    float wglow = side > 0.0 ? exp(-side / (3.0 + 5.0 * comet)) * (0.12 + 0.5 * comet * comet) : 0.0;
     vec3 rgb = mix(writeColor.rgb, wc, comet);
-    float wa = clamp(wline * (0.22 + 0.78 * comet) + wglow, 0.0, 1.0) * writeColor.a;
+    float wa = clamp(wline * (0.5 + 0.5 * comet + 0.25 * still) + wglow, 0.0, 1.0) * writeColor.a;
     vec4 write = vec4(rgb * wa, wa);
 
     fragColor = mix(listen, write, clamp(mode, 0.0, 1.0)) * qt_Opacity;

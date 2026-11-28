@@ -1,14 +1,12 @@
-// Where a dictation will land: a ring just outside that window while you
-// speak (red, as the island's mic) and while it's written out (the accent),
-// gone when the text lands. It is drawn over the screen, click-through, and
-// never touches the window. voxtype-outline.sh used to make the window's
-// border 3 px thicker instead, which shrank the window: kitty re-laid its
-// grid, a TUI redrew, and the terminal jumped at the start and end of every
-// take.
-//
-// The window comes from voxtype's target_window (voxtype-toggle.sh writes it
-// when a take starts); its place from `hyprctl clients`, read again only
-// when a window moves while a take is on.
+// Where a dictation will land: a ring around that window while you speak
+// (red, as the island's mic, glowing with your voice) and while it's written
+// out (a calm light in the accent), gone when the text lands. Drawn over the
+// screen on the overlay layer, click-through, never touching the window: the
+// border used to grow 3 px instead, which re-laid kitty's grid every take.
+// Outside the window when there's room, inside its edge when there isn't
+// (maximised, fullscreen, against the screen's edge); voxRing.mjs places it.
+// The voice is the source linked into voxtype's capture stream (the default
+// source until that stream appears), on a dB scale that follows the session.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -18,6 +16,7 @@ import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
 import qs.services
+import "voxRing.mjs" as VoxRing
 
 Scope {
     id: root
@@ -25,10 +24,11 @@ Scope {
     readonly property bool on: Activities.voxBusy && !Saver.away
     readonly property string runtime: Paths.runtime
     property string address: ""
-    // { monitor, x, y, w, h } in that monitor's logical pixels, or null
     property var box: null
     property int border: 3
     property int rounding: 25
+    readonly property int gap: 3
+    readonly property int stroke: 3
 
     FileView {
         path: root.runtime + "/voxtype/target_window"
@@ -38,7 +38,11 @@ Scope {
     }
     onOnChanged: { if (on) look.restart(); }
 
-    // Where it is now (and the border it has, so the ring sits outside it).
+    function read(address, clients, monitors, rnd, bsz) {
+        if (rnd && rnd.int !== undefined) rounding = rnd.int;
+        if (bsz && bsz.int !== undefined) border = bsz.int;
+        box = VoxRing.place(address, clients, monitors, { border: border, rounding: rounding, gap: gap, stroke: stroke });
+    }
     Timer { id: look; interval: 60; onTriggered: if (root.on && root.address && !where.running) where.running = true }
     Process {
         id: where
@@ -47,14 +51,7 @@ Scope {
             onStreamFinished: {
                 let parts = [];
                 try { parts = text.split("\x1e").map(p => JSON.parse(p)); } catch (e) { root.box = null; return; }
-                const [clients, monitors, rnd, bsz] = parts;
-                if (rnd && rnd.int !== undefined) root.rounding = rnd.int;
-                if (bsz && bsz.int !== undefined) root.border = bsz.int;
-                const c = (clients || []).find(x => x.address === root.address);
-                const m = c && (monitors || []).find(x => x.id === c.monitor);
-                // On a workspace nobody sees, or fullscreen (no room outside it): no ring.
-                if (!c || !m || c.fullscreen || !c.mapped || c.hidden || (m.activeWorkspace.id !== c.workspace.id && m.specialWorkspace.id !== c.workspace.id)) { root.box = null; return; }
-                root.box = { monitor: m.name, x: c.at[0] - m.x, y: c.at[1] - m.y, w: c.size[0], h: c.size[1] };
+                root.read(root.address, parts[0], parts[1], parts[2], parts[3]);
             }
         }
     }
@@ -63,33 +60,39 @@ Scope {
         target: Hyprland
         enabled: root.on
         function onRawEvent(event) {
-            if (/^(movewindow|changefloatingmode|fullscreen|workspace|focusedmon|resizewindow|openwindow|closewindow|activelayout)/.test(event.name)) look.restart();
+            if (/^(movewindow|changefloatingmode|fullscreen|workspace|focusedmon|openwindow|closewindow|activelayout|activespecial|moveworkspace|monitorremoved)/.test(event.name)) look.restart();
         }
     }
 
-    // The screen the ring is on; kept a moment after it goes, so it fades.
-    PwObjectTracker { objects: root.on ? [Pipewire.defaultAudioSource] : [] }
+    readonly property var heard: {
+        if (!on) return null;
+        const s = Activities.voxStreams[0];
+        const g = s ? Pipewire.linkGroups.values.find(l => l.target === s && l.source && !l.source.isStream) : null;
+        return g ? g.source : Pipewire.defaultAudioSource;
+    }
+    PwObjectTracker { objects: root.heard ? [root.heard] : [] }
     PwNodePeakMonitor {
         id: voice
-        node: Pipewire.defaultAudioSource
-        enabled: root.on && !!root.box && Activities.voxListening && !Theme.reduceMotion
+        node: root.heard
+        enabled: root.on && !!root.box && Activities.voxListening
     }
-    property real glow: 0
+    property real peak: voice.peak
+    property var level: VoxRing.quiet()
     property vector4d hist0: Qt.vector4d(0, 0, 0, 0)
     property vector4d hist1: Qt.vector4d(0, 0, 0, 0)
     Timer {
+        id: sample
         interval: 45; repeat: true
         running: voice.enabled
         onTriggered: {
-            const p = voice.peaks && voice.peaks.length ? Math.max(...voice.peaks) : (voice.peak || 0);
-            const v = Math.min(1, Math.sqrt(Math.max(0, p)) * 1.4);
-            root.glow = v > root.glow ? root.glow + (v - root.glow) * 0.6 : root.glow * 0.82 + v * 0.18;
+            root.level = VoxRing.listen(root.level, root.peak, interval);
+            const g = root.level.glow;
             root.hist1 = Qt.vector4d(root.hist0.w, root.hist1.x, root.hist1.y, root.hist1.z);
-            root.hist0 = Qt.vector4d(root.glow, root.hist0.x, root.hist0.y, root.hist0.z);
+            root.hist0 = Qt.vector4d(g, root.hist0.x, root.hist0.y, root.hist0.z);
         }
-        onRunningChanged: if (running) { root.glow = 0; root.hist0 = Qt.vector4d(0, 0, 0, 0); root.hist1 = Qt.vector4d(0, 0, 0, 0); }
+        onRunningChanged: if (running) { root.level = VoxRing.quiet(); root.hist0 = Qt.vector4d(0, 0, 0, 0); root.hist1 = Qt.vector4d(0, 0, 0, 0); }
     }
-    readonly property bool writing: Activities.voxState === "transcribing" && !Theme.reduceMotion
+    readonly property bool writing: Activities.voxState === "transcribing"
     readonly property string target: on && box ? box.monitor : ""
     property string shownOn: ""
     onTargetChanged: { if (target) { linger.stop(); shownOn = target; } else linger.restart(); }
@@ -104,25 +107,67 @@ Scope {
                 && !(Island.panel !== "" && Island.screen === modelData.name)
             active: root.shownOn === modelData.name
             PanelWindow {
+                id: ringWindow
                 screen: slot.modelData
                 anchors { top: true; bottom: true; left: true; right: true }
                 exclusionMode: ExclusionMode.Ignore
-                WlrLayershell.layer: WlrLayer.Top
+                WlrLayershell.layer: WlrLayer.Overlay
                 WlrLayershell.namespace: "kuwai.voxtarget"
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region {}
                 color: "transparent"
 
+                Item {
+                    id: ring
+                    readonly property bool wordless: true
+                    readonly property real pad: 24
+                    property bool born: false
+                    Component.onCompleted: born = true
+                    x: root.box ? root.box.x - pad : 0
+                    y: root.box ? root.box.y - pad : 0
+                    width: root.box ? root.box.w + pad * 2 : 0
+                    height: root.box ? root.box.h + pad * 2 : 0
+                    opacity: slot.here && born ? 1 : 0
+                    visible: opacity > 0.01
+                    Behavior on opacity { NumberAnimation { duration: slot.here ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    ShaderEffect {
+                        anchors.fill: parent
+                        property vector2d size: Qt.vector2d(width, height)
+                        property real pad: ring.pad
+                        property real radius: root.box ? root.box.radius : 0
+                        property real stroke: root.stroke
+                        property real inward: root.box && root.box.inside ? 1 : 0
+                        property real still: Theme.reduceMotion ? 1 : 0
+                        property real mode: root.writing ? 1 : 0
+                        Behavior on mode { NumberAnimation { duration: Theme.colorMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                        property real phase: 0
+                        NumberAnimation on phase {
+                            running: root.writing && slot.here && !Theme.reduceMotion
+                            from: 0; to: 1
+                            duration: Theme.shimmerMs * 2
+                            loops: Animation.Infinite
+                        }
+                        property vector4d hist0: root.hist0
+                        property vector4d hist1: root.hist1
+                        property color listenColor: Theme.red
+                        property color writeColor: Qt.lighter(Theme.accent, 1.25)
+                        property color writeColor2: Theme.accent.hslHue < 0 ? Theme.purple
+                            : Qt.hsla((Theme.accent.hslHue + 0.14) % 1, Theme.accent.hslSaturation, Math.min(0.72, Theme.accent.hslLightness + 0.08), 1)
+                        fragmentShader: Qt.resolvedUrl("../../shaders/voxring.frag.qsb")
+                    }
+                }
                 Rectangle {
                     id: caption
-                    readonly property bool wanted: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!root.box && !Notifs.sharing
+                    readonly property var win: root.box ? root.box.win : null
+                    readonly property bool wanted: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!win && !Notifs.sharing
                     property bool want: false
                     onWantedChanged: { if (wanted) settle.restart(); else { settle.stop(); want = false; } }
+                    Component.onCompleted: if (wanted) settle.restart()
                     Timer { id: settle; interval: Theme.enterMs * 2; onTriggered: caption.want = caption.wanted }
-                    width: Math.min(words.implicitWidth + Theme.s4 * 2, root.box ? root.box.w * 0.7 : 0)
+                    width: Math.min(words.implicitWidth + Theme.s4 * 2, win ? win.w * 0.7 : 0)
                     height: words.implicitHeight + Theme.s2 * 2
-                    x: root.box ? root.box.x + (root.box.w - width) / 2 : 0
-                    y: root.box ? Math.min(root.box.y + root.box.h - height - Theme.s5, parent.height - Theme.s5 * 4 - height) : 0
+                    x: win ? win.x + (win.w - width) / 2 : 0
+                    y: win ? Math.min(win.y + win.h - height - Theme.s5, parent.height - Theme.s5 * 4 - height) : 0
                     radius: height / 2
                     color: Qt.rgba(0.07, 0.07, 0.09, 0.88)
                     border.width: 1; border.color: Theme.edge(1)
@@ -138,51 +183,6 @@ Scope {
                         size: Theme.tCallout
                         color: Theme.textPrimary
                     }
-                }
-                Rectangle {
-                    id: ring
-                    // Outside the window's own border, concentric with it.
-                    readonly property int gap: 3
-                    readonly property int stroke: 3
-                    readonly property int out: root.border + gap + stroke
-                    x: root.box ? root.box.x - out : 0
-                    y: root.box ? root.box.y - out : 0
-                    width: root.box ? root.box.w + out * 2 : 0
-                    height: root.box ? root.box.h + out * 2 : 0
-                    radius: root.rounding + out
-                    color: "transparent"
-                    border.width: stroke
-                    border.color: Theme.reduceMotion ? Qt.alpha(Activities.voxListening ? Theme.red : Theme.accent, 0.6) : "transparent"
-                    Behavior on border.color { ColorAnimation { duration: Theme.colorMs } }
-                    opacity: slot.here ? 1 : 0
-                    ShaderEffect {
-                        id: wave
-                        readonly property real pad: 24
-                        x: -pad; y: -pad
-                        width: ring.width + pad * 2
-                        height: ring.height + pad * 2
-                        visible: !Theme.reduceMotion
-                        property vector2d size: Qt.vector2d(width, height)
-                        property real radius: ring.radius
-                        property real stroke: ring.stroke
-                        property real mode: root.writing ? 1 : 0
-                        Behavior on mode { NumberAnimation { duration: Theme.colorMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                        property real phase: 0
-                        NumberAnimation on phase {
-                            running: root.writing && slot.here
-                            from: 0; to: 1
-                            duration: Theme.shimmerMs * 3 / 2
-                            loops: Animation.Infinite
-                        }
-                        property vector4d hist0: root.hist0
-                        property vector4d hist1: root.hist1
-                        property color listenColor: Theme.red
-                        property color writeColor: Qt.lighter(Theme.accent, 1.25)
-                        property color writeColor2: Theme.accent.hslHue < 0 ? Theme.purple
-                            : Qt.hsla((Theme.accent.hslHue + 0.14) % 1, Theme.accent.hslSaturation, Math.min(0.72, Theme.accent.hslLightness + 0.08), 1)
-                        fragmentShader: Qt.resolvedUrl("../../shaders/voxring.frag.qsb")
-                    }
-                    Behavior on opacity { NumberAnimation { duration: slot.here ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 }
             }
         }

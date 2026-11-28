@@ -129,6 +129,7 @@ ShellRoot {
                 });
             }
             if (name === "Skeleton") out.waiting++;
+            if (item.wordless === true) out.wordless = true;
             if (item instanceof MouseArea && item.enabled && item.acceptedButtons !== Qt.NoButton)
                 out.targets.push({ box: box(item, 0, 0, item.width, item.height), how: "area", clip: here.clip, scroll: here.scroll, path: here.path.join(">"), layer: here.layer });
             const more = item.resources || [];
@@ -168,6 +169,13 @@ ShellRoot {
             const kids = item.visible ? item.children || [] : [];
             for (let i = 0; i < kids.length; i++) n += wordsIn(kids[i]);
             return n;
+        }
+        function resolve(v) {
+            if (v === "@screens") return Quickshell.screens.map(x => x.name);
+            if (v === "@screen") return Quickshell.screens[0].name;
+            if (Array.isArray(v)) return v.map(x => resolve(x));
+            if (v && typeof v === "object") { const o = {}; for (const k in v) o[k] = resolve(v[k]); return o; }
+            return v;
         }
         function windowsOf() { return RehearsalWindows.store.list.filter(w => w && w.contentItem && w.visible); }
         function applySets(s, sets) {
@@ -227,8 +235,8 @@ ShellRoot {
                 if (comp.status !== Component.Ready) { fail("scene " + s.id + ": " + s.panel + " did not load: " + comp.errorString()); return; }
                 hosted = comp.createObject(stage, props);
                 if (!hosted) { fail("scene " + s.id + ": " + s.panel + " did not start: " + comp.errorString()); return; }
-                for (const c of (s.calls || [])) hosted[c[0]].apply(hosted, c[1] || []);
-                for (const k in (s.after || {})) hosted[k] = s.after[k] === "@screens" ? Quickshell.screens.map(x => x.name) : s.after[k];
+                for (const c of (s.calls || [])) hosted[c[0]].apply(hosted, stage.resolve(c[1] || []));
+                for (const k in (s.after || {})) hosted[k] = stage.resolve(s.after[k]);
                 settle.interval = s.settle || 900;
                 settle.restart();
                 return;
