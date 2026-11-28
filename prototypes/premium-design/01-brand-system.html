@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kuwai — Brand System Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Sans:wdth,wght@75..100,500..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08080b;
+    --surface: #0f1014;
+    --surface-2: #15161b;
+    --surface-light: #f4f4f6;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text-1: rgba(255, 255, 255, 0.96);
+    --text-2: rgba(255, 255, 255, 0.68);
+    --text-3: rgba(255, 255, 255, 0.46);
+    --accent: #66c7ff;
+    --blue: #0a84ff;
+    --green: #30d158;
+    --orange: #ff9f0a;
+    --red: #ff453a;
+    --purple: #bf5af2;
+    --yellow: #ffd60a;
+    --font-ui: "Geist", "Inter", -apple-system, sans-serif;
+    --font-display: "Instrument Sans", "Geist", "Inter", sans-serif;
+    --font-mono: "Geist Mono", "JetBrains Mono", monospace;
+    --r1: 8px;
+    --r2: 12px;
+    --r3: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1160px;
+    height: 800px;
+    overflow: hidden;
+    background: radial-gradient(900px 420px at 18% -10%, rgba(102, 199, 255, 0.08), transparent 60%),
+                radial-gradient(640px 360px at 88% 110%, rgba(255, 159, 10, 0.06), transparent 65%),
+                var(--bg);
+    color: var(--text-1);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    height: 100%;
+    padding: 24px 28px;
+    display: grid;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 14px;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-bar h1 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    font-variation-settings: "wdth" 96;
+  }
+  .top-bar .meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .row-top {
+    display: grid;
+    grid-template-columns: 1.55fr 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .row-bottom {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 0.85fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.032), rgba(255,255,255,0.014));
+    border: 1px solid var(--border);
+    border-radius: var(--r3);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.6);
+    min-height: 0;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-1);
+    letter-spacing: -0.01em;
+  }
+  .pill {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(102, 199, 255, 0.14);
+    color: var(--accent);
+    border: 1px solid rgba(102, 199, 255, 0.28);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pill-muted {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+
+  /* Direction 1 Showcase */
+  .brand-lockups {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .plate {
+    border-radius: var(--r2);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #060608;
+  }
+  .plate.light {
+    background: var(--surface-light);
+    color: #0b0b0f;
+    border-color: rgba(0,0,0,0.08);
+  }
+  .plate-label {
+    font-size: 10.5px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+  }
+  .plate.light .plate-label { color: rgba(11,11,15,0.52); }
+
+  .mark-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    flex: 1;
+  }
+  .mark-cell {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 12px 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .mark-cell > svg, .mark-cell > .px16-pair { margin: auto 0; }
+  .mark-cell.light {
+    background: var(--surface-light);
+    color: #0b0b0f;
+  }
+  .mark-cell span {
+    font-size: 10px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+  .mark-cell.light span { color: rgba(11,11,15,0.55); }
+
+  .px16-pair {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .px16-box {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: #050507;
+    border: 1px solid var(--border-strong);
+    display: grid; place-items: center;
+  }
+
+  /* 3 Directions Comparison */
+  .dir-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    justify-content: space-between;
+  }
+  .dir-item {
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--r2);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+  }
+  .dir-item.rec {
+    background: rgba(102, 199, 255, 0.065);
+    border-color: rgba(102, 199, 255, 0.34);
+  }
+  .dir-thumb {
+    width: 48px; height: 48px;
+    border-radius: 11px;
+    background: #050507;
+    border: 1px solid var(--border-strong);
+    display: grid; place-items: center;
+  }
+  .dir-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin-bottom: 2px;
+  }
+  .dir-desc {
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.35;
+  }
+
+  /* Typography specimen */
+  .type-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    justify-content: space-between;
+  }
+  .type-block {
+    padding: 10px 12px;
+    border-radius: var(--r2);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+  }
+  .type-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    margin-bottom: 4px;
+  }
+  .sample-display {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    font-variation-settings: "wdth" 92;
+    font-variant-numeric: tabular-nums;
+  }
+  .sample-ui {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;
+  }
+  .sample-ui-sub {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+  .sample-mono {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--accent);
+    line-height: 1.45;
+  }
+
+  /* Icon system */
+  .icon-matrix {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .icon-col {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .icon-col-head {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+  .icon-col-sub {
+    font-size: 9.5px;
+    font-family: var(--font-mono);
+    color: var(--text-3);
+    text-align: center;
+  }
+  .icon-row-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 20px);
+    gap: 8px;
+    color: var(--text-1);
+  }
+  .icon-note {
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.45;
+    padding: 9px 11px;
+    border-radius: var(--r2);
+    background: rgba(48, 209, 88, 0.08);
+    border: 1px solid rgba(48, 209, 88, 0.22);
+  }
+  .icon-note strong { color: var(--green); font-weight: 600; }
+
+  /* Color tokens */
+  .swatch-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    flex: 1;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 9px;
+    border-radius: var(--r1);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+  }
+  .dot {
+    width: 22px; height: 22px;
+    border-radius: 7px;
+    border: 1px solid rgba(255,255,255,0.16);
+    flex-shrink: 0;
+  }
+  .sw-name { font-size: 11.5px; font-weight: 500; color: var(--text-1); }
+  .sw-hex { font-size: 10px; font-family: var(--font-mono); color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="top-bar">
+    <h1>kuwai — Brand System Proposal (Direction 1: Machined Notch)</h1>
+    <div class="meta">SIL OFL 1.1 Type · MIT Phosphor Icons · Outlined SVG Marks</div>
+  </header>
+
+  <section class="row-top">
+    <!-- Recommended Direction Full Specimen -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Direction 1 — Machined Notch Mark &amp; Outlined Wordmark</span>
+        <span class="pill">Recommended</span>
+      </div>
+
+      <div class="brand-lockups">
+        <!-- Dark Wordmark -->
+        <div class="plate">
+          <svg viewBox="0 0 184 36" width="164" height="32" fill="none" aria-label="kuwai dark wordmark">
+            <defs>
+              <linearGradient id="d1rim" x1="2" y1="8" x2="46" y2="29" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.62"/>
+                <stop offset="50%" stop-color="#ffffff" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.38"/>
+              </linearGradient>
+              <linearGradient id="d1body" x1="24" y1="8" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1b1d26"/>
+                <stop offset="100%" stop-color="#050508"/>
+              </linearGradient>
+            </defs>
+            <!-- Sleek wide machined notch silhouette -->
+            <path d="M2 8.5H6.2C9.2 8.5 10.6 10.2 10.6 13.2V18.2C10.6 24.4 14.4 27.5 21 27.5H27C33.6 27.5 37.4 24.4 37.4 18.2V13.2C37.4 10.2 38.8 8.5 41.8 8.5H46" fill="url(#d1body)" stroke="url(#d1rim)" stroke-width="1.5" stroke-linecap="round"/>
+            <rect x="15.2" y="16.2" width="11.2" height="4" rx="2" fill="#ffffff" fill-opacity="0.95"/>
+            <circle cx="30.8" cy="18.2" r="2.2" fill="#ff9f0a"/>
+            <text x="56" y="25.5" fill="#f5f5f7" font-family="Geist, Inter, sans-serif" font-size="24" font-weight="600" letter-spacing="-0.04em">kuwai</text>
+          </svg>
+          <span class="plate-label">dark</span>
+        </div>
+
+        <!-- Light Wordmark -->
+        <div class="plate light">
+          <svg viewBox="0 0 184 36" width="164" height="32" fill="none" aria-label="kuwai light wordmark">
+            <path d="M2 8.5H6.2C9.2 8.5 10.6 10.2 10.6 13.2V18.2C10.6 24.4 14.4 27.5 21 27.5H27C33.6 27.5 37.4 24.4 37.4 18.2V13.2C37.4 10.2 38.8 8.5 41.8 8.5H46" fill="#0b0b0f"/>
+            <path d="M2 8.5H46" stroke="#0b0b0f" stroke-width="1.6" stroke-linecap="round"/>
+            <rect x="15.2" y="16.2" width="11.2" height="4" rx="2" fill="#ffffff"/>
+            <circle cx="30.8" cy="18.2" r="2.2" fill="#ff9f0a"/>
+            <text x="56" y="25.5" fill="#0b0b0f" font-family="Geist, Inter, sans-serif" font-size="24" font-weight="600" letter-spacing="-0.04em">kuwai</text>
+          </svg>
+          <span class="plate-label">light</span>
+        </div>
+      </div>
+
+      <div class="mark-strip">
+        <!-- App icon 512px -->
+        <div class="mark-cell">
+          <svg viewBox="0 0 64 64" width="60" height="60" fill="none">
+            <defs>
+              <linearGradient id="tBg" x1="32" y1="0" x2="32" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#191b24"/>
+                <stop offset="55%" stop-color="#0b0c10"/>
+                <stop offset="100%" stop-color="#050508"/>
+              </linearGradient>
+              <radialGradient id="tGlow" cx="50%" cy="0%" r="65%">
+                <stop offset="0%" stop-color="#66c7ff" stop-opacity="0.24"/>
+                <stop offset="100%" stop-color="#66c7ff" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="tRim" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.34"/>
+                <stop offset="48%" stop-color="#ffffff" stop-opacity="0.08"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.22"/>
+              </linearGradient>
+            </defs>
+            <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#tBg)"/>
+            <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#tGlow)"/>
+            <rect x="2.5" y="2.5" width="59" height="59" rx="14.5" stroke="url(#tRim)" stroke-width="1"/>
+            <path d="M9 22H13.5C16.4 22 17.8 23.6 17.8 26.6V31.5C17.8 37.8 21.8 41.2 28.4 41.2H35.6C42.2 41.2 46.2 37.8 46.2 31.5V26.6C46.2 23.6 47.6 22 50.5 22H55" fill="#030305" stroke="rgba(255,255,255,0.40)" stroke-width="1.4" stroke-linecap="round"/>
+            <rect x="22.8" y="29.6" width="11.5" height="4.2" rx="2.1" fill="#ffffff" fill-opacity="0.96"/>
+            <circle cx="38.8" cy="31.7" r="2.35" fill="#ff9f0a"/>
+          </svg>
+          <span>App Icon 512</span>
+        </div>
+
+        <!-- Standalone dark -->
+        <div class="mark-cell">
+          <svg viewBox="0 0 48 48" width="52" height="52" fill="none">
+            <path d="M2 14H6.4C9.5 14 11 15.8 11 19V24.2C11 30.8 15 34.2 21.6 34.2H26.4C33 34.2 37 30.8 37 24.2V19C37 15.8 38.5 14 41.6 14H46" fill="#090a0e" stroke="rgba(255,255,255,0.48)" stroke-width="1.6" stroke-linecap="round"/>
+            <rect x="15.5" y="22.2" width="11.2" height="4.2" rx="2.1" fill="#ffffff"/>
+            <circle cx="31" cy="24.3" r="2.3" fill="#ff9f0a"/>
+          </svg>
+          <span>Mark 48</span>
+        </div>
+
+        <!-- Monochrome White -->
+        <div class="mark-cell">
+          <svg viewBox="0 0 48 48" width="52" height="52" fill="none">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M2 14H6.4C9.5 14 11 15.8 11 19V24.2C11 30.8 15 34.2 21.6 34.2H26.4C33 34.2 37 30.8 37 24.2V19C37 15.8 38.5 14 41.6 14H46V16.4H41.6C39.8 16.4 39.4 17.2 39.4 19V24.2C39.4 32.1 34.3 36.6 26.4 36.6H21.6C13.7 36.6 8.6 32.1 8.6 24.2V19C8.6 17.2 8.2 16.4 6.4 16.4H2V14ZM17.6 22.2C16.44 22.2 15.5 23.14 15.5 24.3C15.5 25.46 16.44 26.4 17.6 26.4H24.6C25.76 26.4 26.7 25.46 26.7 24.3C26.7 23.14 25.76 22.2 24.6 22.2H17.6ZM31 26.6C32.27 26.6 33.3 25.57 33.3 24.3C33.3 23.03 32.27 22 31 22C29.73 22 28.7 23.03 28.7 24.3C28.7 25.57 29.73 26.6 31 26.6Z" fill="#ffffff"/>
+          </svg>
+          <span>Mono Ink</span>
+        </div>
+
+        <!-- Monochrome Light -->
+        <div class="mark-cell light">
+          <svg viewBox="0 0 48 48" width="52" height="52" fill="none">
+            <path d="M2 14H6.4C9.5 14 11 15.8 11 19V24.2C11 30.8 15 34.2 21.6 34.2H26.4C33 34.2 37 30.8 37 24.2V19C37 15.8 38.5 14 41.6 14H46" fill="#0b0b0f"/>
+            <path d="M2 14H46" stroke="#0b0b0f" stroke-width="2" stroke-linecap="round"/>
+            <rect x="15.5" y="22.2" width="11.2" height="4.2" rx="2.1" fill="#ffffff"/>
+            <circle cx="31" cy="24.3" r="2.3" fill="#ffffff"/>
+          </svg>
+          <span>Mono Light</span>
+        </div>
+
+        <!-- 16px Optical Favicon -->
+        <div class="mark-cell">
+          <div class="px16-pair">
+            <div class="px16-box">
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="none">
+                <path d="M1 4.5H2.4C3.3 4.5 3.8 5.1 3.8 6.1V8.4C3.8 10.8 5.2 12 7.4 12H8.6C10.8 12 12.2 10.8 12.2 8.4V6.1C12.2 5.1 12.7 4.5 13.6 4.5H15" fill="#181a22" stroke="#ffffff" stroke-opacity="0.65" stroke-width="1.2" stroke-linecap="round"/>
+                <rect x="5.2" y="7.5" width="3.5" height="1.9" rx="0.95" fill="#ffffff"/>
+                <circle cx="10.4" cy="8.45" r="1.05" fill="#ff9f0a"/>
+              </svg>
+            </div>
+            <svg viewBox="0 0 16 16" width="38" height="38" fill="none">
+              <rect x="0.5" y="0.5" width="15" height="15" rx="3.5" fill="#090a0e" stroke="rgba(255,255,255,0.22)"/>
+              <path d="M1.8 5H3C3.8 5 4.2 5.5 4.2 6.4V8.5C4.2 10.6 5.4 11.7 7.4 11.7H8.6C10.6 11.7 11.8 10.6 11.8 8.5V6.4C11.8 5.5 12.2 5 13 5H14.2" fill="#030305" stroke="rgba(255,255,255,0.58)" stroke-width="1.1" stroke-linecap="round"/>
+              <rect x="5.4" y="7.7" width="3.4" height="1.7" rx="0.85" fill="#ffffff"/>
+              <circle cx="10.3" cy="8.55" r="0.95" fill="#ff9f0a"/>
+            </svg>
+          </div>
+          <span>16px Optical</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 Directions Comparison -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Three Evaluated Directions</span>
+        <span class="pill pill-muted">Decision Matrix</span>
+      </div>
+
+      <div class="dir-list">
+        <div class="dir-item rec">
+          <div class="dir-thumb">
+            <svg viewBox="0 0 40 40" width="34" height="34" fill="none">
+              <path d="M3 10H7.5C10.2 10 11.8 11.8 11.8 14.6V20.8C11.8 26.8 15.2 30.5 20 30.5C24.8 30.5 28.2 26.8 28.2 20.8V14.6C28.2 11.8 29.8 10 32.5 10H37" fill="#0b0c10" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+              <rect x="14.8" y="18.6" width="7.4" height="3.4" rx="1.7" fill="#ffffff"/>
+              <circle cx="25.2" cy="20.3" r="1.9" fill="#ff9f0a"/>
+            </svg>
+          </div>
+          <div>
+            <div class="dir-name">1. Machined Notch</div>
+            <div class="dir-desc">Sculpted single-pass notch · Geist + Instrument Sans + Geist Mono · Phosphor. Best 16px legibility &amp; Sweep unity.</div>
+          </div>
+          <span class="pill">Pick</span>
+        </div>
+
+        <div class="dir-item">
+          <div class="dir-thumb">
+            <svg viewBox="0 0 40 40" width="34" height="34" fill="none">
+              <rect x="5" y="7" width="30" height="26" rx="9" fill="#0d0e13" stroke="rgba(255,255,255,0.35)" stroke-width="1.4"/>
+              <path d="M14 13V27M24.5 14L17.2 20L25 26.5" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="26.5" cy="14" r="1.8" fill="#66c7ff"/>
+            </svg>
+          </div>
+          <div>
+            <div class="dir-name">2. K-Notch Monogram</div>
+            <div class="dir-desc">Letter K carved inside notch pill · Inter 4 + IBM Plex Mono · Lucide. Strong avatar, loses top-edge hardware silhouette.</div>
+          </div>
+          <span class="pill pill-muted">Alt A</span>
+        </div>
+
+        <div class="dir-item">
+          <div class="dir-thumb">
+            <svg viewBox="0 0 40 40" width="34" height="34" fill="none">
+              <rect x="5" y="13" width="20" height="14" rx="7" fill="#0d0e13" stroke="rgba(255,255,255,0.45)" stroke-width="1.4"/>
+              <rect x="27.5" y="14.5" width="7.5" height="11" rx="3.75" fill="#66c7ff" fill-opacity="0.22" stroke="#66c7ff" stroke-width="1.3"/>
+              <rect x="10" y="18.6" width="10" height="2.8" rx="1.4" fill="#ffffff"/>
+            </svg>
+          </div>
+          <div>
+            <div class="dir-name">3. Split Capsule</div>
+            <div class="dir-desc">Notch + satellite capsule · IBM Plex Sans + Plus Jakarta + JetBrains Mono · Material Symbols. Crowds at 16px.</div>
+          </div>
+          <span class="pill pill-muted">Alt B</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row-bottom">
+    <!-- Type System -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Type System (SIL OFL 1.1 Bundled)</span>
+        <span class="pill pill-muted">FreeType Native</span>
+      </div>
+      <div class="type-rows">
+        <div class="type-block">
+          <div class="type-meta"><span>DISPLAY · Instrument Sans</span><span>wdth 92 · tnum</span></div>
+          <div class="sample-display">22:41 · 57.4 GiB</div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta"><span>UI TEXT · Geist</span><span>400/500/600 · tnum</span></div>
+          <div class="sample-ui">Calm glass surfaces, unified across kuwai &amp; sweep.</div>
+          <div class="sample-ui-sub">11px caption · 14px body · 19px panel title · zero SF Pro lock-in</div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta"><span>MONO · Geist Mono</span><span>slashed zero · CLI</span></div>
+          <div class="sample-mono">sweep widget ~/Projects --json --view projects</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phosphor Icon System -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Phosphor Icons (MIT)</span>
+        <span class="pill pill-muted">4 Weights · −1.07 MB</span>
+      </div>
+      <div class="icon-matrix">
+        <div class="icon-col">
+          <span class="icon-col-head">Regular</span>
+          <div class="icon-row-grid">
+            <!-- wifi -->
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/></svg>
+            <!-- bell -->
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+            <!-- gear -->
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 4v2m0 12v2M4 12h2m12 0h2m-2.3-5.7-1.4 1.4M7.7 16.3l-1.4 1.4m0-11.4 1.4 1.4m8.6 8.6 1.4 1.4"/></svg>
+            <!-- terminal -->
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m8 10 3 2.5L8 15m5 0h3"/></svg>
+          </div>
+          <span class="icon-col-sub">16–18px UI</span>
+        </div>
+
+        <div class="icon-col">
+          <span class="icon-col-head">Bold</span>
+          <div class="icon-row-grid">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="19.5" r="1.3" fill="currentColor" stroke="none"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 4v2m0 12v2M4 12h2m12 0h2"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m8 10 3 2.5L8 15"/></svg>
+          </div>
+          <span class="icon-col-sub">12–14px rest</span>
+        </div>
+
+        <div class="icon-col">
+          <span class="icon-col-head">Duotone</span>
+          <div class="icon-row-grid" style="color: var(--accent);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.2"/><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><rect x="3" y="5" width="18" height="14" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.6"/><path d="m8 10 3 2.5L8 15m5 0h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M4 19h16l-2-7H6l-2 7Z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 4v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </div>
+          <span class="icon-col-sub">Tiles &amp; empty</span>
+        </div>
+
+        <div class="icon-col">
+          <span class="icon-col-head">Fill</span>
+          <div class="icon-row-grid" style="color: var(--orange);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5Z"/><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0h-5Z"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="3" y="5" width="18" height="14" rx="3"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm-1 5h2v5h-2Zm0 7h2v2h-2Z"/></svg>
+          </div>
+          <span class="icon-col-sub">Active states</span>
+        </div>
+      </div>
+      <div class="icon-note">
+        <strong>Migration:</strong> Replaces 136 raw <code>Theme.fontGlyph</code> Nerd Font escapes with named <code>Icon { name }</code> via bundled Phosphor TTFs. Keeps <code>IconImage</code> for desktop apps only.
+      </div>
+    </div>
+
+    <!-- Semantic Palette -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">One Meaning Per Colour</span>
+        <span class="pill pill-muted">WCAG ≥ 4.5:1</span>
+      </div>
+      <div class="swatch-list">
+        <div class="swatch"><div class="dot" style="background:#0b0b0f"></div><div><div class="sw-name">Ground</div><div class="sw-hex">#0b0b0f</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#111114"></div><div><div class="sw-name">Glass</div><div class="sw-hex">#111114 · 74%</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#66c7ff"></div><div><div class="sw-name">Accent</div><div class="sw-hex">#66c7ff</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#30d158"></div><div><div class="sw-name">Good</div><div class="sw-hex">#30d158</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#ff9f0a"></div><div><div class="sw-name">Attention</div><div class="sw-hex">#ff9f0a</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#ff453a"></div><div><div class="sw-name">Critical</div><div class="sw-hex">#ff453a</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#bf5af2"></div><div><div class="sw-name">Focus</div><div class="sw-hex">#bf5af2</div></div></div>
+        <div class="swatch"><div class="dot" style="background:#ffd60a"></div><div><div class="sw-name">Search / HDR</div><div class="sw-hex">#ffd60a</div></div></div>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>
