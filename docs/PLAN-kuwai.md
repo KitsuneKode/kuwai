@@ -845,8 +845,10 @@ Primitives to consolidate (no duplication):
    Animation verdicts so far — keep: island morph (critically damped now), launcher/palette
    materialize + first-paint cascade, clipboard/HUD grow from island, toast stack, switcher ring.
    Removed: wobble, motion blur, borderangle loop. Improve: special-workspace slide (match
-   island spring), notification-centre open/close, Mission Control zoom-out-from-workspace.
-6. Notification centre: review missing/wrong bits (null-guarded CenterRow done), liquid glass.
+   island spring), notification-centre open/close (done: the island's own), Mission Control zoom-out-from-workspace.
+6. Notification centre: review missing/wrong bits (null-guarded CenterRow done). Done 2026-11-28:
+   an island panel in both island styles (the island's surface, radius, springs and origin; the
+   glass card is Waybar's only), the panels' header and section chips, Usage's filter chips.
 7. HUD (volume/brightness): grows from island; flick up / right-click dismiss (done) — verify feel.
 8. Tooltips as popups (done in components/Tip.qml) — verify visually; tray right-click (needs
    QApplication pragma, done) — verify.

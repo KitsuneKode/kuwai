@@ -50,6 +50,13 @@ ShellRoot {
                 Island.openOn("usage", "fixture", "key");
                 t.wait(100);
                 if (Notifs.centerOpen || Island.panel !== "usage") { scene.fail("another panel did not take over from Notifications"); return; }
+                Island.close();
+                Settings.set("islandStyle", "floating");
+                t.wait(400);
+                if (!Island.hostsCenter) { scene.fail("the floating island does not host the centre"); return; }
+                Notifs.toggleCenter("notifications", "key", "fixture");
+                t.wait(200);
+                if (Island.panel !== "notifications" || !Notifs.centerOpen) { scene.fail("Notifications did not open in the floating island"); return; }
                 console.log("UI_SMOKE_CAPTURED");
                 Qt.quit();
             }

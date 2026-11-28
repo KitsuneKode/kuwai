@@ -92,15 +92,17 @@ bounce 0.12 (large surfaces, morphs). Exits are tweens one tier quicker.
 `easeDrawer` 0.32,0.72,0,1). Never ease-in on UI. UI stays under 300ms:
 press 140, enter 200, exit 150, glide 150, reflow 200, HUD 180/150.
 
-**The centre is the notch grown** (the phone's model): Notifications is
-pulled down from the notch, Controls and Sound from its right side. It hangs
-from the top edge in the island's black (NotchShape, LiquidRim), panelS + 20
-wide, and grows out of the island's rest shape on the island's springs
-(surfaceIn, surfaceKeyIn from a key), folding back into it on an ease-out;
-while it covers a screen, that screen's notch steps aside. Its content fades
-in once, on the card's progress. With Waybar or the floating pill it is a
-420px glass card at the right corner instead, over a `kuwai.scrim` backdrop.
-Motion starts only once Hyprland has mapped the surface.
+**The centre is an island panel** (the phone's model): Notifications is
+pulled down from the island, Controls and Sound from its right side. With the
+island as a notch or a floating pill it is one of the island's panels
+(`island/CenterPanel`): the island's black, its radius, its open and close
+springs (surfaceIn, surfaceKeyIn from a key), its origin, panelS wide. Its
+header is the panels' own: the title left (tTitle3 semibold), what acts on it
+right (Do Not Disturb, Clear, or Undo after a clear), and where there are
+tabs, the island's section chips (`components/SectionChips`, the same ones
+Agents, Usage, System and Cleanup switch with). With Waybar it is a 420px
+glass card at the right corner instead, over a `kuwai.scrim` backdrop, with
+the same content. Motion starts only once Hyprland has mapped the surface.
 
 **Text renders with FreeType** (`renderType: Text.NativeRendering` in Label):
 Qt's distance-field atlas drew some labels blank or overlapped with a
@@ -143,10 +145,11 @@ Swipe locks its axis on the first pixel, follows 1:1 away from the corner
 
 ## Notification centre
 
-The notch grown (above), grouped by app; each group folds into a
+An island panel (above), grouped by app; each group folds into a
 stack (newest on top, two plates peeking out below). Opening focuses search.
 Words must all match (app, title, body, status) and matches highlight in
-yellow. Filters: All / Unread / Important. Keyboard: ↑↓ select (blue ring),
+yellow. Filters: All / Unread / Important, chips like Usage's (a platter under the one
+chosen), Unread and Important with their counts. Keyboard: ↑↓ select (blue ring),
 ↵ open, Del or ⌫-on-empty dismiss, →← expand/fold, Tab filter, Esc clears then
 closes. Searching snaps results instantly (no choreography between keys).
 Closing marks everything seen: blue dots and the bell's count clear.

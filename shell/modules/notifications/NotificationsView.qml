@@ -11,7 +11,6 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
-import qs.components.ui as Ui
 
 Item {
     id: view
@@ -182,35 +181,31 @@ Item {
     // (A list builds rows only for the room it has, so contentHeight reads
     // short right after opening: more than a few groups simply wants the
     // full card, and a few want at least their rows' typical height.)
-    readonly property real naturalHeight: (todayRow.visible ? todayRow.height + 10 : 0) + filterBar.height + 14 + (list.count === 0 ? 220
+    readonly property real naturalHeight: (todayRow.visible ? todayRow.height + Theme.s3 : 0) + filterBar.height + Theme.s3 + (list.count === 0 ? 220
         : list.count > 3 ? 100000 : Math.max(list.contentHeight, list.count * 96) + 8)
 
     TodayRow {
         id: todayRow
-        visible: !!view.center.notch && !view.center.terms.length
+        visible: !!view.center.inIsland && !view.center.terms.length
         width: parent.width
     }
 
-    // ── Filters row ──────────────────────────────────────────────────────
-    readonly property bool stackTools: filterRow.width + tools.implicitWidth + 12 > width
+    readonly property int unreadCount: Notifs.items.filter(i => !i.discard && i.time > Notifs.lastSeen).length
     Item {
         id: filterBar
         y: filterRow.y
         width: parent.width
-        height: view.stackTools ? filterRow.height + 6 + tools.height : filterRow.height
+        height: filterRow.height
     }
     Row {
         id: filterRow
-        x: 2
-        y: todayRow.visible ? todayRow.height + 10 : 0
-        spacing: 6
+        y: todayRow.visible ? todayRow.height + Theme.s3 : 0
+        spacing: Theme.s1
 
         Repeater {
             model: [
-                // The tab already says how many are unread: no second and
-                // third copy here. Only Important has a count of its own.
                 { id: "all", label: "All", n: 0 },
-                { id: "unread", label: "Unread", n: 0 },
+                { id: "unread", label: "Unread", n: view.unreadCount },
                 { id: "important", label: "Important", n: view.importantCount }
             ]
             delegate: Rectangle {
@@ -218,10 +213,10 @@ Item {
                 required property var modelData
                 readonly property bool on: view.filter === modelData.id
                 height: Theme.sp(28); radius: height / 2
-                width: chipRow.implicitWidth + 22
+                width: chipRow.implicitWidth + 2 * Theme.s3
                 scale: chipArea.pressed ? 0.97 : 1
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-                color: on ? Qt.rgba(1, 1, 1, 0.92) : chipArea.containsMouse ? Theme.pillHover : Theme.pill
+                color: on ? Theme.platter : chipArea.containsMouse ? Theme.platterDim : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
                 Row {
                     id: chipRow
@@ -231,14 +226,14 @@ Item {
                         text: chip.modelData.label
                         size: Theme.tFootnote
                         weight: chip.on ? Theme.wSemibold : Theme.wMedium
-                        color: chip.on ? Theme.inkOnLight : Theme.textPrimary
+                        color: chip.on ? Theme.textPrimary : Theme.textSecondary
                     }
                     Label {
                         visible: chip.modelData.n > 0
                         text: chip.modelData.n
                         size: Theme.tFootnote
                         tabular: true
-                        color: chip.on ? Qt.rgba(0, 0, 0, 0.5) : Theme.textTertiary
+                        color: Theme.textTertiary
                     }
                 }
                 MouseArea {
@@ -256,56 +251,20 @@ Item {
             }
         }
     }
-    // Right of the filters: the result count while narrowed, otherwise
-    // Do Not Disturb (Apple's Focus indigo when on) and Clear all. Just after
-    // a clear, "Cleared N · Undo" takes Clear's place (or the count's).
     readonly property bool undoing: Notifs.undoSurface === "center"
     Label {
-        visible: view.narrowed && !view.undoing
-        anchors { right: parent.right; rightMargin: 6; verticalCenter: filterRow.verticalCenter }
+        visible: view.narrowed && view.resultCount > 0 && filterRow.width + Theme.s3 + implicitWidth <= view.width
+        anchors { right: parent.right; verticalCenter: filterRow.verticalCenter }
         text: view.resultCount === 1 ? "1 result" : view.resultCount + " results"
         size: Theme.tFootnote
         color: Theme.textTertiary
-    }
-    Row {
-        id: tools
-        visible: !view.narrowed
-        // 2 px in, as the filters are (x: 2): both edges line up with the
-        // search field above (the page is 14 px in, the header 16).
-        anchors.right: parent.right
-        anchors.rightMargin: 2
-        y: view.stackTools ? filterRow.y + filterRow.height + 6 : filterRow.y + (filterRow.height - height) / 2
-        spacing: 6
-        Ui.Button {
-            height: Theme.sp(28)
-            width: Theme.sp(28)
-            kind: "quiet"
-            glyph: "\u{f0594}"                     // moon: Theme.focus while on
-            label: Notifs.dnd ? "Do Not Disturb is on" : Notifs.dndMute ? "Do Not Disturb (held while sharing)" : "Do Not Disturb"
-            tone: Notifs.dnd ? Theme.focus : Theme.textSecondary
-            onClicked: Notifs.toggleUserDnd()
-        }
-        Ui.Button {
-            visible: Notifs.items.length > 0 && !view.undoing
-            height: Theme.sp(28)
-            size: Theme.tFootnote
-            text: "Clear"
-            onClicked: view.clearAll()
-        }
-    }
-    UndoPill {
-        live: Notifs.undoSurface === "center" && Notifs.undoLabel !== ""
-        label: Notifs.undoLabel
-        count: Notifs.undoCount
-        anchors { right: parent.right; rightMargin: view.narrowed ? 2 : 36; verticalCenter: view.stackTools ? tools.verticalCenter : filterRow.verticalCenter }
-        opacity: live ? 1 : 0
-        onUndoRequested: Notifs.undoClear()
+        tabular: true
     }
 
     Label {
         id: c1Hint
-        visible: !Settings.seenNotifC1Hint && !view.narrowed
-        anchors { left: parent.left; right: parent.right; top: filterBar.bottom; topMargin: 10 }
+        visible: !Settings.seenNotifC1Hint && !view.narrowed && view.groups.length > 0
+        anchors { left: parent.left; right: parent.right; top: filterBar.bottom; topMargin: Theme.s2 }
         wrapMode: Text.WordWrap
         text: "Click a notification to open it; right-click for more."
         size: Theme.tFootnote
@@ -325,7 +284,7 @@ Item {
     // ── List ─────────────────────────────────────────────────────────────
     ListView {
         id: list
-        anchors { left: parent.left; right: parent.right; top: c1Hint.visible ? c1Hint.bottom : filterBar.bottom; bottom: parent.bottom; topMargin: c1Hint.visible ? 8 : 14 }
+        anchors { left: parent.left; right: parent.right; top: c1Hint.visible ? c1Hint.bottom : filterBar.bottom; bottom: parent.bottom; topMargin: c1Hint.visible ? Theme.s2 : Theme.s3 }
         clip: true
         spacing: 18
         boundsBehavior: Flickable.DragAndOvershootBounds
@@ -377,6 +336,7 @@ Item {
         anchors.centerIn: list
         spacing: 8
         Rectangle {
+            visible: list.height >= emptyTitle.implicitHeight + emptyBody.implicitHeight + height + 2 * parent.spacing
             anchors.horizontalCenter: parent.horizontalCenter
             width: 56; height: 56; radius: 28
             color: Theme.platterDim
@@ -390,6 +350,7 @@ Item {
             }
         }
         Label {
+            id: emptyTitle
             anchors.horizontalCenter: parent.horizontalCenter
             text: view.narrowed ? "No results" : "No notifications"
             size: Theme.tHeadline
@@ -397,6 +358,7 @@ Item {
             color: Theme.textSecondary
         }
         Label {
+            id: emptyBody
             anchors.horizontalCenter: parent.horizontalCenter
             width: Math.min(implicitWidth, list.width - 40)
             horizontalAlignment: Text.AlignHCenter

@@ -1,10 +1,11 @@
-// What's inside the center's card: tabs, search, the four views, the key
+// What's inside the center's card: header, search, the four views, the key
 // hints. Center owns the surface and the motion; this owns the content, and
 // is built once per monitor that hosts the card (see Center's Loader).
 import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.components.ui as Ui
 
 Item {
     id: content
@@ -21,17 +22,15 @@ Item {
     readonly property alias sound: sound
     readonly property alias display: display
     readonly property alias tips: tipLayer
-    readonly property var order: !center.notch ? ["notifications", "sound", "controls"]
+    readonly property var order: !center.inIsland ? ["notifications", "sound", "controls"]
                                  : center.tab === "notifications" ? ["notifications"] : ["controls", "sound"]
 
     function currentView() {
         return ({ notifications: notifications, sound: sound, controls: display })[center.tab] || notifications;
     }
-    // The card's height for the tab showing: the chrome above and below the
-    // pages, plus what the page wants (Center clamps it to the screen).
-    readonly property real wantH: searchBox.y + searchBox.height + 14 + 18 + footer.height + 12 + 8
+    readonly property int inset: Theme.s4
+    readonly property real wantH: pages.y + Theme.s4 + footer.height + Theme.s3
                                   + Math.max(160, currentView().naturalHeight || 0)
-    // The key hints show once you use the keyboard here (the ? stays).
     property bool usedKeys: false
     function reset() {
         usedKeys = false;
@@ -42,36 +41,77 @@ Item {
         display.reset();
     }
 
-    // ── Header: the four tabs, full width ────────────────────────────────
+    readonly property var sections: ({
+        notifications: { id: "notifications", label: "Notifications", glyph: "\u{f009a}", badge: notifications.unreadCount },
+        sound: { id: "sound", label: "Sound", glyph: "\u{f057e}" },
+        controls: { id: "controls", label: "Controls", glyph: "\u{f062e}" }
+    })
     Item {
         id: header
-        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
-        visible: height > 1
-        height: content.order.length > 1 ? tabs.implicitHeight : 0
-        clip: true
-        Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.settleMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
-
-        Segmented {
-            id: tabs
-            width: parent.width
-            current: content.center.tab
-            readonly property var all: ({
-                notifications: { id: "notifications", label: "Notifications", badge: Notifs.inbox },
-                sound: { id: "sound", label: "Sound" },
-                controls: { id: "controls", label: "Controls" }
-            })
-            options: content.order.map(id => all[id])
-            onPicked: id => { Notifs.centerTab = id; search.forceActiveFocus(); }
+        x: content.inset; y: content.inset
+        width: content.width - 2 * content.inset
+        readonly property real line: Math.max(Theme.sp(26), title.implicitHeight)
+        readonly property bool stack: side.width > 0 && title.implicitWidth + Theme.s3 + side.width > width
+        height: stack ? line + Theme.s2 + side.height : Math.max(line, side.height)
+        Label {
+            id: title
+            y: (header.line - implicitHeight) / 2
+            width: Math.min(implicitWidth, header.width - (header.stack || side.width === 0 ? 0 : side.width + Theme.s3))
+            elide: Text.ElideRight
+            text: (content.sections[content.center.tab] || content.sections.notifications).label
+            size: Theme.tTitle3; weight: Theme.wSemibold
+            Accessible.role: Accessible.Heading
+        }
+        Row {
+            id: side
+            x: header.width - width
+            y: header.stack ? header.line + Theme.s2 : (header.height - height) / 2
+            spacing: Theme.s2
+            readonly property bool notifs: content.center.tab === "notifications"
+            Ui.Button {
+                visible: side.notifs
+                anchors.verticalCenter: parent.verticalCenter
+                height: Theme.sp(28)
+                width: Theme.sp(28)
+                kind: "quiet"
+                glyph: "\u{f0594}"
+                label: Notifs.dnd ? "Do Not Disturb is on" : Notifs.dndMute ? "Do Not Disturb (held while sharing)" : "Do Not Disturb"
+                tone: Notifs.dnd ? Theme.focus : Theme.textSecondary
+                onClicked: Notifs.toggleUserDnd()
+            }
+            Ui.Button {
+                visible: side.notifs && Notifs.items.length > 0 && !notifications.narrowed && !notifications.undoing
+                anchors.verticalCenter: parent.verticalCenter
+                height: Theme.sp(28)
+                size: Theme.tFootnote
+                text: "Clear"
+                onClicked: notifications.clearAll()
+            }
+            UndoPill {
+                anchors.verticalCenter: parent.verticalCenter
+                live: side.notifs && notifications.undoing && Notifs.undoLabel !== ""
+                label: Notifs.undoLabel
+                count: Notifs.undoCount
+                onUndoRequested: Notifs.undoClear()
+            }
+            SectionChips {
+                id: tabs
+                visible: content.order.length > 1
+                anchors.verticalCenter: parent.verticalCenter
+                model: content.order.map(id => content.sections[id])
+                current: content.center.tab
+                onPicked: id => { Notifs.centerTab = id; search.forceActiveFocus(); }
+            }
         }
     }
 
     // ── Search ───────────────────────────────────────────────────────────
     Rectangle {
         id: searchBox
-        anchors { left: parent.left; right: parent.right; top: header.bottom; margins: 16; topMargin: 12 }
+        anchors { left: parent.left; right: parent.right; top: header.bottom; margins: content.inset; topMargin: Theme.s3 }
         height: Theme.sp(36)
         radius: Theme.r2
-        color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.07)
+        color: Theme.wash(search.activeFocus ? 2 : 1)
         border.width: 1
         // Focused: a soft white edge, not the accent (that means "where you are").
         border.color: search.activeFocus ? Theme.edge(3) : Theme.edge(0)
@@ -175,6 +215,7 @@ Item {
             MouseArea {
                 id: clearQueryArea
                 anchors.fill: parent
+                anchors.margins: -Theme.s1
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: { search.text = ""; search.forceActiveFocus(); }
@@ -189,7 +230,7 @@ Item {
     // tab sits on (the motion hints where it came from) ────────────────────
     Item {
         id: pages
-        anchors { left: parent.left; right: parent.right; top: searchBox.bottom; bottom: footer.top; leftMargin: 14; rightMargin: 14; topMargin: 14; bottomMargin: 18 }
+        anchors { left: parent.left; right: parent.right; top: searchBox.bottom; bottom: footer.top; leftMargin: content.inset; rightMargin: content.inset; topMargin: Theme.s3; bottomMargin: Theme.s4 }
 
         // A switch crossfades only the two pages involved (12 px drift, none
         // from a key); retargeted mid-way, the more visible page leaves.
@@ -251,12 +292,12 @@ Item {
     // ── Keyboard hints: the few that matter here, as keys ────────────────
     Item {
         id: footer
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 16; bottomMargin: 12 }
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: content.inset; bottomMargin: Theme.s3 }
         height: Theme.sp(22)
 
         // Hairline above: where the list ends and the chrome begins.
         Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.top; bottomMargin: 8 }
+            anchors { left: parent.left; right: parent.right; bottom: parent.top; bottomMargin: Theme.s2 }
             height: 1
             color: Theme.wash(1)
         }
@@ -273,7 +314,7 @@ Item {
                     ? (Notifs.undoSurface === "center"
                         ? [{ k: ["↑", "↓"], t: "Select" }, { k: ["↵"], t: "Open" }, { k: ["⌫"], t: "Dismiss" }, { k: ["Ctrl", "Z"], t: "Undo" }]
                         : [{ k: ["↑", "↓"], t: "Select" }, { k: ["↵"], t: "Open" }, { k: ["r"], t: "Reply" }, { k: ["⌫"], t: "Dismiss" }])
-                    : [{ k: ["Alt", content.center.notch ? "1–2" : "1–3"], t: "Tabs" }, { k: ["Esc"], t: "Close" }]
+                    : [{ k: ["Alt", content.center.inIsland ? "1–2" : "1–3"], t: "Tabs" }, { k: ["Esc"], t: "Close" }]
                 Row {
                     id: hint
                     required property var modelData

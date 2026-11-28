@@ -147,6 +147,7 @@ Item {
                 MouseArea {
                     id: clearArea
                     anchors.fill: parent
+                    anchors.margins: -Theme.s1
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: Notifs.removeApp(group.modelData.app, "center")
