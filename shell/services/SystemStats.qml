@@ -11,6 +11,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "sizes.mjs" as Sizes
 
 Singleton {
     id: root
@@ -146,9 +147,5 @@ Singleton {
         if (/overcast|cloud/.test(t)) return /partly/.test(t) ? "\u{f0595}" : "\u{f0590}";
         return new Date().getHours() >= 18 || new Date().getHours() < 6 ? "\u{f0594}" : "\u{f0599}";
     }
-    function bytes(n) {
-        if (n >= 1099511627776) return (n / 1099511627776).toFixed(n >= 10995116277760 ? 0 : 1) + " TB";
-        if (n >= 1073741824) return (n / 1073741824).toFixed(n >= 10737418240 ? 0 : 1) + " GB";
-        return Math.round(n / 1048576) + " MB";
-    }
+    function bytes(n) { return Sizes.bytes(n); }
 }

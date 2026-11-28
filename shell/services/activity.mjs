@@ -1,4 +1,5 @@
 // @ts-check
+import { bytes as sizeText } from "./sizes.mjs";
 
 export const BEAT = 5;
 
@@ -113,9 +114,7 @@ export function cpuText(cpu) {
 /** @param {number} bytes -1 when it could not be read */
 export function memText(bytes) {
     if (bytes < 0) return "";
-    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(bytes >= 10737418240 ? 0 : 1) + " GB";
-    if (bytes >= 1048576) return Math.round(bytes / 1048576) + " MB";
-    return Math.max(1, Math.round(bytes / 1024)) + " KB";
+    return sizeText(bytes);
 }
 
 /**

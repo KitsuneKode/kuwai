@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
+import * as Sizes from "../../shell/services/sizes.mjs";
+
+const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8")
+    .replace(/^\.pragma library\s*$/m, "").replace(/^\.import .*$/gm, "");
 const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
     "widths", "partAt", "where", "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
 const { widths, partAt, where, headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
-    new Function(lib + "\nreturn { " + names.join(", ") + " };")();
+    new Function("Sizes", lib + "\nreturn { " + names.join(", ") + " };")(Sizes);
 const GB = 1e9;
 
 describe("sizes", () => {

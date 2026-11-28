@@ -105,11 +105,11 @@ describe("what a row says", () => {
   });
   test("memory in the unit a person reads", () => {
     expect(A.memText(-1)).toBe("");
-    expect(A.memText(0)).toBe("1 KB");
-    expect(A.memText(512 * 1024)).toBe("512 KB");
-    expect(A.memText(310 * MB)).toBe("310 MB");
-    expect(A.memText(1.5 * 1024 * MB)).toBe("1.5 GB");
-    expect(A.memText(28 * 1024 * MB)).toBe("28 GB");
+    expect(A.memText(0)).toBe("0 B");
+    expect(A.memText(512 * 1024)).toBe("524 kB");
+    expect(A.memText(310 * MB)).toBe("325 MB");
+    expect(A.memText(1.5 * 1024 * MB)).toBe("1.6 GB");
+    expect(A.memText(28 * 1024 * MB)).toBe("30 GB");
   });
   test("the tone follows the share of the whole machine, like the cores' bars", () => {
     expect(A.cpuTone(100, 16)).toBe("");

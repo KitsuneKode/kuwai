@@ -23,6 +23,7 @@ import qs.config
 import qs.components
 import qs.components.ui
 import qs.services
+import "../../services/sizes.mjs" as Sizes
 
 FocusScope {
     id: sys
@@ -206,14 +207,14 @@ FocusScope {
                 title: "Memory"
                 big: SystemStats.bytes(SystemStats.memUsed)
                 caption: "of " + SystemStats.bytes(SystemStats.memTotal) + " in use"
-                    + (SystemStats.swapUsed > 1048576 ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : "")
+                    + (SystemStats.swapUsed > Sizes.MB ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : "")
                     + (sys.memApps.length ? " · point at the dots" : "")
-                total: SystemStats.memTotal / 1073741824
+                total: Sizes.inGB(SystemStats.memTotal)
                 unit: " GB"
                 parts: {
                     const pal = [Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.mint, Theme.brown, Theme.pink];
-                    const used = SystemStats.memUsed / 1073741824;
-                    const top = sys.memApps.slice(0, 6).map((a, i) => ({ label: a.app, value: a.mb / 1024, color: pal[i],
+                    const used = Sizes.inGB(SystemStats.memUsed);
+                    const top = sys.memApps.slice(0, 6).map((a, i) => ({ label: a.app, value: Sizes.inGB(Sizes.fromMiB(a.mb)), color: pal[i],
                         detail: a.count + (a.count === 1 ? " process" : " processes") }));
                     const rest = Math.max(0, used - top.reduce((n, p) => n + p.value, 0));
                     return rest > 0.05 ? top.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "the system, caches the kernel can't drop, the rest" }]) : top;
@@ -239,7 +240,7 @@ FocusScope {
                 value: SystemStats.gpuState === "suspended" ? 0 : SystemStats.gpu
                 big: SystemStats.gpuState === "suspended" ? "Asleep" : Math.round(SystemStats.gpu * 100) + "%"
                 detail: SystemStats.gpuState === "suspended" ? "Powered down: nothing is using it"
-                      : "VRAM " + (SystemStats.gpuMemUsed / 1024).toFixed(1) + " of " + (SystemStats.gpuMemTotal / 1024).toFixed(0) + " GB"
+                      : "VRAM " + SystemStats.bytes(Sizes.fromMiB(SystemStats.gpuMemUsed)) + " of " + SystemStats.bytes(Sizes.fromMiB(SystemStats.gpuMemTotal))
             }
         }
 

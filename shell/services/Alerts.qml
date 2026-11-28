@@ -15,6 +15,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.config
+import "sizes.mjs" as Sizes
 
 Singleton {
     id: root
@@ -37,7 +38,7 @@ Singleton {
         const out = [];
         const memT = v.MemTotal || 1, memA = v.MemAvailable || memT;
         const mem = 1 - memA / memT;
-        const gb = n => (n / 1048576).toFixed(1) + " GB";
+        const gb = n => Sizes.bytes(Sizes.fromKiB(n));
         if (mem >= 0.82) out.push({ id: "mem", level: mem >= 0.92 ? "crit" : "warn", glyph: "\u{f035b}", title: "Memory at " + Math.round(mem * 100) + "%",
                                     detail: gb(memT - memA) + " of " + gb(memT) + " used" + (v.top ? " · most: " + v.top : "") });
         const swT = v.SwapTotal || 0, swF = v.SwapFree || 0;
@@ -158,8 +159,7 @@ Singleton {
                 case "$args" in *"zen-bin -contentproc"*|*"firefox -contentproc"*|*"--type=renderer"*) t=1 ;; esac
                 bin=\${args%% *}
                 bin=\${bin##*/}
-                gb=$(awk -v r="$r" 'BEGIN { printf "%.1f", r/1048576 }')
-                printf 'hog\t%s\t%s\t%s\ntop\t%s\t%s GB\n' "$r" "$t" "$bin" "$c" "$gb"
+                printf 'hog\t%s\t%s\t%s\ntop\t%s\t%s\n' "$r" "$t" "$bin" "$c" "$r"
             done
             df -P -B1 / /home 2>/dev/null | awk 'NR>1 && !seen[$1]++ {printf "disk\t%s\t%s\t%s\n", $6, $5, $4}'`]
         stdout: StdioCollector {
@@ -169,12 +169,12 @@ Singleton {
                     const f = line.split("\t");
                     if (f[0] === "disk") {
                         const free = Number(f[3]);
-                        out.disks.push({ mount: f[1], use: parseInt(f[2]), free: free >= 1073741824 ? Math.round(free / 1073741824) + " GB" : Math.round(free / 1048576) + " MB" });
+                        out.disks.push({ mount: f[1], use: parseInt(f[2]), free: Sizes.bytes(free) });
                     } else if (f[0] === "hog") {
                         const bin = f[3] || "";
                         const nm = /zen/.test(bin) ? "Zen" : /firefox/.test(bin) ? "Firefox" : /chrom/.test(bin) ? "Chrome" : /t3code/.test(bin) ? "T3 Code" : bin;
                         out.hog = { kb: Number(f[1]), tab: f[2] === "1", name: f[2] === "1" ? nm + " tab" : nm };
-                    } else if (f[0] === "top") out.top = (f[1] || "") + " " + (f[2] || "");
+                    } else if (f[0] === "top") out.top = (f[1] || "") + " " + (f[2] ? Sizes.bytes(Sizes.fromKiB(f[2])) : "");
                 }
                 root.last = out;
             }

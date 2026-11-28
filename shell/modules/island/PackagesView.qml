@@ -6,6 +6,7 @@ import qs.components
 import qs.components.ui
 import qs.services
 import "../../services/links.mjs" as Links
+import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: pv
@@ -19,7 +20,7 @@ Item {
         return (list || []).filter(p => (kind === "all" || (kind === "aur" && p.aur) || (kind === "held" && Updates.isHeld(p.name)))
             && (!q || p.name.indexOf(q) >= 0 || String(p.desc || "").toLowerCase().indexOf(q) >= 0));
     }
-    function mb(b) { return b >= 1073741824 ? (b / 1073741824).toFixed(1) + " GB" : b >= 1048576 ? Math.round(b / 1048576) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+    function mb(b) { return Sizes.bytes(b); }
     function load() { if (!pinned && !reader.running) reader.running = true; }
     onVisibleChanged: if (visible && !list) load()
     Process {

@@ -49,6 +49,9 @@ One face, resolved once when the shell starts (`Theme.fontKind`, from
 - Changing numbers use tabular figures (`Theme.numeralFeatures(rounded,
   true)` keeps Inter's open digits too) and a fixed width.
 - Not used: SF Compact (watchOS), New York (serif).
+- Sizes are decimal, as GNOME and macOS print them (1 kB is 1000 B, 1 GB is
+  1000 MB), from one formatter, `shell/services/sizes.mjs`. A file that
+  divides a size by 1024 or 1e9 fails `tests/shell/sizes.test.mjs`.
 - No uppercase or letter-spaced labels; hierarchy from size and weight.
 - Over glass, text is brighter than on a solid surface: .96 / .72 / .50.
 - Hyprland's own text (group bars, its error bar) asks Pango for

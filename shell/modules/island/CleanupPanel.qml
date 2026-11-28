@@ -20,6 +20,7 @@ import qs.config
 import qs.components
 import qs.components.ui as Ui
 import qs.services
+import "../../services/sizes.mjs" as Sizes
 
 FocusScope {
     id: cp
@@ -107,7 +108,7 @@ FocusScope {
         act(["trash"].concat(paths), names.length === 1 ? names[0] : names.length + " skills");
     }
     function num(n) { return Number(n || 0).toLocaleString(Qt.locale("en_US"), "f", 0); }
-    function gb(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB"; }
+    function gb(b) { return Sizes.bytes(b); }
 
     Keys.onPressed: e => {
         if (e.key === Qt.Key_Escape && confirm) { confirm = false; e.accepted = true; return; }

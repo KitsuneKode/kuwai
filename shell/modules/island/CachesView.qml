@@ -6,6 +6,7 @@ import qs.components
 import qs.components.ui as Ui
 import qs.services
 import "../../services/cacheTools.mjs" as CacheTools
+import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: cv
@@ -106,13 +107,13 @@ Item {
                 title: "Disk"
                 big: cv.report ? SystemStats.bytes(cv.report.disk.used) : ""
                 caption: cv.report ? "of " + SystemStats.bytes(cv.report.disk.total) + " used · " + SystemStats.bytes(cv.report.disk.free) + " free" : ""
-                total: cv.report ? cv.report.disk.total / 1073741824 : 1
+                total: cv.report ? Sizes.inGB(cv.report.disk.total) : 1
                 unit: " GB"
                 parts: {
                     if (!cv.report) return [];
-                    const found = cv.items.map((i, k) => ({ label: i.label, value: i.bytes / 1073741824, color: cv.pal[k % cv.pal.length],
+                    const found = cv.items.map((i, k) => ({ label: i.label, value: Sizes.inGB(i.bytes), color: cv.pal[k % cv.pal.length],
                         detail: i.clearable ? "comes back on its own" : "check first" }));
-                    const rest = Math.max(0, cv.report.disk.used / 1073741824 - found.reduce((n, p) => n + p.value, 0));
+                    const rest = Math.max(0, Sizes.inGB(cv.report.disk.used) - found.reduce((n, p) => n + p.value, 0));
                     return found.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "your files, apps and the system" }]);
                 }
             }
@@ -214,7 +215,7 @@ Item {
                                     id: pside
                                     anchors { right: parent.right; top: parent.top }
                                     spacing: Theme.s2
-                                    Label { anchors.verticalCenter: parent.verticalCenter; text: part.modelData.bytes < 1048576 ? "< 1 MB" : SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
+                                    Label { anchors.verticalCenter: parent.verticalCenter; text: part.modelData.bytes < Sizes.MB ? "< 1 MB" : SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
                                     Ui.Button {
                                         visible: part.modelData.runnable
                                         height: Theme.sp(28); size: Theme.tSub

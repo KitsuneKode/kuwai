@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "sweepModel.js" as Model
+import "sizes.mjs" as Sizes
 
 Singleton {
     id: root
@@ -30,7 +31,7 @@ Singleton {
     readonly property bool refreshing: alive && data.refreshing === true
     readonly property string error: alive && data.error ? String(data.error) : ""
 
-    readonly property real minBytes: Settings.sweepMinGB * 1e9
+    readonly property real minBytes: Settings.sweepMinGB * Sizes.GB
     readonly property bool worth: enabled && alive && !pending && Model.worthMark(idleBytes, minBytes)
     property var viewedBytes: null
     property bool viewedRead: false
