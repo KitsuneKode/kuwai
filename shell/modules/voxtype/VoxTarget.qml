@@ -36,12 +36,17 @@ Scope {
     readonly property int stroke: 3
 
     FileView {
+        id: targetFile
         path: root.runtime + "/voxtype/target_window"
         watchChanges: true; printErrors: false
         onFileChanged: reload()
         onLoaded: { try { root.address = JSON.parse(text() || "{}").address || ""; } catch (e) { root.address = ""; } if (root.on) look.restart(); }
     }
-    onOnChanged: { if (on) look.restart(); else drawn = null; }
+    onOnChanged: { if (on) { targetFile.reload(); look.restart(); } else drawn = null; }
+    Connections {
+        target: Activities
+        function onVoxSinceChanged() { targetFile.reload(); }
+    }
 
     FileView { id: wishFile; path: root.runtime + "/kuwai/voxtype-pill.json"; printErrors: false }
     readonly property string wish: JSON.stringify(VoxRing.pillWish(Settings.dictationPill, Theme.textScale, box, stroke, { tier: Theme.springSlow, still: Theme.reduceMotion }))
