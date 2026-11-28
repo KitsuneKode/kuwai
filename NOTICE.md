@@ -8,6 +8,7 @@ Not covered by that license, and kept under their own terms:
 | What | Where | Terms |
 | --- | --- | --- |
 | Phosphor icons | `shell/assets/phosphor/` | MIT (its own `LICENSE` there) |
+| Geist and Geist Mono | `shell/assets/fonts/` | SIL Open Font License 1.1 (its own `OFL.txt` there) |
 | Agent and tool logos (Anthropic, OpenAI, Gemini, …) | `shell/assets/brands/` | Trademarks of their owners, used only to identify each agent; no endorsement implied |
 | Kiro's mark | `shell/assets/brands/kiro.svg` | Drawn from T3 Code's `apps/web/src/components/Icons.tsx` (MIT, © 2026 T3 Tools Inc.); the mark is Kiro's |
 | Emoji names and keywords | `lib/lists/emoji.db` | Built from Unicode's emoji-test.txt and CLDR annotations: Unicode License v3 (unicode.org/license.txt) |

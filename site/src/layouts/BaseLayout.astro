@@ -43,7 +43,7 @@ const defaultSchema = {
       name: "kuwai",
       applicationCategory: "DesktopEnvironment",
       operatingSystem: "Arch Linux (Hyprland 0.57+)",
-      softwareVersion: "0.1.0",
+      softwareVersion: "0.2.0",
       license: "https://www.gnu.org/licenses/gpl-3.0.en.html",
       url: `${siteUrl}/`,
       downloadUrl: "https://github.com/KitsuneKode/kuwai",
@@ -98,10 +98,7 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
   <link rel="alternate" type="application/rss+xml" title="kuwai Releases (RSS 2.0)" href="/feed.xml">
   <link rel="alternate" type="application/atom+xml" title="kuwai Releases (Atom)" href="/atom.xml">
   <link rel="author" href="/humans.txt">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preload" href="/fonts/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <script type="application/ld+json" set:html={jsonLd} />
 </head>
 <body>
@@ -116,6 +113,8 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
         <a href="/#requirements">Requirements</a>
         <a href="/#install">Install</a>
         <a href="/#security">Privacy &amp; security</a>
+        <a href="/island/" aria-current={currentPath.startsWith("/island") ? "page" : undefined}>Island</a>
+        <a href="/extending/" aria-current={currentPath.startsWith("/extending") ? "page" : undefined}>Extending</a>
         <a href="/changelog/" aria-current={currentPath.startsWith("/changelog") ? "page" : undefined}>Changelog</a>
         <a href="/brand/" aria-current={currentPath.startsWith("/brand") ? "page" : undefined}>Brand</a>
         <a href="https://github.com/KitsuneKode/kuwai" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -149,6 +148,8 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
         <div class="footer-col">
           <h3 class="footer-heading">Documentation</h3>
           <ul class="footer-list">
+            <li><a href="/island/">Island and capsules</a></li>
+            <li><a href="/extending/">Extending kuwai</a></li>
             <li><a href="/changelog/">Changelog</a></li>
             <li><a href="/brand/">Brand and tokens</a></li>
             <li><a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/README.md" target="_blank" rel="noopener noreferrer">Manual</a></li>
@@ -169,7 +170,7 @@ const jsonLd = JSON.stringify(schemaJson ?? defaultSchema);
       </div>
 
       <div class="footer-bottom">
-        <span>kuwai v0.1.0 · GPL-3.0-or-later</span>
+        <span>kuwai · GPL-3.0-or-later</span>
         <span>Arch Linux · Hyprland 0.57+ · Quickshell</span>
       </div>
     </div>

@@ -1,14 +1,15 @@
 #!/usr/bin/env -S python3 -I
 """Local servers you started: listening TCP ports whose process works in a folder of yours.
 
-  kuwai-ports    print [{port, proc, what, project, pid, start, age, agent, local}] as JSON, by port
+  kuwai-ports    print rows for listening TCP ports as JSON, by port
 
-`what` is the server as you'd name it ("next dev", "vite"), `agent` the coding
-agent it was started under (its parent chain, nothing else), `start` the
+Each row names the port, host, process, project, pid, start time, age, memory,
+CPU and the coding agent or terminal it was started from. `start` is the
 kernel's start time, so stopping it later can check it's still the same one.
 Listeners and their owners come from /proc: net/tcp and net/tcp6 name the
 socket inodes, and each process's fd links name the sockets it holds.
 """
+import hashlib
 import ipaddress
 import json
 import os
@@ -29,18 +30,29 @@ SERVERS = [(r"next(/dist/bin/next)?\b.*\bdev\b", "next dev"), (r"next\b.*\bstart
            (r"wrangler\b.*\bdev\b", "wrangler dev"), (r"\bstorybook\b", "storybook"), (r"\buvicorn\b", "uvicorn"),
            (r"\bgunicorn\b", "gunicorn"), (r"manage\.py\s+runserver", "django"), (r"\bflask\b", "flask"),
            (r"-m\s+http\.server", "python http.server"), (r"\bjupyter", "jupyter"), (r"\brails\s+s", "rails"), (r"cargo\s+run|\btrunk\b", "cargo run")]
+DAEMONS = re.compile(r"^(postgres|redis-server|redis|docker-proxy)$", re.I)
+TERMINALS = [(re.compile(r"^kitty$", re.I), "Kitty"), (re.compile(r"^ghostty$", re.I), "Ghostty"),
+             (re.compile(r"^(wezterm|wezterm-gui)$", re.I), "WezTerm"), (re.compile(r"^alacritty$", re.I), "Alacritty"),
+             (re.compile(r"^foot$", re.I), "Foot"), (re.compile(r"^konsole$", re.I), "Konsole")]
 TICK = os.sysconf("SC_CLK_TCK")
+PAGE = os.sysconf("SC_PAGE_SIZE")
 
 
 def root(proc=None):
     return proc or PROC
 
 
-def stat(pid, proc=None):
+def stat_info(pid, proc=None):
     with open(os.path.join(root(proc), str(pid), "stat")) as f:
         st = f.read()
     rest = st[st.rindex(")") + 2:].split()
-    return st[st.index("(") + 1:st.rindex(")")], int(rest[1]), int(rest[19])
+    return {"name": st[st.index("(") + 1:st.rindex(")")], "ppid": int(rest[1]), "ticks": int(rest[11]) + int(rest[12]),
+            "start": int(rest[19]), "rss": int(rest[21]) * PAGE}
+
+
+def stat(pid, proc=None):
+    s = stat_info(pid, proc)
+    return s["name"], s["ppid"], s["start"]
 
 
 def argv(pid, proc=None):
@@ -64,7 +76,6 @@ def what(pid, name, proc=None):
 
 
 def agent(pid, proc=None):
-    """The coding agent this server runs under, if one of its ancestors is one."""
     seen = 0
     while pid > 1 and seen < 40:
         seen += 1
@@ -124,7 +135,6 @@ def loopback(host):
 
 
 def sockets(proc=None):
-    """Listening socket inode → port and whether it is loopback-only."""
     out = {}
     for family in ("tcp", "tcp6"):
         try:
@@ -150,7 +160,6 @@ def sockets(proc=None):
 
 
 def socket_owners(inodes, proc=None):
-    """Socket inode → pids holding it, from fd links under /proc."""
     owners = {}
     if not inodes:
         return owners
@@ -179,35 +188,156 @@ def socket_owners(inodes, proc=None):
     return owners
 
 
+def memory_bytes(pid, proc=None, stat_row=None):
+    try:
+        with open(os.path.join(root(proc), str(pid), "smaps_rollup")) as f:
+            for line in f:
+                if line.startswith("Pss:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    if stat_row is not None:
+        return stat_row["rss"]
+    try:
+        return stat_info(pid, proc)["rss"]
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def unit_words(unit):
+    base = re.sub(r"\.(scope|service)$", "", unit)
+    base = re.sub(r"^(app|run)-", "", base)
+    base = re.sub(r"@[^@]*$", "", base)
+    base = re.sub(r"-(?:[0-9a-fA-F]{6,}|[0-9]+)$", "", base)
+    return re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), base)
+
+
+def pretty_app(app):
+    app = re.sub(r"\.desktop$", "", app)
+    word = app.split(".")[-1] if app.count(".") >= 2 else app
+    word = word.split("-")[0] if word.split("-")[0].lower() in ("org", "com", "io") and len(word.split("-")) > 1 else word
+    return word[:1].upper() + word[1:] if word else ""
+
+
+def cgroup_app(pid, proc=None):
+    try:
+        with open(os.path.join(root(proc), str(pid), "cgroup")) as f:
+            text = f.read()
+    except OSError:
+        return ""
+    units = re.findall(r"/((?:app|run)-[^/\s]+\.(?:scope|service))", text)
+    for unit in reversed(units):
+        if unit.startswith("run-"):
+            continue
+        name = pretty_app(unit_words(unit))
+        if name:
+            return name
+    return ""
+
+
+def parent_app(pid, proc=None):
+    own = pid
+    seen = 0
+    while pid > 1 and seen < 40:
+        seen += 1
+        try:
+            name, ppid, _ = stat(pid, proc)
+        except (OSError, ValueError, IndexError):
+            break
+        if pid != own:
+            for pat, label in TERMINALS:
+                if pat.search(name):
+                    return label
+        pid = ppid
+    return cgroup_app(own, proc)
+
+
+def state_path(proc=None):
+    if os.environ.get("KUWAI_PORTS_STATE"):
+        return os.environ["KUWAI_PORTS_STATE"]
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    base = os.path.join(runtime, "kuwai", "ports") if runtime else os.path.join(
+        os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state"), "kuwai", "ports"
+    )
+    key = hashlib.sha1(os.path.realpath(root(proc)).encode()).hexdigest()[:12]
+    return os.path.join(base, "cpu-" + key + ".json")
+
+
+def cpu_percents(samples, proc=None, up=None):
+    up = uptime(proc) if up is None else up
+    path = state_path(proc)
+    before = {}
+    try:
+        with open(path) as f:
+            raw = json.load(f)
+        if isinstance(raw, dict):
+            before = raw
+    except (OSError, ValueError):
+        pass
+    now = {}
+    out = {}
+    for pid, s in samples.items():
+        ident = str(pid) + ":" + str(s["start"])
+        now[ident] = {"pid": pid, "start": s["start"], "t": up, "ticks": s["ticks"]}
+        old = before.get(ident)
+        if old and up > old.get("t", 0) and s["ticks"] >= old.get("ticks", 0):
+            out[pid] = round(max(0.0, (s["ticks"] - old["ticks"]) * 100 / ((up - old["t"]) * TICK)), 1)
+        else:
+            lived = max(0.1, up - s["start"] / TICK)
+            out[pid] = round(max(0.0, s["ticks"] * 100 / (lived * TICK)), 1)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(now, f, separators=(",", ":"))
+        os.replace(tmp, path)
+    except OSError:
+        pass
+    return out
+
+
 def candidate(pid, proc, up):
+    try:
+        info = stat_info(pid, proc)
+    except (OSError, ValueError, IndexError):
+        return None
+    name = re.sub(r"-MainThread$", "", info["name"])
+    if SKIP.match(name):
+        return None
+    daemon = bool(DAEMONS.match(name))
     try:
         cwd = os.path.realpath(os.readlink(os.path.join(root(proc), str(pid), "cwd")))
     except OSError:
+        if not daemon:
+            return None
+        cwd = ""
+    if not daemon and not cwd.startswith(HOME + os.sep):
         return None
-    if not cwd.startswith(HOME + os.sep):
-        return None
-    try:
-        name, _, start = stat(pid, proc)
-    except (OSError, ValueError, IndexError):
-        return None
-    name = re.sub(r"-MainThread$", "", name)
-    if SKIP.match(name):
-        return None
-    return {"proc": name, "what": what(pid, name, proc), "project": project(cwd), "pid": pid, "start": start,
-            "age": max(0, int(up - start / TICK)), "agent": agent(pid, proc)}
+    return {"proc": name, "what": what(pid, name, proc), "project": project(cwd) if cwd else name, "pid": pid,
+            "start": info["start"], "age": max(0, int(up - info["start"] / TICK)), "agent": agent(pid, proc),
+            "parentApp": parent_app(pid, proc), "memBytes": memory_bytes(pid, proc, info), "ticks": info["ticks"]}
+
+
+def pick_host(hosts):
+    for host in hosts:
+        if host and not loopback(host):
+            return host
+    return hosts[0] if hosts else ""
 
 
 def scan(proc=None):
-    """Rows for listening TCP ports, owned through /proc socket inodes."""
     listens = sockets(proc)
     owners = socket_owners(set(listens), proc)
     ports = {}
     for inode, s in listens.items():
-        p = ports.setdefault(s["port"], {"inodes": [], "local": True})
+        p = ports.setdefault(s["port"], {"inodes": [], "hosts": [], "local": True})
         p["inodes"].append(inode)
+        p["hosts"].append(s["host"])
         p["local"] = p["local"] and s["local"]
     up = uptime(proc)
     out = []
+    samples = {}
+    rows_by_port = []
     for port, p in ports.items():
         rows = []
         for inode in p["inodes"]:
@@ -218,7 +348,12 @@ def scan(proc=None):
         if not rows:
             continue
         row = rows[0]
-        row.update({"port": port, "local": p["local"]})
+        row.update({"port": port, "host": pick_host(p["hosts"]), "local": p["local"]})
+        samples[row["pid"]] = {"start": row["start"], "ticks": row.pop("ticks")}
+        rows_by_port.append(row)
+    cpus = cpu_percents(samples, proc, up)
+    for row in rows_by_port:
+        row["cpu"] = cpus.get(row["pid"], 0.0)
         out.append(row)
     return sorted(out, key=lambda r: r["port"])
 

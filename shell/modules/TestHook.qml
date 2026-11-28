@@ -72,6 +72,7 @@ Scope {
         // Panels load on first open, so a broken one hides until then; this
         // compiles a file (types, imports, syntax) without creating it.
         function compile(file: string): string {
+            if (!file || file.startsWith("/") || file.indexOf("..") >= 0 || file.indexOf("\\") >= 0 || !file.endsWith(".qml")) return "invalid path";
             const c = Qt.createComponent(Quickshell.shellDir + "/" + file, Component.PreferSynchronous);
             const r = c.status === Component.Ready ? "ok" : c.status === Component.Error ? c.errorString() : "status " + c.status;
             c.destroy();

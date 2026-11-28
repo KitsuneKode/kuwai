@@ -258,6 +258,12 @@ Singleton {
     // Settings opens on this page (a SettingsPanel section id), then forgets it.
     property string settingsPage: ""
     function openSettings(page) { settingsPage = page || ""; open("settings", "", "key"); }
+    property string systemTab: ""
+    function openSystem(tab) {
+        systemTab = tab || "";
+        if (isSection(panel)) switchTo("system");
+        else open("system", "", "key");
+    }
     function openWith(prefix) { prefill = prefix; open("launcher", "", "key"); }
     // The theme picker's tab: "themes" or "wallpapers".
     property string themeMode: "themes"

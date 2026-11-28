@@ -30,38 +30,58 @@ FocusScope {
     property bool inStrip: false
     property string tab: "overview"
     readonly property bool overview: tab === "overview"
+    readonly property var tabOrder: ["overview", "activity", "ports"]
     readonly property string headerMeta: uptime + (SystemStats.load ? " · load " + SystemStats.load.split(" ")[0] : "")
     focus: true
     implicitWidth: Theme.panelM
     implicitHeight: col.implicitHeight + 40
 
-    Component.onCompleted: { SystemStats.watch(); gameProbe.running = true; }
+    Component.onCompleted: { SystemStats.watch(); takeIslandTab(); }
+    function takeIslandTab() {
+        if (Island.systemTab === "") return;
+        if (tabOrder.indexOf(Island.systemTab) >= 0) tab = Island.systemTab;
+        Island.systemTab = "";
+    }
+    Connections {
+        target: Island
+        function onSystemTabChanged() { sys.takeIslandTab(); }
+    }
     Component.onDestruction: SystemStats.unwatch()
     Keys.onPressed: e => {
-        if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) { tab = overview ? "activity" : "overview"; e.accepted = true; }
+        if (e.key === Qt.Key_Tab && (e.modifiers & Qt.ControlModifier)) {
+            tab = tabOrder[(tabOrder.indexOf(tab) + 1) % tabOrder.length];
+            e.accepted = true;
+        }
     }
 
     // Memory by what holds it: PSS, so a browser's twenty processes count once.
     property var memApps: []
+    property bool memReady: false
+    property bool memFailed: false
+    readonly property string memHint: Theme.textScale >= 1.5 ? "" : memFailed ? " · app memory unavailable" : !memReady ? " · reading apps" : memApps.length ? " · point at the dots" : ""
     Process {
         id: memProbe
         command: [Paths.bin + "/kuwai-procs", "--by-app"]
-        stdout: StdioCollector { onStreamFinished: { try { sys.memApps = JSON.parse(text); } catch (e) {} } }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const apps = JSON.parse(text);
+                    sys.memApps = Array.isArray(apps) ? apps : [];
+                    sys.memReady = true;
+                    sys.memFailed = false;
+                } catch (e) { sys.memFailed = true; }
+            }
+        }
+        onExited: (code, status) => { if (code !== 0) sys.memFailed = true; }
     }
-    Timer { interval: Theme.panelPollMs; repeat: true; running: sys.overview; triggeredOnStart: true; onTriggered: memProbe.running = true }
+    Timer { interval: Theme.panelPollMs; repeat: true; running: sys.overview; triggeredOnStart: true; onTriggered: if (!memProbe.running) memProbe.running = true }
 
     // Game mode: HyDE's when it's installed, else kuwai's own gaming mode (the
     // same as Super+Alt+G); both turn animations off, which is what's read.
-    property bool gameMode: false
-    Process {
-        id: gameProbe
-        command: ["hyprctl", "getoption", "animations:enabled", "-j"]
-        stdout: StdioCollector { onStreamFinished: { try { sys.gameMode = JSON.parse(text).int === 0; } catch (e) {} } }
-    }
+    readonly property bool gameMode: Theme.hyprStill
     function toggleGame() {
         if (Hyde.hasShell) Quickshell.execDetached(["hyde-shell", "gamemode"]);
         else Quickshell.execDetached(["hyprctl", "eval", "kuwai.mode_toggle('gaming')"]);
-        gameMode = !gameMode;
     }
 
     property string uptime: ""
@@ -108,7 +128,7 @@ FocusScope {
         Segmented {
             id: tabs
             width: implicitWidth
-            options: [{ id: "overview", label: "Overview" }, { id: "activity", label: "Activity" }]
+            options: [{ id: "overview", label: "Overview" }, { id: "activity", label: "Activity" }, { id: "ports", label: "Ports" }]
             current: sys.tab
             onPicked: id => sys.tab = id
         }
@@ -116,10 +136,19 @@ FocusScope {
         Loader {
             id: activityTab
             width: parent.width
-            active: !sys.overview
+            active: sys.tab === "activity"
             visible: active
             focus: active
             sourceComponent: ActivityView { maxHeight: sys.activityRoom }
+        }
+
+        Loader {
+            id: portsTab
+            width: parent.width
+            active: sys.tab === "ports"
+            visible: active
+            focus: active
+            sourceComponent: PortsView { maxHeight: sys.activityRoom }
         }
 
         // ── CPU ──────────────────────────────────────────────────────────
@@ -208,7 +237,7 @@ FocusScope {
                 big: SystemStats.bytes(SystemStats.memUsed)
                 caption: "of " + SystemStats.bytes(SystemStats.memTotal) + " in use"
                     + (SystemStats.swapUsed > Sizes.MB ? " · swap " + SystemStats.bytes(SystemStats.swapUsed) : "")
-                    + (sys.memApps.length ? " · point at the dots" : "")
+                    + sys.memHint
                 total: Sizes.inGB(SystemStats.memTotal)
                 unit: " GB"
                 parts: {

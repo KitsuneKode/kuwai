@@ -130,37 +130,59 @@ function K.ac_online()
 	return K.read_line(AC) == "1"
 end
 
+local function apply_ac(online)
+	if not AC then
+		return
+	end
+	local last = K.state["ac_last"]
+	local now = online and "1" or "0"
+	if last == now then
+		return
+	end
+	K.set_state("ac_last", now)
+	local display_changed = false
+	if K.feature("auto_display") and K.display and K.display.reconcile then
+		K.display.reconcile()
+	elseif K.feature("auto_display") and K.state["display_auto"] ~= "accurate" then
+		local want = (not online) and "battery" or nil
+		if K.state["display_auto"] ~= want then
+			K.set_state("display_auto", want)
+			K.set_state("display_why", want and "On battery" or nil)
+			display_changed = true
+		end
+	end
+	local mode = K.state["mode"] or "focus"
+	if not online and mode ~= "battery" and mode ~= "gaming" then
+		K.set_state("mode_before_battery", mode)
+		kuwai.mode("battery")
+	elseif online and mode == "battery" and K.state["mode_before_battery"] then
+		local back = K.state["mode_before_battery"]
+		K.set_state("mode_before_battery", nil)
+		kuwai.mode(back)
+	elseif display_changed then
+		hl.dispatch(dsp.reload_config())
+	end
+end
+
+function kuwai.on_ac(on)
+	if not K.feature("auto_battery") or not AC then
+		return hl.dsp.no_op()
+	end
+	if on == nil then
+		local live = K.ac_online()
+		if live == nil then
+			return hl.dsp.no_op()
+		end
+		apply_ac(live)
+	else
+		apply_ac(on == true or on == 1 or on == "1" or on == "on")
+	end
+	return hl.dsp.no_op()
+end
+
 if K.feature("auto_battery") and AC then
 	local function check()
-		local online = K.read_line(AC) == "1"
-		local last = K.state["ac_last"]
-		local now = online and "1" or "0"
-		if last == now then
-			return
-		end
-		K.set_state("ac_last", now)
-		local display_changed = false
-		if K.feature("auto_display") and K.display and K.display.reconcile then
-			K.display.reconcile()
-		elseif K.feature("auto_display") and K.state["display_auto"] ~= "accurate" then
-			local want = (not online) and "battery" or nil
-			if K.state["display_auto"] ~= want then
-				K.set_state("display_auto", want)
-				K.set_state("display_why", want and "On battery" or nil)
-				display_changed = true
-			end
-		end
-		local mode = K.state["mode"] or "focus"
-		if not online and mode ~= "battery" and mode ~= "gaming" then
-			K.set_state("mode_before_battery", mode)
-			kuwai.mode("battery")
-		elseif online and mode == "battery" and K.state["mode_before_battery"] then
-			local back = K.state["mode_before_battery"]
-			K.set_state("mode_before_battery", nil)
-			kuwai.mode(back)
-		elseif display_changed then
-			hl.dispatch(dsp.reload_config())
-		end
+		apply_ac(K.read_line(AC) == "1")
 	end
 	K.defer(function()
 		hl.timer(check, { timeout = 15000, type = "repeat" })
@@ -332,9 +354,6 @@ if K.feature("night_light") then
 end
 
 local last_key = 0
-hl.on("input.keyboard.key", function()
-	last_key = os.time()
-end)
 function kuwai.where()
 	local p = hl.get_cursor_pos()
 	local focused = hl.get_active_monitor()
@@ -353,43 +372,43 @@ function kuwai.where()
 		K.json_str(looking), K.json_str(pointer), K.json_str(f), typing and "true" or "false")
 end
 
-if K.feature("hold_super") then
+do
 	local SUPER = { [133] = true, [134] = true }
+	local ALT = { [64] = true, [108] = true }
+	local hold_super = K.feature("hold_super")
+	local island_switcher = K.feature("island_switcher")
 	local token, opened, held, pos = 0, false, false, nil
 	hl.on("input.keyboard.key", function(code, _, state)
-		if SUPER[code] then
-			if state == 1 then
-				held = true
-				opened = false
+		last_key = os.time()
+		if hold_super then
+			if SUPER[code] then
+				if state == 1 then
+					held = true
+					opened = false
+					token = token + 1
+					local mine = token
+					pos = hl.get_cursor_pos()
+					hl.timer(function()
+						local p = hl.get_cursor_pos()
+						local still = pos and p and math.abs(p.x - pos.x) + math.abs(p.y - pos.y) < 8
+						if mine == token and held and still then
+							opened = true
+							hl.dispatch(dsp.global("kuwai:keys-open"))
+						end
+					end, { timeout = 650, type = "oneshot" })
+				elseif state == 0 then
+					held = false
+					token = token + 1
+				end
+			elseif state == 1 then
 				token = token + 1
-				local mine = token
-				pos = hl.get_cursor_pos()
-				hl.timer(function()
-					local p = hl.get_cursor_pos()
-					local still = pos and p and math.abs(p.x - pos.x) + math.abs(p.y - pos.y) < 8
-					if mine == token and held and still then
-						opened = true
-						hl.dispatch(dsp.global("kuwai:keys-open"))
-					end
-				end, { timeout = 650, type = "oneshot" })
-			elseif state == 0 then
-				held = false
-				token = token + 1
-			end
-		elseif state == 1 then
-			token = token + 1
-			if held and opened then
-				opened = false
-				hl.dispatch(dsp.global("kuwai:keys-close"))
+				if held and opened then
+					opened = false
+					hl.dispatch(dsp.global("kuwai:keys-close"))
+				end
 			end
 		end
-	end)
-end
-
-if K.feature("island_switcher") then
-	local ALT = { [64] = true, [108] = true }
-	hl.on("input.keyboard.key", function(code, _, state)
-		if state == 0 and ALT[code] and K.alt_switch then
+		if island_switcher and state == 0 and ALT[code] and K.alt_switch then
 			K.alt_switch = false
 			hl.dispatch(dsp.global("kuwai:switch-commit"))
 		end

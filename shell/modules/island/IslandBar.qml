@@ -480,7 +480,7 @@ Scope {
             readonly property size hoverSize: !hoverFull
                 ? Qt.size(glanceLoader.item ? Math.min(glanceLoader.item.implicitWidth, maxWinW - 40) : 460, glanceLoader.item ? glanceLoader.item.implicitHeight : 52)
                 : Qt.size(hoverLoader.item ? Math.min(hoverLoader.item.implicitWidth, maxWinW - 40) : 720,
-                          hoverLoader.item ? hoverLoader.item.implicitHeight : 148 + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0))
+                          hoverLoader.item ? hoverLoader.item.implicitHeight : 148 + (RecentWork.assistRow ? 38 : 0))
             // A warning grows the island too (below panels and hover in priority).
             readonly property bool bannerHere: Alerts.banner !== null && screenName === (Screens.present(Alerts.bannerOn) ? Alerts.bannerOn : Screens.focusedName) && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
@@ -550,7 +550,7 @@ Scope {
                 } else pull = 0;
             }
             // The assistant working with its panel closed (or just finished): the edge light below.
-            readonly property bool assistHere: (OllamaService.bgWorking || !!OllamaService.bgDone)
+            readonly property bool assistHere: (RecentWork.bgWorking || !!RecentWork.bgDone)
                 && !panelHere && !grown && !bannerHere && !peekHere && !deviceHere
             // The notch's corners round out as it grows: 14 at rest, 30 from
             // ~24 px taller. (They switched at the first pixel of growth, so
@@ -563,17 +563,17 @@ Scope {
             // still light, so no frames; it blooms once as it starts and again
             // when one more joins). The glance says who, and takes you there.
             readonly property var waitingAgents: Agents.stack("needs")
-            readonly property int waitingCount: Agents.needN + (OllamaService.pendingRequest ? 1 : 0)
+            readonly property int waitingCount: Agents.needN + (RecentWork.pendingRequest ? 1 : 0)
             readonly property string waitingWho: {
                 if (waitingCount > 1) return waitingCount + " need you";
                 const a = waitingAgents[0];
                 if (a) return Kittymux.agentLabel(a.agent) + " needs you";
                 if (Agents.next && Agents.next.rank === 0) return Kittymux.agentLabel(Agents.next.agent) + " needs you";
-                return OllamaService.pendingRequest ? "Assistant asks" : "";
+                return RecentWork.pendingRequest ? "Assistant asks" : "";
             }
             function goWaiting() {
                 if (Agents.go(Agents.next)) return;
-                if (OllamaService.pendingRequest) OllamaService.openSession(OllamaService.draftSessionId);
+                if (RecentWork.pendingRequest) RecentWork.openSession(RecentWork.draftSessionId);
             }
             // Lit at rest, glancing and in the hover view; a panel over it says enough.
             // What's out in a capsule (IslandSplit) lights its capsule instead.
@@ -872,8 +872,8 @@ Scope {
                         if (active) return;
                         const dy = centroid.scenePosition.y - centroid.scenePressPosition.y;
                         if (dy < 24 && centroid.velocity.y < 600) return;
-                        const d = OllamaService.bgDone;
-                        OllamaService.openSession(d ? d.sessionId : (OllamaService.streaming ? OllamaService.draftSessionId : ""));
+                        const d = RecentWork.bgDone;
+                        RecentWork.openSession(d ? d.sessionId : (RecentWork.streaming ? RecentWork.draftSessionId : ""));
                     }
                 }
                 WheelHandler {
@@ -979,9 +979,9 @@ Scope {
                     // done. Expanded, the island says what it's doing.
                     Item {
                         id: assistGlow
-                        readonly property var done: OllamaService.bgDone
+                        readonly property var done: RecentWork.bgDone
                         readonly property color tone: done ? (done.status === "done" ? Theme.green : Theme.red)
-                            : OllamaService.pendingRequest ? Theme.orange : Theme.accent
+                            : RecentWork.pendingRequest ? Theme.orange : Theme.accent
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: win.restH - 3
                         width: Math.max(0, body.width - 40)
@@ -993,18 +993,18 @@ Scope {
                         Rectangle {
                             anchors.fill: parent
                             radius: 1
-                            color: Qt.alpha(assistGlow.tone, assistGlow.done || OllamaService.pendingRequest ? 0.75 : 0.16)
+                            color: Qt.alpha(assistGlow.tone, assistGlow.done || RecentWork.pendingRequest ? 0.75 : 0.16)
                             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                         }
                         Rectangle {
-                            visible: !assistGlow.done && !OllamaService.pendingRequest && !Theme.reduceMotion
+                            visible: !assistGlow.done && !RecentWork.pendingRequest && !Theme.reduceMotion
                             width: parent.width * 0.4
                             height: parent.height
                             radius: 1
                             property real pos: 0
                             x: -width + pos * (parent.width + width)
                             NumberAnimation on pos {
-                                running: assistGlow.visible && !assistGlow.done && !OllamaService.pendingRequest && !Saver.locked && !Saver.screensOff && !Theme.reduceMotion
+                                running: assistGlow.visible && !assistGlow.done && !RecentWork.pendingRequest && !Saver.locked && !Saver.screensOff && !Theme.reduceMotion
                                 from: 0; to: 1; duration: Theme.shimmerMs; loops: Animation.Infinite; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine
                             }
                             gradient: Gradient {

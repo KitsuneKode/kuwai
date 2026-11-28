@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "links.mjs" as Links
+import "capsules.mjs" as Capsules
 
 Singleton {
     id: root
@@ -30,7 +31,10 @@ Singleton {
         const c = latest;
         if (!c) return;
         if (c.url) { if (Links.safeLink(c.url)) Apps.open(c.url); }
-        else if (Array.isArray(c.run) && c.run.length) Apps.run(c.run);
+        else if (Array.isArray(c.run) && c.run.length) {
+            const cmd = Capsules.safeRun(c.run, Paths.bin);
+            if (cmd) Apps.run(cmd);
+        }
     }
     function dismiss() {
         if (latest) Quickshell.execDetached([Paths.bin + "/kuwai-ext", "capsule", "clear", latest.name]);

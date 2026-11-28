@@ -23,7 +23,7 @@ Item {
 
     Shape {
         anchors.fill: parent
-        layer.enabled: true; layer.samples: 4
+        layer.enabled: true
         layer.effect: MultiEffect {
             shadowEnabled: ring.glow
             shadowColor: ring.color

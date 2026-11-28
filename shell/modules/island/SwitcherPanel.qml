@@ -157,7 +157,7 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 12 }
         spacing: 14
         Repeater {
-            model: (sw.count > 0 ? [["Tab", "Next"], ["↵", "Switch"], ["Q", "Close"]] : []).concat([["W", Switcher.workspaceOnly ? "All workspaces" : "This workspace"], ["esc", "Cancel"]])
+            model: (sw.count > 0 ? [["Tab", "Next"], ["↵", "Switch"], ["Q", "Close"]] : []).concat([["W", Switcher.workspaceOnly ? "All workspaces" : "This workspace"], ["Esc", "Cancel"]])
             Row {
                 required property var modelData
                 spacing: 6

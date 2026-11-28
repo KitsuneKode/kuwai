@@ -738,6 +738,7 @@ Scope {
                                         color: Theme.textPrimary
                                         font.family: Theme.fontText
                                         font.pixelSize: 14
+                                        font.variableAxes: Theme.axesFor(14)
                                         selectByMouse: true
                                         clip: true
 

@@ -9,9 +9,10 @@ Text {
     property real opsz: Theme.opszFor(size)
 
     font.family: rounded ? Theme.fontRounded : (size >= 20 ? Theme.fontDisplay : Theme.fontText)
-    font.pixelSize: size
+    font.pixelSize: Math.round(size * Theme.textScale)
     font.weight: weight
     font.letterSpacing: Theme.tracking(size, rounded) + extraTracking
+    font.variableAxes: Theme.axesFor(size)
     renderType: Text.NativeRendering
     textFormat: Text.PlainText
     color: Theme.textPrimary

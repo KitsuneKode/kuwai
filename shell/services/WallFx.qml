@@ -35,6 +35,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.config
+import qs.services
 import "wallOutcome.mjs" as Outcome
 import "wallDayNight.mjs" as DayNight
 
@@ -472,7 +473,7 @@ Singleton {
         cancelTransition();
         verify();
         if (queued) drain();
-        else if (map) Quickshell.execDetached(["setpriv", "--pdeathsig", "KILL", "--", "nice", "-n", "19", Paths.bin + "/kuwai-wallmap", map]);
+        else if (map) Apps.run(["nice", "-n", "19", Paths.bin + "/kuwai-wallmap", map]);
     }
     function unreadable(path) {
         Qt.callLater(() => {

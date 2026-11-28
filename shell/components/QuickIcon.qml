@@ -74,7 +74,6 @@ Item {
     Shape {
         anchors.fill: parent
         visible: q.holdT > 0.01
-        layer.enabled: true; layer.samples: 4
         ShapePath {
             strokeColor: Qt.rgba(1, 1, 1, 0.85); strokeWidth: 2; fillColor: "transparent"; capStyle: ShapePath.RoundCap
             PathAngleArc { centerX: q.width / 2; centerY: q.height / 2; radiusX: q.width / 2 - 1.5; radiusY: q.height / 2 - 1.5; startAngle: -90; sweepAngle: 360 * q.holdT }

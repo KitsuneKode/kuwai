@@ -170,9 +170,10 @@ Item {
                 wrapMode: TextEdit.Wrap
                 text: ql.rich ? (ql.rendered.html || "") : ""
                 color: Theme.textPrimary
-                selectionColor: Qt.alpha(Theme.blue, 0.5)
+                selectionColor: Qt.alpha(Theme.accent, 0.5)
                 font.family: Theme.fontText
                 font.pixelSize: 15
+                font.variableAxes: Theme.axesFor(15)
                 onLinkActivated: link => { if (/^(https?:\/\/|mailto:)/i.test(link)) Apps.open(link); }   // the web and mail only: a copied text can carry any scheme
             }
         }
@@ -205,9 +206,10 @@ Item {
                 wrapMode: TextEdit.Wrap
                 text: ql.masked ? "•".repeat(32) : (ql.full || (ql.entry ? ql.entry.preview : ""))
                 color: ql.masked ? Theme.textTertiary : Theme.textPrimary
-                selectionColor: Qt.alpha(Theme.blue, 0.5)
+                selectionColor: Qt.alpha(Theme.accent, 0.5)
                 font.family: ql.entry && (ql.entry.kind === "code" || ql.rendered.kind === "code") ? Theme.fontMono : Theme.fontText
                 font.pixelSize: ql.entry && (ql.entry.kind === "code" || ql.rendered.kind === "code") ? 14 : 17
+                font.variableAxes: ql.entry && (ql.entry.kind === "code" || ql.rendered.kind === "code") ? Theme.noAxes : Theme.axesFor(17)
                 renderType: Text.NativeRendering
                 cursorDelegate: SpringCaret {}
                 // Double-click the text to edit it in place (⌃E does the same).

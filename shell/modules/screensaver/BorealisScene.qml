@@ -126,8 +126,7 @@ Item {
         property real rise: 0.08         // how tall the peaks are
         property real seed: 0
         anchors.fill: parent
-        layer.enabled: true
-        layer.samples: 4
+        preferredRendererType: Shape.CurveRenderer
         function points() {
             const n = 48, out = [];
             for (let i = 0; i <= n; i++) {

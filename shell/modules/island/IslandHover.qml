@@ -59,12 +59,12 @@ Item {
     // Music playing: a second row under Now Playing for the machine and your
     // agents (they used to vanish, then to widen the island beside the card).
     readonly property real mediaRowH: hover.media ? 42 : 0
-    implicitHeight: 148 + mediaRowH + (OllamaService.recentWork.length || OllamaService.bgWorking ? 38 : 0)
+    implicitHeight: 148 + mediaRowH + (RecentWork.assistRow ? 38 : 0)
 
     // Recent background work from the assistant (done or failed while its panel
     // was closed): click one to open that chat.
     Row {
-        visible: OllamaService.recentWork.length > 0 || OllamaService.bgWorking
+        visible: RecentWork.assistRow
         x: 18
         y: 148 + hover.mediaRowH
         height: 30
@@ -78,7 +78,7 @@ Item {
         }
         // What it's doing right now, in the shimmer the panel uses for thinking.
         Rectangle {
-            visible: OllamaService.bgWorking
+            visible: RecentWork.bgWorking
             height: 26
             width: nowRow.implicitWidth + 18
             radius: 13
@@ -90,27 +90,27 @@ Item {
                 spacing: 6
                 Shimmer {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: OllamaService.pendingRequest ? "Needs you" : (OllamaService.bgLabel || "Thinking")
+                    text: RecentWork.pendingRequest ? "Needs you" : (RecentWork.bgLabel || "Thinking")
                     size: Theme.tSub
-                    color: OllamaService.pendingRequest ? Theme.orange : Theme.textSecondary
-                    active: !OllamaService.pendingRequest
+                    color: RecentWork.pendingRequest ? Theme.orange : Theme.textSecondary
+                    active: !RecentWork.pendingRequest
                 }
                 Label {
-                    visible: OllamaService.bgSecs >= 2
+                    visible: RecentWork.bgSecs >= 2
                     anchors.verticalCenter: parent.verticalCenter
-                    text: OllamaService.bgSecs + "s"
+                    text: RecentWork.bgSecs + "s"
                     size: Theme.tSub
                     color: Theme.textTertiary
                     tabular: true
                 }
             }
-            MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(OllamaService.draftSessionId) }
+            MouseArea { id: nowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: RecentWork.openSession(RecentWork.draftSessionId) }
             Accessible.role: Accessible.Button
-            Accessible.name: "Assistant: " + (OllamaService.pendingRequest ? "needs you" : (OllamaService.bgLabel || "thinking"))
-            Accessible.onPressAction: OllamaService.openSession(OllamaService.draftSessionId)
+            Accessible.name: "Assistant: " + (RecentWork.pendingRequest ? "needs you" : (RecentWork.bgLabel || "thinking"))
+            Accessible.onPressAction: RecentWork.openSession(RecentWork.draftSessionId)
         }
         Repeater {
-            model: OllamaService.recentWork.slice(0, OllamaService.bgWorking ? 1 : 2)   // two fit on the row
+            model: RecentWork.recentWork.slice(0, RecentWork.bgWorking ? 1 : 2)   // two fit on the row
             Rectangle {
                 id: workChip
                 required property var modelData
@@ -139,10 +139,10 @@ Item {
                         width: Math.min(implicitWidth, 200)
                     }
                 }
-                MouseArea { id: workArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: OllamaService.openSession(workChip.modelData.sessionId) }
+                MouseArea { id: workArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: RecentWork.openSession(workChip.modelData.sessionId) }
                 Accessible.role: Accessible.Button
                 Accessible.name: workChip.modelData.title + (workChip.modelData.status === "done" ? ", done" : ", failed")
-                Accessible.onPressAction: OllamaService.openSession(workChip.modelData.sessionId)
+                Accessible.onPressAction: RecentWork.openSession(workChip.modelData.sessionId)
             }
         }
     }
@@ -794,8 +794,8 @@ Item {
                       toggle: () => Notifs.toggleCenter("controls", "pointer", hover.bar.screenName),
                       wheel: steps => Display.cyclePreset(steps > 0 ? 1 : -1) },
                     // The AI assistant: lit while it works, a dot when it needs you; click opens it.
-                    { id: "assistant", glyph: "\u{f0674}", on: OllamaService.streaming, alert: !!OllamaService.pendingRequest, tone: Theme.accent,
-                      tip: OllamaService.pendingRequest ? "Assistant: needs you" : OllamaService.streaming ? "Assistant: " + (OllamaService.bgLabel || "working") : "Assistant · Super+Ctrl+Shift+A",
+                    { id: "assistant", glyph: "\u{f0674}", on: RecentWork.streaming, alert: !!RecentWork.pendingRequest, tone: Theme.accent,
+                      tip: RecentWork.pendingRequest ? "Assistant: needs you" : RecentWork.streaming ? "Assistant: " + (RecentWork.bgLabel || "working") : "Assistant · Super+Ctrl+Shift+A",
                       toggle: () => Assistant.show() }
                 ]
             }

@@ -876,12 +876,44 @@ function onPanelClosed() {
     property int bgSecs: 0
     property var bgDone: null              // { status, title } for a few seconds after
     property var recentWork: []            // [{ sessionId, title, status, at }], newest first
+    function recentWorkDoc() {
+        return {
+            recentWork: root.recentWork,
+            bgWorking: root.bgWorking,
+            bgDone: root.bgDone,
+            pendingRequest: !!root.pendingRequest,
+            draftSessionId: root.draftSessionId,
+            streaming: root.streaming,
+            bgLabel: root.bgLabel,
+            bgSecs: root.bgSecs,
+        };
+    }
+    function syncRecentWork() {
+        const p = root.runtimeDir + "/recent-work.json";
+        if (recentWorkFile.path !== p) recentWorkFile.path = p;
+        recentWorkFile.setText(JSON.stringify(recentWorkDoc()));
+    }
+    FileView { id: recentWorkFile; blockLoading: true; atomicWrites: true; printErrors: false }
+    function scheduleRecentWork() { syncWorkLater.restart(); }
+    Timer { id: syncWorkLater; interval: 0; onTriggered: root.syncRecentWork() }
+    Connections {
+        target: root
+        function onRecentWorkChanged() { root.scheduleRecentWork(); }
+        function onBgDoneChanged() { root.scheduleRecentWork(); }
+        function onStreamingChanged() { root.scheduleRecentWork(); }
+        function onDraftSessionIdChanged() { root.scheduleRecentWork(); }
+        function onDraftChanged() { root.scheduleRecentWork(); }
+        function onDiscardDraftChanged() { root.scheduleRecentWork(); }
+        function onBgLabelChanged() { root.scheduleRecentWork(); }
+        function onBgSecsChanged() { root.scheduleRecentWork(); }
+    }
+    Connections { target: Assistant; function onOpenChanged() { root.scheduleRecentWork(); } }
     Timer {
         interval: 1000
         repeat: true
         triggeredOnStart: true
         running: root.bgWorking
-        onTriggered: { root.bgLabel = root.workLabel(); root.bgSecs = Math.round((Date.now() - root.workStarted) / 1000); }
+        onTriggered: { root.bgLabel = root.workLabel(); root.bgSecs = Math.round((Date.now() - root.workStarted) / 1000); root.syncRecentWork(); }
     }
     Timer { id: bgDoneClear; interval: 5000; onTriggered: root.bgDone = null }
     function openSession(id) {
@@ -898,6 +930,7 @@ function onPanelClosed() {
             bgDoneClear.restart();
             root.recentWork = [{ sessionId: root.draftSessionId, title: title, status: ok ? "done" : "failed", at: Date.now() }]
                 .concat(root.recentWork.filter(w => w.sessionId !== root.draftSessionId)).slice(0, 3);
+            root.syncRecentWork();
         }
         if (Assistant.open || !msg) return;
         const sess = root.sessions.find(s => s.id === root.draftSessionId);

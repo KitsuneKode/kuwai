@@ -651,8 +651,8 @@ Scope {
         // The island's own width on this screen: the HUD starts as the island.
         readonly property real islandW: Island.restWidths[shownScreen ? shownScreen.name : ""] || 220
         margins.top: inIsland ? 0 : Theme.barGap
-        readonly property real cardW: Theme.sp(316)
-        readonly property real cardH: Math.max(74, osdCol.implicitHeight + 36)
+        readonly property real cardW: Math.min(Theme.sp(316), Theme.screenSize(shownScreen, "width", 1920) - 32)
+        readonly property real cardH: Math.max(Theme.sp(74), osdCol.implicitHeight + Theme.sp(36))
         implicitWidth: cardW + 32          // fixed: the card morphs inside, the surface never resizes
         implicitHeight: cardH + 36
         // On the island it sits where the island is, not under its reserved strip.
@@ -786,10 +786,10 @@ Scope {
                 opacity: card.inner
                 width: Theme.sp(44); height: width; radius: Theme.r4
                 anchors.left: parent.left
-                anchors.leftMargin: 15
+                anchors.leftMargin: Theme.sp(15)
                 anchors.verticalCenter: parent.verticalCenter
                 color: root.kind !== "brightness" && platterArea.containsMouse ? Theme.pillHover : root.muted ? Theme.platterDim : Theme.platter
-                scale: platterArea.pressed ? 0.94 : 1
+                scale: platterArea.pressed && !Theme.reduceMotion ? Theme.pressScaleSmall : 1
                 Behavior on color { ColorAnimation { duration: Theme.colorMs } }
                 Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                 MouseArea {
@@ -834,11 +834,11 @@ Scope {
                 id: osdCol
                 opacity: card.inner
                 anchors.left: platter.right
-                anchors.leftMargin: 13
+                anchors.leftMargin: Theme.sp(13)
                 anchors.right: parent.right
-                anchors.rightMargin: 18
+                anchors.rightMargin: Theme.sp(18)
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 9
+                spacing: Theme.sp(9)
 
                 Item {
                     width: parent.width
@@ -848,7 +848,7 @@ Scope {
                         id: titleText
                         anchors.left: parent.left
                         anchors.right: accessoryRow.left
-                        anchors.rightMargin: 8
+                        anchors.rightMargin: Theme.sp(8)
                         text: root.title
                         elide: Text.ElideRight
                         size: Theme.tBody; weight: Theme.wMedium
@@ -869,10 +869,10 @@ Scope {
 
                     Row {
                         id: accessoryRow
-                        anchors.right: chevron.opacity > 0 ? chevron.left : parent.right
-                        anchors.rightMargin: chevron.opacity > 0 ? 4 : 0
+                        anchors.right: chevron.left
+                        anchors.rightMargin: Theme.sp(4)
                         anchors.verticalCenter: titleText.verticalCenter
-                        spacing: 4
+                        spacing: Theme.sp(4)
                         Text {
                             textFormat: Text.PlainText
                             visible: root.linkGlyph !== ""
@@ -910,7 +910,7 @@ Scope {
                 Item {
                     visible: root.showTrack
                     width: parent.width
-                    height: 12
+                    height: Theme.sp(12)
 
                     Item {
                         id: track
@@ -924,9 +924,9 @@ Scope {
                         Accessible.onDecreaseAction: root.nudge(-1)
                         anchors.left: parent.left
                         anchors.right: valueLabel.left
-                        anchors.rightMargin: 10
+                        anchors.rightMargin: Theme.sp(10)
                         anchors.verticalCenter: parent.verticalCenter
-                        height: 6
+                        height: Theme.sp(6)
                         transform: Scale { id: trackScale; xScale: 1 }
 
                         LevelBar {

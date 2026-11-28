@@ -132,6 +132,7 @@ Column {
             onActiveFocusChanged: if (!activeFocus && !entry.preview) Qt.callLater(entry.reclaim)
             color: "white"
             font.pixelSize: Theme.sp(14)
+            font.variableAxes: Theme.axesFor(14)
             font.letterSpacing: 2
             horizontalAlignment: TextInput.AlignHCenter
             Keys.onReturnPressed: entry.lock.submit()
@@ -146,7 +147,7 @@ Column {
             width: Theme.sp(30); height: width; radius: width / 2
             color: entry.lock.password ? Qt.alpha(entry.accent, 0.9) : Theme.wash(2)
             Behavior on color { ColorAnimation { duration: Theme.colorMs } }
-            scale: goPress.pressed ? 0.9 : 1
+            scale: goPress.pressed && !Theme.reduceMotion ? Theme.pressScaleSmall : 1
             Behavior on scale { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
             Text {
                 textFormat: Text.PlainText

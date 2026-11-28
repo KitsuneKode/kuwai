@@ -575,11 +575,22 @@ Singleton {
     // while still mounted: it says so, in orange.
     property var drives: []           // [{ path, title, size, removable, mounted }]
     property bool drivesKnown: false
+    property int driveRetry: 0
+    property real driveStarted: 0
     Process {
+        id: udevWatch
         running: true
         command: ["setpriv", "--pdeathsig", "KILL", "--", "udevadm", "monitor", "--udev", "--subsystem-match=block"]
         stdout: SplitParser { onRead: line => { if (/ (add|remove) /.test(line)) drivesLater.restart(); } }
+        onStarted: root.driveStarted = Date.now()
+        onExited: {
+            const stable = root.driveStarted > 0 && Date.now() - root.driveStarted >= Theme.panelPollMs;
+            root.driveRetry = stable ? 1 : Math.min(6, root.driveRetry + 1);
+            udevRetry.interval = 1000 * Math.pow(2, root.driveRetry - 1);
+            udevRetry.restart();
+        }
     }
+    Timer { id: udevRetry; onTriggered: udevWatch.running = true }
     Timer { id: drivesLater; interval: 1200; onTriggered: if (!lsblk.running) lsblk.running = true }
     Timer { interval: 2000; running: true; onTriggered: lsblk.running = true }
     function bytes(n) { return Sizes.bytes(n); }

@@ -100,6 +100,7 @@ Rectangle {
                     color: Theme.textPrimary
                     font.family: Theme.fontText
                     font.pixelSize: 13
+                    font.variableAxes: Theme.axesFor(13)
                     selectionColor: Qt.alpha(Theme.accent, 0.5)
                     clip: true
                     onTextChanged: root.query = text
@@ -191,6 +192,7 @@ Rectangle {
                         color: Theme.textPrimary
                         font.family: Theme.fontText
                         font.pixelSize: 13
+                        font.variableAxes: Theme.axesFor(13)
                         selectionColor: Qt.alpha(Theme.accent, 0.5)
                         clip: true
                         onVisibleChanged: if (visible) { text = row.chat ? row.chat.title : ""; selectAll(); forceActiveFocus(); }

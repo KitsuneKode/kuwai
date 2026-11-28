@@ -9,6 +9,8 @@ import qs.components
 Rectangle {
     id: n
     property string glyph
+    property string icon: ""
+    property string iconStyle: "bold"
     property string title
     property string detail
     property color tone: Theme.orange
@@ -23,7 +25,8 @@ Rectangle {
     radius: Theme.r3 - 2
     color: Qt.alpha(tone, Theme.tintNotice)
 
-    Text { textFormat: Text.PlainText; x: 14; y: n.stacked ? 10 : (n.height - height) / 2; text: n.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphM); color: n.tone }
+    Text { visible: n.icon === ""; textFormat: Text.PlainText; x: 14; y: n.stacked ? 10 : (n.height - height) / 2; text: n.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(Theme.glyphM); color: n.tone }
+    Icon { visible: n.icon !== ""; x: 14; y: n.stacked ? 10 : (n.height - height) / 2; name: n.icon; style: n.iconStyle; size: Theme.sp(Theme.glyphM); color: n.tone }
     Column {
         id: col
         x: Theme.sp(42); y: n.stacked ? 10 : (n.height - implicitHeight) / 2

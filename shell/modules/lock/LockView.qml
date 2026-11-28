@@ -71,6 +71,8 @@ Item {
         Item {
             anchors.fill: parent
             layer.enabled: true
+            layer.textureSize: Qt.size(640, 360)
+            layer.smooth: true
             Image {
                 id: wall
                 anchors.fill: parent
@@ -88,7 +90,9 @@ Item {
         // when the track changes. It goes with the blur on unlock.
         Item {
             anchors.fill: parent
-            layer.enabled: true
+            layer.enabled: visible
+            layer.textureSize: Qt.size(256, 256)
+            layer.smooth: true
             opacity: (view.artShown ? 1 : 0) * (1 - view.u)
             visible: opacity > 0.01
             Behavior on opacity { NumberAnimation { duration: Theme.artMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeInOut } }

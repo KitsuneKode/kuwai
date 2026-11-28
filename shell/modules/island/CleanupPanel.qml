@@ -197,6 +197,14 @@ FocusScope {
         width: cp.width - 40
         spacing: 14
 
+        Ui.Notice {
+            visible: cp.phase === "error"
+            glyph: "\u{f0026}"
+            title: cp.error
+            action: "Try again"
+            onActed: cp.load(true)
+        }
+
         // ── The number ──────────────────────────────────────────────────
         Column {
             id: theNumber
@@ -215,13 +223,6 @@ FocusScope {
                 text: cp.num(cp.report ? cp.report.unusedTokens : 0)
                 size: Theme.tClock * 2 - 8; weight: Theme.wBold; rounded: true
                 tabular: true
-            }
-            Ui.Notice {
-                visible: cp.phase === "error"
-                glyph: "\u{f0026}"
-                title: cp.error
-                action: "Try again"
-                onActed: cp.load(true)
             }
             Ui.EmptyState {
                 visible: cp.phase === "empty"

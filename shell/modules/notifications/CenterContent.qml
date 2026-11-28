@@ -139,12 +139,12 @@ Item {
                 Qt.callLater(() => content.currentView().selectFirst());
             }
             color: Theme.textPrimary
-            selectionColor: Qt.alpha(Theme.blue, 0.5)
+            selectionColor: Qt.alpha(Theme.accent, 0.5)
             selectedTextColor: Theme.textPrimary
             font.family: Theme.fontText
             readonly property int px: Math.round(Theme.tBody * Theme.textScale)
             font.pixelSize: px
-            font.variableAxes: ({ "opsz": Theme.opszFor(px), "wght": Theme.wRegular })
+            font.variableAxes: Theme.axesFor(px)
             font.letterSpacing: Theme.tracking(px, false)
             renderType: Text.NativeRendering
             cursorDelegate: SpringCaret {}

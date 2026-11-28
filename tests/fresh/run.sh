@@ -75,7 +75,7 @@ if [ "$COMMITTED" = 1 ]; then
     git -C "$ROOT" bundle create "$stage/kuwai.bundle" HEAD >/dev/null 2>&1 || { echo "fresh: can't bundle $ROOT" >&2; exit 2; }
     echo "fresh: testing committed $(git -C "$ROOT" rev-parse --short HEAD)"
 else
-    (cd "$ROOT" && git ls-files -co --exclude-standard -z | tar --null -T - -czf "$stage/src.tar.gz" 2>/dev/null) || { echo "fresh: can't pack $ROOT" >&2; exit 2; }
+    (cd "$ROOT" && git ls-files -co --exclude-standard -z | tar --ignore-failed-read --null -T - -czf "$stage/src.tar.gz" 2>/dev/null) || { echo "fresh: can't pack $ROOT" >&2; exit 2; }
     echo "fresh: testing the working tree of $(git -C "$ROOT" rev-parse --short HEAD) (uncommitted changes included)"
 fi
 cp "$ROOT/tests/fresh/inside.sh" "$stage/inside.sh"

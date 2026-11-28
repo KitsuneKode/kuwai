@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Services.Pipewire
 import qs.config
 import qs.components
+import qs.components.ui
 
 // The Sound tab's device lists, pavucontrol's device pages, Control Center style: every device on
 // one card; the default one ticked; each with its own volume and mute.
@@ -17,10 +18,16 @@ Column {
     property Item hoverRow: null
     width: parent ? parent.width : 0
     spacing: 8
-    visible: nodes.length > 0
-
     Label { x: 4; text: devList.title; size: Theme.tCallout; weight: Theme.wSemibold; color: Theme.textSecondary }
+    EmptyState {
+        visible: devList.nodes.length === 0
+        width: devList.width
+        glyph: devList.glyph || "\u{f057e}"
+        title: "No " + devList.title.toLowerCase() + " devices"
+        body: "A device appears here when the sound server offers one."
+    }
     Rectangle {
+        visible: devList.nodes.length > 0
         width: devList.width
         height: devices.implicitHeight + 8
         radius: 18

@@ -14,6 +14,8 @@ Item {
     property bool elideText: false
     property string text
     property string glyph: ""
+    property string icon: ""
+    property string iconStyle: "bold"
     property string kind: "primary"      // primary · secondary · danger
     property bool enabled: true
     property int size: Theme.tBody
@@ -21,6 +23,7 @@ Item {
 
     implicitHeight: 34
     implicitWidth: Math.max(88, row.implicitWidth + 30)
+    readonly property real radius: height / 2
 
     readonly property bool pressed: area.pressed && enabled
     readonly property bool lit: area.containsMouse && enabled
@@ -68,10 +71,19 @@ Item {
         id: row
         anchors.centerIn: parent
         spacing: 6
+        Icon {
+            id: phicon
+            visible: b.icon !== ""
+            anchors.verticalCenter: parent.verticalCenter
+            name: b.icon
+            style: b.iconStyle
+            size: b.size
+            color: b.ink
+        }
         Text {
             id: icon
             textFormat: Text.PlainText
-            visible: b.glyph !== ""
+            visible: b.icon === "" && b.glyph !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: b.glyph
             font.family: Theme.fontGlyph; font.pixelSize: b.size
@@ -80,7 +92,7 @@ Item {
         Label {
             anchors.verticalCenter: parent.verticalCenter
             text: b.text
-            width: b.elideText ? Math.min(implicitWidth, Math.max(0, b.width - 2 * Theme.s3 - (icon.visible ? icon.width + row.spacing : 0))) : implicitWidth
+            width: b.elideText ? Math.min(implicitWidth, Math.max(0, b.width - 2 * Theme.s3 - (phicon.visible || icon.visible ? (phicon.visible ? phicon.width : icon.width) + row.spacing : 0))) : implicitWidth
             elide: b.elideText ? Text.ElideRight : Text.ElideNone
             size: b.size
             weight: b.kind === "secondary" ? Theme.wMedium : Theme.wSemibold
@@ -101,5 +113,5 @@ Item {
     Accessible.name: b.text
     Accessible.onPressAction: if (b.enabled) b.clicked()
     Keys.onPressed: e => { if (b.enabled && (e.key === Qt.Key_Space || e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) { b.clicked(); e.accepted = true; } }
-    FocusRing { cornerRadius: 10 }
+    FocusRing { cornerRadius: b.radius }
 }

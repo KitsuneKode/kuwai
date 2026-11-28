@@ -116,7 +116,7 @@ Item {
         anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
         width: 40; horizontalAlignment: Text.AlignRight
         text: hud.muted ? "Muted" : Math.round(hud.value * 100) + "%"
-        font.family: Theme.fontText; font.pixelSize: 13; font.weight: Font.DemiBold
+        font.family: Theme.textFamily(Theme.wSemibold); font.pixelSize: 13; font.weight: Font.DemiBold
         font.features: ({ "tnum": 1 })
         color: Theme.textSecondary
     }

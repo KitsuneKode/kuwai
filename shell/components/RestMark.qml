@@ -145,7 +145,7 @@ Item {
                 objectName: "rest-count-value"
                 anchors.centerIn: parent           // measured: centred (a +1 sat 1 px low)
                 text: mark.value
-                size: Theme.tCaption; weight: Theme.wBold; rounded: true
+                size: Theme.tCaption; weight: Theme.wBold; rounded: true; compact: true
                 color: mark.tone
                 tabular: true
             }

@@ -1,16 +1,51 @@
 #!/usr/bin/env bash
 set -u
+usage() {
+    printf 'usage: kuwai-term [--dir] [pid]\n       kuwai-term [--title TITLE] [--dir DIR] [--wait] [--hold] [-- CMD [ARG...]]\n' >&2
+    exit 2
+}
 print_only=0
-[ "${1:-}" = "--dir" ] && { print_only=1; shift; }
-dir=$HOME
-if [ -n "${1:-}" ] && [ -d "/proc/$1" ]; then
-    pid=$1
-    for _ in 1 2 3 4; do
-        kids=$(cat /proc/"$pid"/task/*/children 2>/dev/null | tr ' ' '\n' | grep -v '^$' | tail -1)
-        [ -n "$kids" ] || break
-        pid=$kids
-    done
-    d=$(readlink "/proc/$pid/cwd" 2>/dev/null) && [ -d "$d" ] && dir=$d
+title=
+dir=
+pid=
+wait=0
+hold=0
+cmd=()
+while [ $# -gt 0 ]; do
+    case $1 in
+        --title) [ $# -ge 2 ] || usage; title=$2; shift 2 ;;
+        --title=*) title=${1#--title=}; shift ;;
+        --dir)
+            if [ $# -ge 2 ] && [ -n "$2" ] && [[ $2 != -* ]] && { ! [[ $2 =~ ^[0-9]+$ ]] || [ -d "$2" ]; }; then
+                dir=$2; shift 2
+            else
+                print_only=1; shift
+            fi ;;
+        --dir=*) dir=${1#--dir=}; shift ;;
+        --wait) wait=1; shift ;;
+        --hold) hold=1; shift ;;
+        --) shift; cmd=("$@"); break ;;
+        -*) usage ;;
+        *) [ -z "$pid" ] || usage; pid=$1; shift ;;
+    esac
+done
+case $title in *[[:cntrl:]]*) usage ;; esac
+[ ${#title} -le 120 ] || usage
+if [ ${#cmd[@]} -gt 0 ]; then
+    [ -n "${cmd[0]}" ] && [[ ${cmd[0]} != -* ]] || usage
+fi
+if [ -n "$dir" ]; then
+    [ -d "$dir" ] || { printf 'kuwai-term: no such folder\n' >&2; exit 1; }
+else
+    dir=$HOME
+    if [[ $pid =~ ^[0-9]+$ ]] && [ -d "/proc/$pid" ]; then
+        for _ in 1 2 3 4; do
+            kids=$(cat /proc/"$pid"/task/*/children 2>/dev/null | tr ' ' '\n' | grep -v '^$' | tail -1)
+            [ -n "$kids" ] || break
+            pid=$kids
+        done
+        d=$(readlink "/proc/$pid/cwd" 2>/dev/null) && [ -d "$d" ] && dir=$d
+    fi
 fi
 [ $print_only -eq 1 ] && { printf '%s\n' "$dir"; exit 0; }
 term=${KUWAI_TERMINAL:-}
@@ -20,15 +55,61 @@ if [ -z "$term" ]; then
     done
 fi
 [ -n "$term" ] || { command -v notify-send >/dev/null 2>&1 && notify-send "No terminal installed" "Install one: sudo pacman -S kitty (or set KUWAI_TERMINAL)"; exit 1; }
+if [ $hold -eq 1 ] && [ ${#cmd[@]} -gt 0 ]; then
+    # shellcheck disable=SC2016
+    cmd=(bash -c '"$@"; s=$?; if [ "$s" -ne 0 ]; then printf "\nThis stopped with an error. Press Enter to close."; read -r _; fi; exit "$s"' kuwai-term "${cmd[@]}")
+fi
 runner=()
 command -v prime-run >/dev/null 2>&1 && runner=(prime-run)
+args=()
+has=${#cmd[@]}
 case $term in
-    *kitty*)   exec "${runner[@]}" kitty --single-instance --instance-group=local --directory "$dir" ;;
-    *ghostty*) exec "${runner[@]}" ghostty --working-directory="$dir" ;;
-    *foot*)    exec foot --working-directory="$dir" ;;
-    *alacritty*) exec alacritty --working-directory "$dir" ;;
-    *wezterm*) exec wezterm start --cwd "$dir" ;;
-    *konsole*) exec konsole --workdir "$dir" ;;
-    *gnome-terminal*) exec gnome-terminal --working-directory="$dir" ;;
-    *)         cd "$dir" && exec $term ;;
+    *kitty*)
+        args=(kitty --single-instance --instance-group=local)
+        [ $wait -eq 1 ] && args+=(--wait-for-single-instance-window-close)
+        [ -n "$title" ] && args+=(--title "$title")
+        args+=(--directory "$dir")
+        [ "$has" -gt 0 ] && args+=("${cmd[@]}")
+        exec "${runner[@]}" "${args[@]}" ;;
+    *ghostty*)
+        args=(ghostty "--working-directory=$dir")
+        [ -n "$title" ] && args+=("--title=$title")
+        [ "$has" -gt 0 ] && args+=(-e "${cmd[@]}")
+        exec "${runner[@]}" "${args[@]}" ;;
+    *foot*)
+        args=(foot "--working-directory=$dir")
+        [ -n "$title" ] && args+=("--title=$title")
+        [ "$has" -gt 0 ] && args+=("${cmd[@]}")
+        exec "${args[@]}" ;;
+    *alacritty*)
+        args=(alacritty --working-directory "$dir")
+        [ -n "$title" ] && args+=(--title "$title")
+        [ "$has" -gt 0 ] && args+=(-e "${cmd[@]}")
+        exec "${args[@]}" ;;
+    *wezterm*)
+        args=(wezterm start --cwd "$dir")
+        [ "$has" -gt 0 ] && args+=(-- "${cmd[@]}")
+        exec "${args[@]}" ;;
+    *konsole*)
+        args=(konsole --workdir "$dir")
+        [ -n "$title" ] && args+=(-p "tabtitle=$title")
+        [ "$has" -gt 0 ] && args+=(-e "${cmd[@]}")
+        exec "${args[@]}" ;;
+    *gnome-terminal*)
+        args=(gnome-terminal "--working-directory=$dir")
+        [ $wait -eq 1 ] && args+=(--wait)
+        [ -n "$title" ] && args+=("--title=$title")
+        [ "$has" -gt 0 ] && args+=(-- "${cmd[@]}")
+        exec "${args[@]}" ;;
+    *xfce4-terminal*)
+        args=(xfce4-terminal "--working-directory=$dir")
+        [ -n "$title" ] && args+=("--title=$title")
+        [ "$has" -gt 0 ] && args+=(-x "${cmd[@]}")
+        exec "${args[@]}" ;;
+    *)
+        read -r -a args <<< "$term"
+        [ ${#args[@]} -gt 0 ] || exit 1
+        [ -n "$title" ] && [[ ${args[0]} == *xterm* ]] && args+=(-T "$title")
+        [ "$has" -gt 0 ] && args+=(-e "${cmd[@]}")
+        cd "$dir" && exec "${args[@]}" ;;
 esac

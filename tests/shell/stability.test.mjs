@@ -83,7 +83,8 @@ test('ScrollFade never switches a layer inside the change that asked for it', ()
   const src = readFileSync(new URL('../../shell/components/ScrollFade.qml', import.meta.url), 'utf8');
   expect(src).toMatch(/onScrollsChanged:\s*settle\.restart\(\)/);
   expect(src).not.toMatch(/onScrollsChanged:\s*apply\(\)/);
-  expect(src).toMatch(/layer\.enabled:\s*fade\.layered/);
+  expect(src).toMatch(/liveLayer/);
+  expect(src).toMatch(/head > 0\.01 \|\| foot > 0\.01/);
 });
 
 test('a restarted shell is kuwai: its path is in its environment', () => {

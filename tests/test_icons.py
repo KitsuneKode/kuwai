@@ -105,3 +105,34 @@ def test_symlink_staying_inside_is_fine(tmp_path):
     d = home / "icons/hicolor/256x256/apps"
     (d / "alias.png").symlink_to(real)
     assert found(run(["alias"], env))["alias"] == str(real)
+
+
+def test_generated_icons_module_is_current():
+    r = subprocess.run([str(REPO / "bin/kuwai-gen-icons"), "--check"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_generated_module_loads_synchronously_and_maps_nerd_chrome():
+    script = "import('./shell/config/icons.mjs').then(m=>{if(Object.keys(m.entries).length!==1530)throw Error('entries');if(m.phosphorForNerd(0xf0140)!=='caret-down')throw Error('nerd');if(!m.nerdGlyph(0xf0140))throw Error('glyph');if(m.glyph('missing','r')!=='')throw Error('fallback')})"
+    r = subprocess.run(["bun", "-e", script], cwd=REPO, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_phosphor_fonts_are_the_four_semantic_weights():
+    fonts = {p.name for p in (REPO / "shell/assets/phosphor").glob("*.ttf")}
+    assert fonts == {"Phosphor.ttf", "Phosphor-Bold.ttf", "Phosphor-Fill.ttf", "Phosphor-Duotone.ttf"}
+    icons = (REPO / "shell/config/Icons.qml").read_text()
+    assert "Phosphor-Thin" not in icons
+    assert "Phosphor-Light" not in icons
+    assert "map.json" not in icons
+
+
+def test_nerd_compatibility_names_exist_in_phosphor():
+    import json
+    import re
+    source = (REPO / "bin/kuwai-gen-icons").read_text()
+    phosphor = json.loads((REPO / "shell/assets/phosphor/map.json").read_text())
+    values = re.findall(r'0x[0-9A-F]+: "([^"]+)"', source)
+    assert len(values) >= 80
+    assert set(values) <= set(phosphor)
+    assert len(set(values)) >= 70

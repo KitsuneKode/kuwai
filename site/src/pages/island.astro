@@ -1,0 +1,131 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "kuwai Island",
+      url: "https://kuwai.kitsunekode.in/island/",
+      description: "How the top-edge island rests, hovers, grows, and shows capsules.",
+      isPartOf: { "@id": "https://kuwai.kitsunekode.in/#website" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://kuwai.kitsunekode.in/" },
+        { "@type": "ListItem", position: 2, name: "Island", item: "https://kuwai.kitsunekode.in/island/" }
+      ]
+    }
+  ]
+};
+---
+<BaseLayout
+  title="Island and capsules: kuwai"
+  description="Rest, hover, live activity, and capsule states on kuwai's top-edge island."
+  canonicalPath="/island/"
+  ogImage="/media/island/capsule-states.png"
+  ogAlt="kuwai island capsule states"
+  solidHeader={true}
+  schemaJson={schema}
+>
+  <main class="subpage-main">
+    <section class="subpage-head">
+      <div class="container">
+        <h1 class="subpage-title">The island</h1>
+        <p class="section-intro">
+          One status surface per monitor at the top edge. It stays small at rest, opens a glance row on hover, and grows into full panels when you click or pull down.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Bar states</h2>
+        </div>
+        <div class="req-grid">
+          <div class="info-card">
+            <h3>Rest</h3>
+            <p class="card-p">Workspaces, clock, signal, battery, and any live item (timer, recording, dictation, or music) share one compact row.</p>
+          </div>
+          <div class="info-card">
+            <h3>Hover</h3>
+            <p class="card-p">After a short delay, the island widens into a glance row: workspace names, date, media card, notification summary, and status.</p>
+          </div>
+          <div class="info-card">
+            <h3>Live activity</h3>
+            <p class="card-p">Timers, recordings, dictation, playback, and agent approvals take priority. A second bubble can queue behind the current activity.</p>
+          </div>
+          <div class="info-card">
+            <h3>Expanded</h3>
+            <p class="card-p">Launcher, settings, calendar, controls, and the Agents strip grow from the same material with matched motion and corners.</p>
+          </div>
+        </div>
+
+        <figure class="media-frame">
+          <img
+            src="/media/clips/island-hover.webp"
+            alt="Island glance row with workspaces, clock, and status"
+            width="960"
+            height="252"
+            loading="lazy"
+          >
+          <figcaption>Hovering the island (recorded at 60 fps from a live session).</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-head">
+          <h2>Capsule states</h2>
+          <p class="section-intro">Background work floats beside the notch in separate pills. Each state uses colour, copy, and motion so you can read it at a glance.</p>
+        </div>
+
+        <figure class="media-frame">
+          <img
+            src="/media/island/capsule-states.png"
+            alt="Capsule states labelled Working, Needs you, Hit a limit, and Error"
+            width="1460"
+            height="584"
+            loading="lazy"
+          >
+          <figcaption>Working, needs you, hit a limit, and error capsules beside the notch.</figcaption>
+        </figure>
+
+        <ul class="plain-list">
+          <li><strong>Agents:</strong> kitty panes, T3 threads, and desktop agents; orange when approval is waiting (<code>Super+Ctrl+A</code> jumps to it).</li>
+          <li><strong>Usage:</strong> limit bars and reset times when an account hits a cap.</li>
+          <li><strong>System news:</strong> updates available, thermal or CPU warnings, or idle projects when <code>sweep</code> is installed.</li>
+          <li><strong>Minimised windows:</strong> <code>Super+O</code> recalls windows you tucked away.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Idle projects (Sweep v1a)</h2>
+          <p class="section-intro">When <a href="https://github.com/KitsuneKode/sweep" class="inline-link" target="_blank" rel="noopener noreferrer">sweep</a> is installed, the Cleanup tab and system capsule can show disk held by idle project trees (<code>node_modules</code>, <code>target</code>, <code>.next</code>, and similar). Nothing is deleted from the island: it opens sweep's own review in your terminal.</p>
+        </div>
+
+        <figure class="media-frame">
+          <img
+            src="/media/tour/usage-typical.png"
+            alt="Usage panel with account limit bars"
+            width="460"
+            height="425"
+            loading="lazy"
+          >
+          <figcaption>Agents, Usage, System, and Cleanup share one strip inside the island (<code>Alt+1</code> through <code>Alt+4</code>).</figcaption>
+        </figure>
+
+        <p class="section-footnote">
+          Read the manual: <a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/island.md" class="inline-link" target="_blank" rel="noopener noreferrer">docs/manual/island.md</a> and <a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/design/SWEEP.md" class="inline-link" target="_blank" rel="noopener noreferrer">docs/design/SWEEP.md</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

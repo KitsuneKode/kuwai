@@ -23,7 +23,8 @@ FocusScope {
     focus: true
 
     implicitWidth: Theme.panelL
-    implicitHeight: 520
+    readonly property real ceiling: Math.min(Theme.panelMaxH, Theme.screenSize(Screen, "height", 1080) - 64) - Theme.sp(34)
+    implicitHeight: Math.min(Theme.sp(520), ceiling)
 
     readonly property string kuwai: Paths.bin + "/kuwai"
     readonly property var sections: SettingsIndex.sections   // services/SettingsIndex (the launcher searches it too)
@@ -137,8 +138,8 @@ FocusScope {
             id: searchBox
             x: 10; y: 12
             width: parent.width - 20
-            height: Theme.sp(32)
-            radius: 9
+            height: Theme.sp(36)
+            radius: Theme.r2
             color: Qt.rgba(1, 1, 1, search.activeFocus ? 0.10 : 0.06)
             border.width: 1
             border.color: search.activeFocus ? Theme.edge(3) : Theme.edge(0)
@@ -156,12 +157,12 @@ FocusScope {
                 id: search
                 anchors { left: searchGlyph.right; right: clearSearch.visible ? clearSearch.left : parent.right; leftMargin: 7; rightMargin: 8; verticalCenter: parent.verticalCenter }
                 color: Theme.textPrimary
-                selectionColor: Qt.alpha(Theme.blue, 0.5)
+                selectionColor: Qt.alpha(Theme.accent, 0.5)
                 selectedTextColor: Theme.textPrimary
                 font.family: Theme.fontText
-                font.pixelSize: Theme.sp(13)          // what you type grows with Text size, as its placeholder does
-                font.variableAxes: ({ "opsz": Theme.opszFor(13), "wght": Theme.wRegular })
-                font.letterSpacing: Theme.tracking(13, false)
+                font.pixelSize: Theme.sp(Theme.tSub)  // what you type grows with Text size, as its placeholder does
+                font.variableAxes: Theme.axesFor(Theme.tSub)
+                font.letterSpacing: Theme.tracking(Theme.tSub, false)
                 renderType: Text.NativeRendering
                 cursorDelegate: SpringCaret {}
                 clip: true
@@ -363,7 +364,7 @@ FocusScope {
             Loader {
                 id: page
                 width: parent.width
-                sourceComponent: [barPage, clockPage, notifPage, assistantPage, motionPage, keyboardPage, shortcutsPage, pointerPage, displaysPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
+                sourceComponent: [barPage, clockPage, notifPage, assistantPage, appearancePage, motionPage, keyboardPage, shortcutsPage, pointerPage, displaysPage, islandRestPage, workspacesPage, powerPage, saverPage, timePage, clipboardPage, updatesPage, aboutPage][settings.current]
             }
         }
         ScrollFade { flickable: pageFlick }
@@ -636,6 +637,51 @@ FocusScope {
                         current: String(Settings.textScale)
                         onPicked: id => Settings.set("textScale", Number(id))
                     }
+                }
+            }
+        }
+    }
+    Component {
+        id: appearancePage
+        Column {
+            spacing: 18
+            SettingsGroup {
+                title: "Typography"
+                SettingsRow {
+                    key: "fontProfile"
+                    label: "UI Font"; detail: "Interface typeface; automatic uses installed Apple fonts or the bundled Geist"
+                    Segmented {
+                        options: [
+                            { id: "auto", label: "Auto" }, { id: "sf-rounded", label: "SF Rounded" }, { id: "sf", label: "SF" },
+                            { id: "geist", label: "Geist" }, { id: "inter", label: "Inter" }, { id: "system", label: "System" }]
+                        current: Settings.fontProfile
+                        onPicked: id => Settings.set("fontProfile", id)
+                    }
+                }
+                SettingsRow {
+                    key: "clockFont"
+                    label: "Clock Face"; detail: "The numerals in the island clock"
+                    Segmented {
+                        options: [{ id: "auto", label: "Auto" }, { id: "sf-rounded", label: "Rounded" }, { id: "geist", label: "Geist" }, { id: "sf-display", label: "Display" }]
+                        current: Settings.clockFont
+                        onPicked: id => Settings.set("clockFont", id)
+                    }
+                }
+                SettingsRow {
+                    key: "monoFont"
+                    label: "Mono Font"; detail: "Fixed-width text in code, paths, terminals and logs"
+                    Segmented {
+                        options: [
+                            { id: "auto", label: "Auto" }, { id: "sf-mono", label: "SF Mono" }, { id: "geist-mono", label: "Geist" },
+                            { id: "monolisa", label: "MonoLisa" }, { id: "dank-mono", label: "Dank Mono" },
+                            { id: "jetbrains", label: "JetBrains" }, { id: "maple", label: "Maple" }, { id: "iosevka", label: "Iosevka" }]
+                        current: Settings.monoFont
+                        onPicked: id => Settings.set("monoFont", id)
+                    }
+                }
+                SettingsRow {
+                    label: "Desktop apps"; detail: "Apply your UI and mono fonts to GTK, Electron (system-ui) and Kitty"
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Sync fonts"; onClicked: Apps.run([Paths.bin + "/kuwai-look", "sync-fonts"]) }
                 }
             }
         }
@@ -1346,7 +1392,7 @@ FocusScope {
                 SettingsRow { label: "Settings file"; Label { text: "~/.config/kuwai/settings.json"; size: Theme.tBody; color: Theme.textSecondary; font.family: Theme.fontMono } }
                 SettingsRow {
                     label: "Backups"; detail: "Your settings, Hyprland files, reminders, alarms, notes and pins: daily and before every update of the desktop, the newest 30. Put one back: kuwai backup restore NAME"
-                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Back up now"; onClicked: Quickshell.execDetached([settings.kuwai, "backup"]) }
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Back up now"; onClicked: Apps.run([settings.kuwai, "backup"]) }
                 }
                 SettingsRow {
                     label: "Restart the shell"; detail: "Reloads everything; notifications stay"

@@ -297,6 +297,7 @@ FocusScope {
                     wrapMode: TextEdit.Wrap
                     font.family: Theme.fontText
                     font.pixelSize: Theme.tBody
+                    font.variableAxes: Theme.axesFor(Theme.tBody)
                     color: Theme.textPrimary
                     selectionColor: Qt.alpha(Theme.accent, 0.45)
                     selectByMouse: true

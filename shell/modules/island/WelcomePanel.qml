@@ -48,7 +48,7 @@ Item {
                 Label {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: wp.first ? "Four shortcuts reach most things. For the rest, click the notch or pull it down."
+                    text: wp.first ? "Three quick steps, then explore at your own pace."
                                    : "kuwai has updated. Here is what changed; the changelog has the rest."
                     size: Theme.tSub; color: Theme.textSecondary
                 }
@@ -82,6 +82,38 @@ Item {
                     wrapMode: Text.Wrap
                     text: "Super is the key with the Windows logo."
                     size: Theme.tFootnote; color: Theme.textTertiary
+                }
+            }
+
+            SettingsGroup {
+                visible: wp.first
+                title: "First steps"
+                SettingsRow {
+                    label: "Open the launcher"
+                    detail: "Search apps, files, settings, and modes (= : ; ! + >)"
+                    Ui.Button {
+                        kind: "quiet"
+                        text: "Launcher"
+                        onClicked: Island.open("launcher", Island.screen, "pointer")
+                    }
+                }
+                SettingsRow {
+                    label: "Switch theme"
+                    detail: "Pick a palette or wallpaper that suits your desk"
+                    Ui.Button {
+                        kind: "quiet"
+                        text: "Themes"
+                        onClicked: Island.open("theme", Island.screen, "pointer", "island")
+                    }
+                }
+                SettingsRow {
+                    label: "Check display and power"
+                    detail: "Set scale, refresh, and when the screen dims or sleeps"
+                    Ui.Button {
+                        kind: "quiet"
+                        text: "Displays"
+                        onClicked: Island.openSettings("displays")
+                    }
                 }
             }
 

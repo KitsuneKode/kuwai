@@ -17,6 +17,7 @@ Row {
     property int weight: Theme.wSemibold
     property color color: Theme.textPrimary
     property bool rounded: true
+    property bool clockFace: false
     property int duration: Theme.morphMs         // per character
     property int stagger: 45
     // The cells are the digits' cap height, their baseline the cell's bottom:
@@ -41,15 +42,17 @@ Row {
             TextMetrics {
                 id: digit
                 text: "0"
-                font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
+                font.family: morph.clockFace ? Fonts.clockFace : morph.rounded ? Theme.roundedFamily(morph.weight) : Theme.textFamily(morph.weight)
                 font.pixelSize: Math.round(morph.size * Theme.textScale)   // as Label sets it
+                font.weight: morph.weight
                 font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
             clip: false
             FontMetrics {
                 id: caps
-                font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
+                font.family: morph.clockFace ? Fonts.clockFace : morph.rounded ? Theme.roundedFamily(morph.weight) : Theme.textFamily(morph.weight)
                 font.pixelSize: Math.round(morph.size * Theme.textScale)   // as Label sets it
+                font.weight: morph.weight
                 font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
             readonly property real lift: -Math.round(caps.ascent - capH)
@@ -57,8 +60,9 @@ Row {
             TextMetrics {
                 id: metrics
                 text: /\d/.test(cell.ch) ? "0" : cell.ch
-                font.family: morph.rounded ? Theme.fontRounded : Theme.fontText
+                font.family: morph.clockFace ? Fonts.clockFace : morph.rounded ? Theme.roundedFamily(morph.weight) : Theme.textFamily(morph.weight)
                 font.pixelSize: Math.round(morph.size * Theme.textScale)   // as Label sets it
+                font.weight: morph.weight
                 font.features: Theme.numeralFeatures(morph.rounded, true)
                 font.variableAxes: Theme.axesWeight(morph.size, morph.weight)
             }
@@ -86,6 +90,8 @@ Row {
                 opacity: 1 - cell.t
                 text: cell.was
                 size: morph.size; weight: morph.weight; rounded: morph.rounded; color: morph.color
+                font.family: morph.clockFace ? Fonts.clockFace : morph.rounded ? Theme.roundedFamily(morph.weight) : Theme.textFamily(morph.weight)
+                font.letterSpacing: morph.clockFace ? Fonts.clockTracking(morph.size) : Theme.tracking(morph.size, morph.rounded)
                 font.features: Theme.numeralFeatures(morph.rounded, true)
                 layer.enabled: visible
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 16; blur: Math.min(1, cell.t * 1.4) }
@@ -98,6 +104,8 @@ Row {
                 opacity: Math.min(1, cell.t * 1.6)
                 text: cell.ch
                 size: morph.size; weight: morph.weight; rounded: morph.rounded; color: morph.color
+                font.family: morph.clockFace ? Fonts.clockFace : morph.rounded ? Theme.roundedFamily(morph.weight) : Theme.textFamily(morph.weight)
+                font.letterSpacing: morph.clockFace ? Fonts.clockTracking(morph.size) : Theme.tracking(morph.size, morph.rounded)
                 font.features: Theme.numeralFeatures(morph.rounded, true)
                 layer.enabled: cell.t < 1
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 16; blur: Math.max(0, 1 - cell.t * 1.5) }

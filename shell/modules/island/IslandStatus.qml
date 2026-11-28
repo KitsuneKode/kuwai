@@ -139,7 +139,7 @@ Row {
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: -1
             text: Math.round(status.drawnPct)
-            size: Theme.tCaption; weight: Theme.wBold
+            size: Theme.tCaption; compact: true; rounded: true; weight: Theme.wBold
             tabular: true
             color: status.drawnPct > 38 ? Qt.rgba(0.08, 0.08, 0.1, 0.92) : status.tint
         }

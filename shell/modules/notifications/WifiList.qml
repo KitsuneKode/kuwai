@@ -260,6 +260,7 @@ Column {
                     color: Theme.textPrimary
                     font.family: Theme.fontText
                     font.pixelSize: Theme.sp(13)
+                    font.variableAxes: Theme.axesFor(13)
                     renderType: Text.NativeRendering
                     clip: true
                     onVisibleChanged: if (visible) { text = ""; forceActiveFocus(); }

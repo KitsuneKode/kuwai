@@ -231,6 +231,7 @@ Item {
                 color: Theme.textPrimary
                 font.family: card.e && card.e.kind === "code" ? Theme.fontMono : Theme.fontText
                 font.pixelSize: card.e && card.e.kind === "code" ? 10 : 12
+                font.variableAxes: card.e && card.e.kind === "code" ? Theme.noAxes : Theme.axesFor(12)
                 renderType: Text.NativeRendering
             }
             Column {

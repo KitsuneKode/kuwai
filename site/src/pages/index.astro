@@ -1,8 +1,34 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import InstallBlock from "../components/InstallBlock.tsx";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const siteUrl = "https://kuwai.kitsunekode.in";
+const kuwaiVersion = readFileSync(
+  fileURLToPath(new URL("../../../VERSION", import.meta.url)),
+  "utf8"
+).trim();
+
+const mediaSize: Record<string, [number, number]> = {
+  "/media/clips/island-hover.webp": [960, 252],
+  "/media/clips/island-timer.webp": [800, 128],
+  "/media/clips/launcher.webp": [840, 492],
+  "/media/clips/sound.webp": [600, 540],
+  "/media/clips/themes.webp": [780, 395],
+  "/media/clips/wallpaper.webp": [720, 405],
+  "/media/island/capsule-states.png": [1460, 584],
+  "/media/login/lock.webp": [1920, 1080],
+  "/media/login/login.webp": [1920, 1080],
+  "/media/tour/agents-typical.png": [460, 600],
+  "/media/tour/calendar-events.png": [324, 565],
+  "/media/tour/launcher-packages.png": [640, 460],
+  "/media/tour/media-playing.png": [460, 212],
+  "/media/tour/settings-shortcuts.png": [800, 520],
+  "/media/tour/system-typical.png": [640, 391],
+  "/media/tour/updates-typical.png": [800, 560],
+  "/media/tour/usage-typical.png": [460, 425],
+};
 
 const features = [
   {
@@ -294,7 +320,7 @@ const homeSchema = {
       name: "kuwai",
       applicationCategory: "DesktopEnvironment",
       operatingSystem: "Arch Linux (Hyprland 0.57+)",
-      softwareVersion: "0.1.0",
+      softwareVersion: kuwaiVersion,
       license: "https://www.gnu.org/licenses/gpl-3.0.en.html",
       url: `${siteUrl}/`,
       downloadUrl: "https://github.com/KitsuneKode/kuwai",
@@ -310,7 +336,7 @@ const homeSchema = {
 };
 ---
 <BaseLayout
-  title="kuwai — Hyprland 0.57 desktop and Quickshell island for Arch Linux"
+  title="kuwai: Hyprland 0.57 desktop and Quickshell island for Arch Linux"
   description="kuwai is an Arch Linux desktop built from a Lua Hyprland 0.57 session and a Quickshell shell around a top-edge island, notifications, controls, lock screen, and AUR-reviewed updates."
   canonicalPath="/"
   ogImage="/og-image.png"
@@ -320,10 +346,10 @@ const homeSchema = {
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-inner">
         <div class="hero-copy">
-          <p class="hero-kicker tabular">v0.1.0 · Arch Linux · Hyprland 0.57+ · GPL-3.0-or-later</p>
+          <p class="hero-kicker tabular">v{kuwaiVersion} · Arch Linux · Hyprland 0.57+ · GPL-3.0-or-later</p>
           <h1 id="hero-title" class="hero-title">A calm Hyprland desktop built around one island</h1>
           <p class="hero-lead">
-            kuwai is a desktop environment for Arch Linux made of two halves: a Hyprland 0.57 session written in Lua and a Quickshell shell built around a top-edge island. The island holds the clock, workspaces, notifications, controls, launcher, clipboard, system updates, and coding-agent status in one dark glass grammar. It installs as its own login session in <code>~/.config/kuwai/hypr/</code> without overwriting your existing <code>~/.config/hypr</code>, and every file it changes is backed up for clean removal.
+            kuwai is a desktop you log into on Arch Linux: a Hyprland 0.57 session and a Quickshell shell sharing one top-edge island for the clock, workspaces, notifications, controls, launcher, clipboard, updates, and agent status. It installs beside your existing Hyprland config in <code>~/.config/kuwai/hypr/</code> and records what it changes so you can remove it cleanly.
           </p>
           <div class="hero-actions">
             <a href="#install" class="btn-primary">Install kuwai</a>
@@ -336,6 +362,8 @@ const homeSchema = {
           <img
             src="/media/clips/island-hover.webp"
             alt="Recording of the kuwai island expanding on hover to show workspaces, clock, machine status, and agents"
+            width={mediaSize["/media/clips/island-hover.webp"][0]}
+            height={mediaSize["/media/clips/island-hover.webp"][1]}
             fetchpriority="high"
           >
           <figcaption>Recorded live on a Hyprland 0.57 session (2560×1440 at 60 fps). Every image on this page comes from the running shell or its rehearsal suite.</figcaption>
@@ -371,7 +399,13 @@ const homeSchema = {
                 <div class:list={["feature-media-grid", { "is-single": f.media.length === 1 }]}>
                   {f.media.map((m) => (
                     <figure class="media-frame">
-                      <img src={m.src} alt={m.alt} loading="lazy">
+                      <img
+                        src={m.src}
+                        alt={m.alt}
+                        loading="lazy"
+                        width={mediaSize[m.src]?.[0]}
+                        height={mediaSize[m.src]?.[1]}
+                      >
                       <figcaption>{m.caption}</figcaption>
                     </figure>
                   ))}
@@ -399,7 +433,7 @@ const homeSchema = {
               <li><strong>Quickshell</strong> with <code>qt6-multimedia</code></li>
               <li><strong>PipeWire and WirePlumber</strong> (<code>pipewire-audio</code>, <code>pipewire-pulse</code>, <code>libpulse</code>)</li>
               <li><strong>Desktop utilities</strong>: <code>awww</code>, <code>cliphist</code>, <code>wl-clipboard</code>, <code>grim</code>, <code>slurp</code>, <code>brightnessctl</code>, <code>hyprsunset</code>, <code>hyprpicker</code>, <code>playerctl</code>, <code>polkit</code>, <code>upower</code>, <code>pacman-contrib</code>, <code>jq</code>, <code>python</code>, <code>lua</code>, <code>nodejs</code>, <code>git</code>, <code>openssh</code></li>
-              <li><strong>Fonts</strong>: <code>inter-font</code> (default, OFL) and <code>ttf-nerd-fonts-symbols</code>; SF Pro is used automatically if you already have it installed</li>
+              <li><strong>Fonts</strong>: <code>inter-font</code> or Geist (OFL) and <code>ttf-nerd-fonts-symbols</code>; SF Pro is used automatically if you already have it installed</li>
             </ul>
           </div>
 
@@ -434,18 +468,18 @@ const homeSchema = {
           <div class="info-card">
             <h3>Optional system steps (sudo, from root's checked copy)</h3>
             <ul class="plain-list">
-              <li><code>sudo /usr/local/lib/kuwai/current/greeter/install</code> — replace SDDM or another display manager with kuwai's greetd login screen (<code>--undo</code> puts back what its root-owned receipt lists).</li>
-              <li><code>sudo /usr/local/lib/kuwai/current/system/install</code> — install <code>kuwai-wake</code> so alarms can wake a sleeping laptop via RTC (<code>--undo</code> removes it).</li>
-              <li><code>kuwai update install-helper</code> — install the root-owned update helper so a system update asks for your password once, and the prompt names exactly what will be installed.</li>
+              <li><code>sudo /usr/local/lib/kuwai/current/greeter/install</code> replaces SDDM or another display manager with kuwai's greetd login screen (<code>--undo</code> puts back what its root-owned receipt lists).</li>
+              <li><code>sudo /usr/local/lib/kuwai/current/system/install</code> installs <code>kuwai-wake</code> so alarms can wake a sleeping laptop via RTC (<code>--undo</code> removes it).</li>
+              <li><code>kuwai update install-helper</code> installs the root-owned update helper so a system update asks for your password once, and the prompt names exactly what will be installed.</li>
             </ul>
           </div>
 
           <div class="info-card">
             <h3>Updating, checking, and uninstalling</h3>
             <ul class="plain-list">
-              <li><code>kuwai doctor</code> — checks Hyprland config, notification ownership, DND state, user services, and shell health.</li>
-              <li><code>kuwai update-self</code> — updates <code>stable</code> to the newest signed release tag (its signature and every file checked against <code>release-signers</code>), runs migrations, and rolls back automatically if the shell fails to load.</li>
-              <li><code>./install.sh --uninstall</code> — restores every user file and systemd unit state recorded in <code>~/.local/state/kuwai/original/</code> before the first install.</li>
+              <li><code>kuwai doctor</code> checks Hyprland config, notification ownership, DND state, user services, and shell health.</li>
+              <li><code>kuwai update-self</code> updates <code>stable</code> to the newest signed release tag (its signature and every file checked against <code>release-signers</code>), runs migrations, and rolls back automatically if the shell fails to load.</li>
+              <li><code>./install.sh --uninstall</code> restores every user file and systemd unit state recorded in <code>~/.local/state/kuwai/original/</code> before the first install.</li>
             </ul>
           </div>
         </div>
@@ -527,7 +561,7 @@ const homeSchema = {
           <div class="info-card">
             <h3>Fonts, icons, and trademarks</h3>
             <ul class="plain-list">
-              <li><strong>Inter</strong> (SIL OFL) is the default UI typeface; Apple's SF Pro is never shipped and is only used if already installed on your machine.</li>
+              <li><strong>Geist</strong> (SIL OFL) is the default UI typeface on the marketing site; the shell prefers Geist or Inter on your machine; Apple's SF Pro is never shipped and is only used if already installed.</li>
               <li><strong>Phosphor icons</strong> (MIT) live in <code>shell/assets/phosphor/</code>; Nerd Font glyph names (MIT) and Unicode emoji data (Unicode License v3) power the launcher pickers.</li>
               <li>Agent and tool marks in <code>shell/assets/brands/</code> remain trademarks of their respective owners; full attributions live in <a href="https://github.com/KitsuneKode/kuwai/blob/main/NOTICE.md" target="_blank" rel="noopener noreferrer" class="inline-link">NOTICE.md</a>.</li>
             </ul>

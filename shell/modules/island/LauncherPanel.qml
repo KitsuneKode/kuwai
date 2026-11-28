@@ -38,24 +38,28 @@ FocusScope {
     onQueryChanged: {
         fileHits = [];
         // Not for a mode, nor "kill …" / "port …" (the process list).
-        if (query.trim().length >= 3 && !/^[:;=>!]/.test(query) && !/^\s*(?:kill(?:all)?|pkill|force[ -]?quit|(?:free\s+)?port)\s+\S/i.test(query)) fileSoon.restart(); else fileSoon.stop();
+        if (query.trim().length >= 3 && !/^[:;=>!+]/.test(query) && !/^\s*(?:kill(?:all)?|pkill|force[ -]?quit|(?:free\s+)?port)\s+\S/i.test(query)) fileSoon.restart(); else fileSoon.stop();
         // Math the calculator can't read goes to qalc, a moment after you stop typing.
         if (hasQalc && !calcHit && Calc.looksLikeMath(query)) qalcSoon.restart();
         else { qalcSoon.stop(); qalcOut = ""; qalcFor = ""; }
     }
-    Timer { id: fileSoon; interval: 160; onTriggered: { files.running = false; files.running = true; } }
+    Timer { id: fileSoon; interval: 160; onTriggered: { files.want = launcher.query.trim(); files.running = false; files.running = true; } }
     Process {
         id: files
+        property string want: ""
         // The query is an argument ("$1"), never part of the command.
         command: ["sh", "-c", "cd \"$HOME\" && timeout 1.5 fd --ignore-case --max-results 8 --max-depth 6 --exclude node_modules --exclude .cache --exclude .git --exclude .local/share/Steam --exclude .npm --exclude .cargo --exclude .rustup -- \"$1\" 2>/dev/null", "sh", launcher.query.trim()]
         stdout: StdioCollector {
-            onStreamFinished: launcher.fileHits = text.split("\n").filter(x => x).map(rel => {
-                const isDir = rel.endsWith("/");
-                const clean = rel.replace(/\/$/, "");
-                const cut = clean.lastIndexOf("/");
-                return { kind: "file", path: launcher.home + "/" + clean, dir: isDir, name: cut >= 0 ? clean.slice(cut + 1) : clean,
-                         sub: "~/" + (cut >= 0 ? clean.slice(0, cut) : ""), glyph: isDir ? "\u{f024b}" : "\u{f0214}" };
-            })
+            onStreamFinished: {
+                if (files.want !== launcher.query.trim()) return;
+                launcher.fileHits = text.split("\n").filter(x => x).map(rel => {
+                    const isDir = rel.endsWith("/");
+                    const clean = rel.replace(/\/$/, "");
+                    const cut = clean.lastIndexOf("/");
+                    return { kind: "file", path: launcher.home + "/" + clean, dir: isDir, name: cut >= 0 ? clean.slice(cut + 1) : clean,
+                             sub: "~/" + (cut >= 0 ? clean.slice(0, cut) : ""), glyph: isDir ? "\u{f024b}" : "\u{f0214}" };
+                })
+            }
         }
     }
     // Claude / Codex in the folder of the window you came from (bin/kuwai-agent).
@@ -86,6 +90,45 @@ FocusScope {
 
     // ── Sources ──────────────────────────────────────────────────────────
     readonly property var apps: DesktopEntries.applications.values.filter(e => !e.noDisplay)
+    property var defaultApps: ({})
+    Process {
+        running: true
+        command: ["sh", "-c", 'for x in terminal:x-scheme-handler/terminal browser:x-scheme-handler/http files:inode/directory; do n=${x%%:*}; m=${x#*:}; printf "%s " "$n"; xdg-mime query default "$m" 2>/dev/null; done']
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const found = {};
+                for (const line of text.split("\n")) {
+                    const parts = line.trim().split(/\s+/);
+                    if (parts.length === 2 && parts[1]) found[parts[0]] = parts[1];
+                }
+                launcher.defaultApps = found;
+            }
+        }
+    }
+    function desktopEntry(id) {
+        if (!id) return null;
+        const clean = String(id).replace(/\.desktop$/, "");
+        return DesktopEntries.byId(id) || DesktopEntries.byId(clean) || DesktopEntries.heuristicLookup(clean);
+    }
+    function configuredApps() {
+        const choices = {
+            terminal: [defaultApps.terminal, "kitty", "com.mitchellh.ghostty", "ghostty", "foot", "alacritty", "wezterm", "org.kde.konsole"],
+            browser: [defaultApps.browser, "zen-browser", "zen", "firefox", "google-chrome", "chromium", "brave-browser"],
+            files: [defaultApps.files, "org.gnome.Nautilus", "nautilus", "org.kde.dolphin", "dolphin", "thunar"]
+        };
+        const out = [], seen = {};
+        for (const kind of ["terminal", "browser", "files"]) {
+            for (const id of choices[kind]) {
+                const e = desktopEntry(id);
+                if (e && !e.noDisplay && !seen[e.id]) {
+                    seen[e.id] = true;
+                    out.push({ kind: "app", entry: e, name: e.name, sub: e.genericName || e.comment || "", icon: e.icon });
+                    break;
+                }
+            }
+        }
+        return out;
+    }
     property var have: ({})
     Process {
         running: true
@@ -183,6 +226,11 @@ FocusScope {
         { name: "Processes", sub: "What's using the most · end one · free a port (! 3000)", prefix: "!", glyph: "\u{f0675}" },
         { name: "Packages", sub: "Search Arch and the AUR · install or remove (+ firefox)", prefix: "+ ", glyph: "\u{f03d7}" }
     ]
+    readonly property var modePills: [
+        { mark: "=", prefix: "= ", label: "Calculator" }, { mark: ":", prefix: ":", label: "Emoji" },
+        { mark: ";", prefix: ";", label: "Glyphs" }, { mark: "!", prefix: "!", label: "Processes" },
+        { mark: "+", prefix: "+ ", label: "Packages" }, { mark: ">", prefix: "> ", label: "Every mode" }
+    ]
 
     // ── `!`: processes and ports (bin/kuwai-procs) ──
     // Empty: who's using the most right now. A name: what matches. A number
@@ -270,23 +318,39 @@ FocusScope {
     }
     readonly property bool procMode: /^\s*!/.test(query) || !!procWords
     readonly property string procQuery: /^\s*!/.test(query) ? query.replace(/^\s*!\s*/, "") : procWords ? procWords[1] : ""
+    readonly property string procNeedle: procQuery.trim()
+    readonly property bool portMode: procMode && (procNeedle === ":" || procNeedle.indexOf(":") === 0 || /^\d{1,5}$/.test(procNeedle))
+    property bool portsWatched: false
+    function syncPortsWatch() {
+        if (procMode && !portsWatched) { Ports.watch(); portsWatched = true; }
+        else if (!procMode && portsWatched) { Ports.unwatch(); portsWatched = false; }
+    }
+    property bool hoverPort: false
+    readonly property bool keyPort: procMode && !!results[current] && results[current].kind === "port"
+    function syncPortHold() { Ports.hold = procMode && (keyPort || hoverPort); }
+    onKeyPortChanged: syncPortHold()
+    onHoverPortChanged: syncPortHold()
+    Component.onCompleted: syncPortsWatch()
+    Component.onDestruction: { Ports.hold = false; if (portsWatched) Ports.unwatch(); }
     function enterMode(prefix) { field.text = prefix; field.cursorPosition = prefix.length; }
     property var procHits: []
     property bool procLoaded: false
     property int armedPid: 0
     property bool armedForce: false
     property string procNote: ""          // the last end's outcome, said in the list
-    onProcQueryChanged: { armedPid = 0; procNote = ""; if (procMode) procSoon.restart(); }
-    onProcModeChanged: if (procMode) { procLoaded = false; procSoon.restart(); }
-    Timer { id: procSoon; interval: 180; onTriggered: { procs.running = false; procs.running = true; } }
+    property bool procError: false
+    onProcQueryChanged: { armedPid = 0; procNote = ""; if (procMode && !portMode) procSoon.restart(); }
+    onProcModeChanged: { syncPortsWatch(); syncPortHold(); if (procMode) { procLoaded = false; procError = false; procSoon.restart(); } }
+    Timer { id: procSoon; interval: 180; onTriggered: { if (!launcher.portMode) { procs.running = false; procs.running = true; } } }
     // While it's open on the empty list, the numbers stay current (only then).
-    Timer { interval: 2500; repeat: true; running: launcher.procMode && launcher.armedPid === 0; onTriggered: if (!procs.running) procs.running = true }
+    Timer { interval: 2500; repeat: true; running: launcher.procMode && !launcher.portMode && launcher.armedPid === 0; onTriggered: if (!procs.running) procs.running = true }
     Process {
         id: procs
         command: [Paths.bin + "/kuwai-procs", launcher.procQuery]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { launcher.procHits = JSON.parse(text) || []; } catch (e) { launcher.procHits = []; }
+                try { launcher.procHits = JSON.parse(text) || []; launcher.procError = false; }
+                catch (e) { launcher.procHits = []; launcher.procError = true; }
                 launcher.procLoaded = true;
             }
         }
@@ -307,7 +371,8 @@ FocusScope {
     }
     // A file's other two answers (⌃↵, ⌥↵; and its row's menu).
     // What ↵ does to a result, as its row and its menu say it.
-    readonly property var verbs: ({ app: "Open", window: "Switch to", action: "Run", calc: "Copy", mode: "Use", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start", pkg: "Install" })
+    readonly property var verbs: ({ app: "Open", window: "Focus", action: "Run", calc: "Copy", mode: "Review", emoji: "Type", glyph: "Type", file: "Open", web: "Search", timer: "Start", pkg: "Review", proc: "Arm stop", port: "Arm stop" })
+    function enterVerb(r) { return r ? verbs[r.kind] || "Open" : "Open"; }
     property int menuAt: -1                       // a row whose menu is open (the rehearsal stages it)
     function fileFolder(r) { Apps.open(r.dir ? r.path : r.path.slice(0, r.path.lastIndexOf("/"))); Island.close(); }
     function copyPath(r) { Quickshell.execDetached(["wl-copy", "--", r.path]); Island.close(); }
@@ -321,6 +386,28 @@ FocusScope {
         procEnd.who = (p.group ? p.app : procLabel(p)) + " (" + p.pid + ")";
         procEnd.command = [Paths.bin + "/kuwai-procs", "--end", String(p.pid)].concat(p.start ? ["--start", String(p.start)] : []).concat(force ? ["--force"] : []);
         procEnd.running = true;
+    }
+
+    function portsList() { return Ports.shown.map(k => Ports.snap.rows[k]).filter(r => r); }
+    function portMatch(r, n) {
+        const q = n.replace(/^:/, "").trim().toLowerCase();
+        if (!q) return true;
+        if (/^\d{1,5}$/.test(q)) return String(r.port) === q;
+        return [r.project, r.what, r.proc, r.agent, r.parentApp].some(x => String(x || "").toLowerCase().indexOf(q) >= 0);
+    }
+    function portRows() {
+        return portsList().filter(r => portMatch(r, procNeedle)).map(r => ({
+            kind: "port", port: r, proc: { pid: r.pid, start: r.start, mine: true, name: r.proc, app: r.parentApp || r.proc },
+            name: ":" + r.port + "  " + r.title,
+            sub: (Ports.armedKey === r.key ? (Ports.armedAction === "force" ? "Shift+↵ again to force stop" : "↵ again to stop · Shift+↵ to force") + " · " : "")
+                 + (r.scope === "lan" ? "LAN" : "local") + " · " + r.memText + (r.agent ? " · " + r.agent : "") + (r.parentApp ? " · inside " + r.parentApp : "") + " · " + r.what,
+            glyph: r.monogram,
+            armed: Ports.armedKey === r.key
+        }));
+    }
+    function endPort(r, force) {
+        if (!r || r.kind !== "port") return;
+        Ports.press(r.port.key, force ? "force" : "stop", r.port.title);
     }
     function procRows() {
         const mb = n => Sizes.bytes(Sizes.fromMiB(n));
@@ -389,6 +476,17 @@ FocusScope {
         return best === null ? null : { score: best, pos: pos };
     }
 
+    readonly property bool filesBusy: fileSoon.running || files.running
+    readonly property bool asyncLoading: (procMode && !portMode && !procLoaded) || (portMode && Ports.phase === "loading") || (pkgMode && pkgQuery.trim().length >= 2 && !pkgLoaded) || (filesBusy && query.trim().length >= 3)
+    property bool showLoading: false
+    onAsyncLoadingChanged: {
+        if (asyncLoading) loadDelay.restart();
+        else { loadDelay.stop(); showLoading = false; }
+    }
+    Timer { id: loadDelay; interval: 150; onTriggered: launcher.showLoading = true }
+    function loadingRows() { return showLoading ? [{ kind: "loading", name: "" }, { kind: "loading", name: "" }] : []; }
+    function noticeRow(title, detail, action) { return { kind: "notice", name: title, sub: detail, actionLabel: action || "" }; }
+
     // One list, in sections: the best match first (Top Hit), then by kind.
     // Empty: what you open most, then kuwai's actions. Section headers are
     // rows the selection skips.
@@ -422,7 +520,7 @@ FocusScope {
             const n = pkgQuery.trim();
             if (pkgNote) out.push({ kind: "tips", name: "", sub: pkgNote, tips: [] });
             if (n.length < 2) out.push({ kind: "tips", name: "", prefix: "+ ", sub: "Type a package name: Arch's repositories, then the AUR", tips: ["+ firefox", "+ ripgrep", "+ obs"] });
-            else if (!pkgLoaded) out.push({ kind: "tips", name: "", sub: "Searching Arch and the AUR…", tips: [] });
+            else if (!pkgLoaded) out.push(...loadingRows());
             else if (!pkgHits.length) out.push({ kind: "tips", name: "", sub: "No package matches “" + n + "”", tips: [] });
             else section("Packages", pkgHits.map(p => ({
                 kind: "pkg", pkg: p, name: p.name,
@@ -433,11 +531,24 @@ FocusScope {
         }
         if (procMode) {
             const n = procQuery.trim();
-            const port = /^:?\d{1,5}$/.test(n);
             if (procNote) out.push({ kind: "tips", name: "", sub: procNote, tips: [] });
-            if (!procLoaded) out.push({ kind: "tips", name: "", sub: "Reading what's running…", tips: [] });
-            else if (!procHits.length) out.push({ kind: "tips", name: "", prefix: "! ", sub: port ? "Nothing listens on " + n.replace(/^:/, "") : n ? "Nothing running matches “" + n + "”" : "Nothing found", tips: ["! zen", "! 3000", "! node"] });
-            else section(port ? "Listening on " + n.replace(/^:/, "") : n ? "Processes" : "Using the most right now", procRows());
+            if (portMode) {
+                if (Ports.phase === "error") out.push(noticeRow("Can't read listening ports", "The port list isn't available right now.", "Try again"));
+                else if (Ports.phase === "loading") out.push(...loadingRows());
+                else {
+                    const rows = portRows();
+                    if (!rows.length) out.push({ kind: "tips", name: "", prefix: "! ", sub: n === ":" ? "Nothing is listening right now" : "Nothing listens on " + n.replace(/^:/, ""), tips: ["! :", "! :3000", "! shop"] });
+                    else section(n === ":" ? "Listening ports" : "Listening on " + n.replace(/^:/, ""), rows);
+                }
+                return out;
+            }
+            if (procError) out.push(noticeRow("Can't read what's running", "The process list isn't available right now.", "Try again"));
+            else if (!procLoaded) out.push(...loadingRows());
+            else {
+                const rows = n ? portRows().concat(procRows()) : procRows();
+                if (!rows.length) out.push({ kind: "tips", name: "", prefix: "! ", sub: n ? "Nothing running or serving matches “" + n + "”" : "Nothing found", tips: ["! zen", "! 3000", "! node"] });
+                else section(n ? "Processes and ports" : "Using the most right now", rows);
+            }
             return out;
         }
         // `:` emoji, `;` Nerd-font glyphs (HyDE's databases, services/Glyphs).
@@ -459,6 +570,7 @@ FocusScope {
                             .map(x => ({ kind: "app", entry: x.e, name: x.e.name, sub: x.e.genericName || x.e.comment || "", icon: x.e.icon }));
             if (top.length >= 3) section("Frequent", [{ kind: "dock", name: "Frequent", items: top }]);
             else section("Frequent", top);
+            if (!top.length) section("Applications", configuredApps());
             section("Actions", actions.slice().sort((a, b) => frecency("action:" + b.name) - frecency("action:" + a.name)).slice(0, 4)
                                       .map(a => ({ kind: "action", action: a, name: a.name, sub: a.sub, glyph: a.glyph })));
             // Every app, A to Z, to browse instead of search (scroll or ↓).
@@ -500,7 +612,7 @@ FocusScope {
         section("Actions", by(actHit).filter(r => r !== top).slice(0, 4));
         // Settings pages that match ("idle", "screensaver", "24-hour"), like Spotlight.
         if (q.length >= 3) section("Settings", SettingsIndex.search(q).slice(0, 2).map(x => ({ kind: "setting", name: x.label, sub: "Settings", glyph: x.glyph, page: x.id })));
-        section("Files", fileHits);
+        section("Files", fileHits.length ? fileHits : (filesBusy ? loadingRows() : []));
         // Last: the web, for anything the machine doesn't have.
         if (!calcRow && !timerRow && !remindRow && !alarmRow && !noteText && !pomoRow) section("Web", [{ kind: "web", name: "Search the web for “" + query.trim() + "”", sub: "DuckDuckGo", glyph: "\u{f059f}" }]);
         return out;
@@ -531,6 +643,7 @@ FocusScope {
         const r = results[current];
         selPid = procMode && r && r.kind === "proc" ? r.proc.pid : 0;
         if (armedPid && selPid !== armedPid) armedPid = 0;     // moving away disarms
+        if (Ports.armedKey && (!r || r.kind !== "port" || r.port.key !== Ports.armedKey)) { Ports.armedKey = ""; Ports.armedAction = ""; }
     }
 
     function run(r) {
@@ -542,6 +655,7 @@ FocusScope {
             return;
         }
         if (r.kind === "proc") { endProc(r, false); return; }
+        if (r.kind === "port") { endPort(r, false); return; }
         if (r.kind === "pkg") { runPkg(r); return; }
         if (r.kind === "emoji" || r.kind === "glyph") {
             // Typed into the window you came from once the island lets go of
@@ -624,8 +738,8 @@ FocusScope {
             anchors { left: lens.right; leftMargin: 12; right: parent.right; verticalCenter: parent.verticalCenter }
             focus: true
             font.family: Theme.fontText
-            font.pixelSize: Theme.tTitle3
-            font.variableAxes: ({ "opsz": Theme.opszFor(Theme.tTitle3), "wght": Theme.wRegular })
+            font.pixelSize: Theme.sp(Theme.tTitle3)
+            font.variableAxes: Theme.axesFor(Theme.sp(Theme.tTitle3))
             color: Theme.textPrimary
             selectionColor: Theme.wash(5)
             selectedTextColor: Theme.textPrimary
@@ -639,6 +753,7 @@ FocusScope {
             Keys.onPressed: event => {
                 const k = event.key, ctrl = event.modifiers & Qt.ControlModifier;
                 const alt = event.modifiers & Qt.AltModifier;
+                const shift = event.modifiers & Qt.ShiftModifier;
                 if (k === Qt.Key_Escape && field.text !== "") { field.text = ""; event.accepted = true; return; }
                 if (k === Qt.Key_Menu || (k === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
                     const it = list.itemAtIndex(launcher.current);
@@ -658,10 +773,26 @@ FocusScope {
                     const it = launcher.dockRow.items[k - Qt.Key_1];
                     if (it) { launcher.run(it); event.accepted = true; return; }
                 }
+                if (ctrl && k >= Qt.Key_1 && k <= Qt.Key_6) {
+                    const mode = launcher.modePills[k - Qt.Key_1];
+                    if (mode) launcher.enterMode(mode.prefix);
+                    event.accepted = true;
+                    return;
+                }
                 if (k === Qt.Key_Down || k === Qt.Key_Tab || (ctrl && (k === Qt.Key_J || k === Qt.Key_N))) launcher.move(1);
                 else if (k === Qt.Key_Up || k === Qt.Key_Backtab || (ctrl && (k === Qt.Key_K || k === Qt.Key_P))) launcher.move(-1);
-                else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "proc") {
-                    launcher.endProc(launcher.results[launcher.current], true);
+                else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && shift && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "port") {
+                    launcher.endPort(launcher.results[launcher.current], true);
+                    event.accepted = true;
+                }
+                else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && ctrl && launcher.results[launcher.current] && (launcher.results[launcher.current].kind === "proc" || launcher.results[launcher.current].kind === "port")) {
+                    const r = launcher.results[launcher.current];
+                    if (r.kind === "port") launcher.endPort(r, true); else launcher.endProc(r, true);
+                    event.accepted = true;
+                }
+                else if (k === Qt.Key_O && ctrl && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "port") {
+                    const r = launcher.results[launcher.current];
+                    if (r.port.openable) Ports.openUrl(r.port.port);
                     event.accepted = true;
                 }
                 else if ((k === Qt.Key_Return || k === Qt.Key_Enter) && launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file" && (ctrl || (event.modifiers & Qt.AltModifier))) {
@@ -715,9 +846,11 @@ FocusScope {
             readonly property bool header: modelData.kind === "header" || modelData.kind === "tips"
             readonly property bool card: !!modelData.card
             readonly property bool tips: modelData.kind === "tips"
+            readonly property bool notice: modelData.kind === "notice"
+            readonly property bool loading: modelData.kind === "loading"
             readonly property bool dock: modelData.kind === "dock"
             width: list.width
-            height: tips ? Theme.sp(84) : header ? Theme.sp(30) : card ? Theme.sp(78) : dock ? 100 : launcher.rowH
+            height: notice ? Theme.sp(78) : loading ? launcher.rowH : tips ? Theme.sp(84) : header ? Theme.sp(30) : card ? Theme.sp(78) : dock ? 100 : launcher.rowH
 
             // No cascade: the launcher opens many times a day and the island's
             // grow already carries it in (one entrance per container).
@@ -732,6 +865,28 @@ FocusScope {
                 text: row.modelData.name
                 size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textTertiary
                 extraTracking: 0.4
+            }
+
+            Notice {
+                visible: row.notice
+                anchors { left: parent.left; right: parent.right; leftMargin: 10; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                glyph: "\u{f0026}"
+                title: row.modelData.name || ""
+                detail: row.modelData.sub || ""
+                action: row.modelData.actionLabel || ""
+                onActed: if (launcher.portMode) Ports.retry(); else if (launcher.procMode) procSoon.restart()
+            }
+            Row {
+                visible: row.loading
+                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+                spacing: 12
+                Skeleton { anchors.verticalCenter: parent.verticalCenter; width: Theme.rowMark; height: width; radius: Theme.r1 }
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.s1 + 2
+                    Skeleton { width: Theme.sp(170); height: Theme.sp(12) }
+                    Skeleton { width: Theme.sp(110); height: Theme.sp(10) }
+                }
             }
 
             // The calculator's answer: what it read, small; the answer, large.
@@ -783,11 +938,11 @@ FocusScope {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + parent.modelData.replace(/^! /, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
+                                onClicked: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + parent.modelData.replace(/^[+!=:;>]+\s*/, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
                             }
                             Accessible.role: Accessible.Button
                             Accessible.name: "Try " + modelData
-                            Accessible.onPressAction: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + modelData.replace(/^! /, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
+                            Accessible.onPressAction: { field.text = (row.modelData.prefix !== undefined ? row.modelData.prefix : "= ") + modelData.replace(/^[+!=:;>]+\s*/, "").replace("×", "*"); field.cursorPosition = field.text.length; field.forceActiveFocus(); }
                         }
                     }
                 }
@@ -798,7 +953,7 @@ FocusScope {
             // letters you typed in the accent, what it is, and on the chosen
             // row what ↵ does (room for that hint only on that row).
             ListRow {
-                visible: !row.header && !row.card && !row.dock
+                visible: !row.header && !row.card && !row.dock && !row.notice && !row.loading
                 width: parent.width
                 minHeight: launcher.rowH
                 lead: Item {
@@ -814,9 +969,10 @@ FocusScope {
                             textFormat: Text.PlainText
                             anchors.centerIn: parent
                             text: row.modelData.glyph || "\u{f0b2a}"
-                            font.family: row.modelData.kind === "calc" ? Theme.fontRounded : row.modelData.kind === "emoji" ? "Noto Color Emoji" : Theme.fontGlyph
-                            font.pixelSize: row.modelData.kind === "calc" ? 18 : row.modelData.kind === "emoji" ? 22 : 17
-                            color: Theme.textSecondary
+                            font.family: row.modelData.kind === "port" ? Theme.compactFamily(Theme.wBold) : row.modelData.kind === "calc" ? Theme.roundedFamily(Theme.wRegular) : row.modelData.kind === "emoji" ? "Noto Color Emoji" : Theme.fontGlyph
+                            font.pixelSize: row.modelData.kind === "port" ? Theme.sp(Theme.tCaption) : row.modelData.kind === "calc" ? 18 : row.modelData.kind === "emoji" ? 22 : 17
+                            font.weight: row.modelData.kind === "port" ? Theme.wBold : Theme.wRegular
+                            color: row.modelData.kind === "port" ? Theme.textPrimary : Theme.textSecondary
                         }
                     }
                 }
@@ -828,13 +984,14 @@ FocusScope {
                 sub: row.modelData.sub || ""
                 subSize: Theme.tSub
                 forceStacked: false
-                trailOpacity: row.on ? 1 : 0
+                trailOpacity: row.on && Theme.textScale < 1.5 ? 1 : 0
                 trail: Row {
                     id: hint
                     spacing: 8
                     Label {
                         anchors.verticalCenter: parent.verticalCenter
                         text: row.modelData.kind === "proc" ? (row.modelData.armed ? (launcher.armedForce ? "Force quit" : "End") : row.modelData.proc.mine ? "End…" : "")
+                            : row.modelData.kind === "port" ? (row.modelData.armed ? "Confirm" : "Arm stop")
                             : row.modelData.kind === "pkg" ? (row.modelData.pkg.installed ? "Remove" : "Install") : launcher.verbs[row.modelData.kind] || ""
                         size: Theme.tSub
                         color: Theme.textSecondary
@@ -922,6 +1079,8 @@ FocusScope {
                         launcher.pointerPicked = false;
                     }
                 }
+                onEntered: if (row.modelData.kind === "port") launcher.hoverPort = true
+                onExited: if (row.modelData.kind === "port") launcher.hoverPort = false
                 onClicked: launcher.run(row.modelData)
             }
             // Right-click: what the keys do, for the pointer too (⌃↵ force
@@ -983,10 +1142,12 @@ FocusScope {
         anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 14 }
         spacing: 16
         Repeater {
-            model: launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file"
+            model: Theme.textScale >= 1.5
+                ? [["↵", launcher.enterVerb(launcher.results[launcher.current])], ["esc", "Close"]]
+                : launcher.results[launcher.current] && launcher.results[launcher.current].kind === "file"
                 ? [["↵", "Open"], ["Ctrl+↵", "Folder"], ["Alt+↵", "Copy path"], ["esc", "Close"]]
                 : launcher.onDock ? [["←→", "App"], ["↵", "Open"], ["Alt+1–8", "Open one"], ["esc", "Close"]]
-                : [["↑↓", "Choose"], ["↵", "Open"], ["esc", "Close"]]
+                : [["↑↓", "Choose"], ["↵", launcher.enterVerb(launcher.results[launcher.current])], ["esc", "Close"]]
             Row {
                 required property var modelData
                 spacing: 6
@@ -995,10 +1156,38 @@ FocusScope {
             }
         }
     }
-    Label {
-        anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 15 }
-        text: launcher.query ? launcher.selectable + (launcher.selectable === 1 ? " result" : " results") : ""
-        size: Theme.tSub
-        color: Theme.textTertiary
+    Row {
+        anchors { right: parent.right; rightMargin: Theme.s4; bottom: parent.bottom; bottomMargin: Theme.s3 }
+        spacing: Theme.s2
+        Repeater {
+            model: launcher.modePills
+            Rectangle {
+                required property var modelData
+                required property int index
+                readonly property var mode: modelData
+                readonly property int modeIndex: index
+                width: Theme.rowMark; height: width
+                radius: Theme.r1
+                color: modeArea.containsMouse ? Theme.pillHover : Theme.pill
+                Label { anchors.centerIn: parent; text: parent.mode.mark; size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textSecondary }
+                MouseArea {
+                    id: modeArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: { launcher.enterMode(parent.mode.prefix); field.forceActiveFocus(); }
+                }
+                Tip { text: parent.mode.label + " · Ctrl+" + (parent.modeIndex + 1); shown: modeArea.containsMouse }
+                Accessible.role: Accessible.Button
+                Accessible.name: mode.label + " mode"
+                Accessible.onPressAction: launcher.enterMode(mode.prefix)
+            }
+        }
+        Label {
+            anchors.verticalCenter: parent.verticalCenter
+            text: launcher.query && Theme.textScale < 1.5 ? launcher.selectable + (launcher.selectable === 1 ? " result" : " results") : ""
+            size: Theme.tSub
+            color: Theme.textTertiary
+        }
     }
 }

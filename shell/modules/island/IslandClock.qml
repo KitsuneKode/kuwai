@@ -11,4 +11,5 @@ TextMorph {
     required property date now
     text: Dates.clock(now, Settings.showSeconds)
     weight: Theme.wSemibold
+    clockFace: true
 }

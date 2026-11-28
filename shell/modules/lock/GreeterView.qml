@@ -130,7 +130,9 @@ Item {
             anchors.fill: parent
             visible: view.f > 0.01
             opacity: view.f
-            layer.enabled: true
+            layer.enabled: visible
+            layer.textureSize: Qt.size(640, 360)
+            layer.smooth: true
             Image {
                 id: wallSmall
                 anchors.fill: parent

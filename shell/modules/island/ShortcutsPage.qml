@@ -58,12 +58,12 @@ Column {
     function rowDetail(e) {
         if (KeyBinds.editing === e.aid) {
             const p = KeyBinds.pending, c = KeyBinds.clash;
-            if (!p) return "Press the new keys · esc cancels" + (e.keys && e.text !== "Lock" ? " · ⌫ leaves it without one" : "");
+            if (!p) return "Press the new keys · Esc cancels" + (e.keys && e.text !== "Lock" ? " · ⌫ leaves it without one" : "");
             if (p.why) return p.why;
             if (c && c.kind === "same") return "That's already its shortcut";
             if (c && c.kind === "kuwai") return "Now “" + c.text + "”: Replace leaves that one without a shortcut";
             if (c) return c.text ? "Taken by “" + c.text + "”, which can't be moved from here" : "Taken by a shortcut of your own";
-            return "↵ saves · esc cancels";
+            return "↵ saves · Esc cancels";
         }
         const t = e.custom ? KeyBinds.takenBy(e) : null;
         return [e.sub, e.keys ? "" : "No shortcut",
@@ -115,6 +115,7 @@ Column {
                     selectionColor: Qt.alpha(Theme.accent, 0.4)
                     font.family: Theme.fontText
                     font.pixelSize: Theme.sp(Theme.tSub)
+                    font.variableAxes: Theme.axesFor(Theme.tSub)
                     clip: true
                     activeFocusOnTab: true
                     onTextChanged: page.filter = text

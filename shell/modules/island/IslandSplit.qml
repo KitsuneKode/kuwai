@@ -491,7 +491,7 @@ Item {
             visible: pill.compact
             textFormat: Text.PlainText
             text: pill.name === "more" ? "+" + split.arrangement.overflow.length : split.glyphFor(pill.name)
-            font.family: pill.name === "more" ? Theme.fontText : Theme.fontGlyph
+            font.family: pill.name === "more" ? Theme.compactFamily(Theme.wSemibold) : Theme.fontGlyph
             font.pixelSize: Theme.tSub * Theme.textScale
             font.weight: Theme.wSemibold
             color: pill.toned ? pill.tone : Theme.textPrimary

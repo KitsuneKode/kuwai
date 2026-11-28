@@ -134,8 +134,8 @@ Item {
             fillMode: Image.PreserveAspectFit
             asynchronous: true; mipmap: true
             visible: status === Image.Ready
-            layer.enabled: visible
-            layer.effect: MultiEffect { saturation: card.gone ? -1 : 0 }
+            layer.enabled: visible && card.gone
+            layer.effect: MultiEffect { saturation: -1 }
         }
         Rectangle {
             anchors.fill: parent

@@ -427,7 +427,7 @@
        "identity": "Mozilla Firefox",
        "desktopEntry": "firefox",
        "dbusName": "org.mpris.MediaPlayer2.firefox.instance_1_42",
-       "trackTitle": "Building a Dynamic Island in QML — full walkthrough",
+       "trackTitle": "Building a Dynamic Island in QML \u2014 full walkthrough",
        "trackArtist": "Kuwai Notes",
        "trackArtUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAABaCAIAAACwpMoFAAACWklEQVR42u2d2UpCURSG144eoQszCZp7lOboqsimq+oJGkCQKJsgIioru2mmrqLZRymbIMp8C7s40Z00ncG9+D42ojjh+vyXnOU5asoa0yJ5I+Kcfp3hoo6LJQKqKXWMA4IBwYBgQDAgGBAMCEYw2A+TLBIMCAYEA4IBwYBgQDCCAcFgB0yySDAgGBAMCPaM08XnQld1j1Ui2FbOFp6+vc3J4otzpmc8gmBrOJ9//O1djhdeRaR3IoLgouZi7uE/dz+afxWR6GSFou1g53glFevyf3a/OJx7U1MTPYIvZ+9dfOMfzma1CFbBVeLe9cc8SGRp0UWxrhIZj6qzn8jSogNe1zMZTxOwP/OO4MDWzXTGhy63N22xY0aVP8PwGex/fKfufCvT3lSOBBNiEuzeSsfvfK7UbjxHggkxs2gE+92iLSQduw3keXdiORJMiBGMYAQjGMEIRjCCEYxgQDCCixgrZ9FNS42BFGtoKcQ+WUCLpj/Tor/v0ssNPldqcDnE14XElwS7t5pX/AvxwEqIXXaILwl2PcSr9X7Ed7Wc/aIDWy1r3jruXytnx/eAV+u6V47718MculIcjpN1rtvtS4YVVEbPJKvNVcfRZFhHWVQdAN62UeuO3Y0KNTXRtpnUvllrRM5H/3iof+9mRCRvFNVE53Zwx1aNETkb+cVPsfRsRYyIUVcNzYOOzlS106hOhwv+nlJ3qvLz75RNnm+TbKVru6rg/2Vrf/mMKhEMCAYEQ1CDDiDBgGBAMCAYEAwIBgQjGBAMNsAkiwQDggHBgGBAMCAYEIxgUMMHheynH7TO6VcAAAAASUVORK5CYII=",
        "metadata": {},
@@ -527,7 +527,7 @@
        "start": 1794999600000,
        "end": 1795005000000,
        "title": "Design review: the island's panels at large text",
-       "location": "Room 4 · second floor",
+       "location": "Room 4 \u00b7 second floor",
        "allDay": false
       },
       {
@@ -1613,7 +1613,7 @@
       {
        "label": "Reference clones",
        "bytes": 2300000000.0,
-       "detail": "other dotfiles kept to study · re-clonable",
+       "detail": "other dotfiles kept to study \u00b7 re-clonable",
        "safe": false,
        "paths": [
         "/home/ada/Projects/rice/refs"
@@ -2117,7 +2117,7 @@
       {
        "label": "Reference clones",
        "bytes": 2300000000.0,
-       "detail": "other dotfiles kept to study · re-clonable",
+       "detail": "other dotfiles kept to study \u00b7 re-clonable",
        "safe": false,
        "paths": [
         "/home/ada/Projects/rice/refs"
@@ -2180,7 +2180,7 @@
       {
        "label": "Reference clones",
        "bytes": 2300000000.0,
-       "detail": "other dotfiles kept to study · re-clonable",
+       "detail": "other dotfiles kept to study \u00b7 re-clonable",
        "safe": false,
        "paths": [
         "/home/ada/Projects/rice/refs"
@@ -2321,7 +2321,8 @@
   {
    "id": "settings/new-machine",
    "name": "settings",
-   "panel": "SettingsPanel"
+   "panel": "SettingsPanel",
+   "props": null
   },
   {
    "id": "theme/new-machine",
@@ -3149,7 +3150,7 @@
           {
            "id": "opus",
            "kind": "opus",
-           "label": "Weekly · Opus",
+           "label": "Weekly \u00b7 Opus",
            "used": 71,
            "resetsAt": "@now+518400000ms",
            "durationMins": 10080
@@ -3703,7 +3704,7 @@
           {
            "id": "opus",
            "kind": "opus",
-           "label": "Weekly · Opus",
+           "label": "Weekly \u00b7 Opus",
            "used": 71,
            "resetsAt": "@now+518400000ms",
            "durationMins": 10080
@@ -8245,6 +8246,45 @@
      "Limits",
      "fails",
      0
+    ],
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      [
+       {
+        "port": 3000,
+        "host": "127.0.0.1",
+        "proc": "node",
+        "what": "next dev",
+        "project": "marketplace",
+        "pid": 4301,
+        "start": 1001,
+        "age": 7380,
+        "agent": "claude",
+        "parentApp": "Kitty",
+        "memBytes": 412000000,
+        "cpu": 8.4,
+        "local": true
+       },
+       {
+        "port": 5173,
+        "host": "127.0.0.1",
+        "proc": "bun",
+        "what": "vite dev",
+        "project": "portfolio",
+        "pid": 4302,
+        "start": 1002,
+        "age": 2460,
+        "agent": "codex",
+        "parentApp": "Kitty",
+        "memBytes": 188000000,
+        "cpu": 2.1,
+        "local": true
+       }
+      ]
+     ]
     ]
    ],
    "kind": "worst",
@@ -8263,23 +8303,7 @@
       "context": 350000,
       "window": 475000
      }
-    },
-    "ports": [
-     {
-      "port": 3000,
-      "proc": "node",
-      "project": "marketplace",
-      "pid": 1,
-      "local": true
-     },
-     {
-      "port": 5173,
-      "proc": "bun",
-      "project": "portfolio",
-      "pid": 2,
-      "local": true
-     }
-    ]
+    }
    }
   },
   {
@@ -10793,7 +10817,7 @@
          "unit": "app-worst-0.scope",
          "id": "worst0",
          "launcher": "",
-         "label": "Visual Studio Code – Insiders, the preview build of the next release with every extension on",
+         "label": "Visual Studio Code \u2013 Insiders, the preview build of the next release with every extension on",
          "main": "worst",
          "pid": 4198,
          "start": 1000,
@@ -11430,6 +11454,298 @@
    ]
   },
   {
+   "id": "sweep/not-installed",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": false
+     }
+    ]
+   ]
+  },
+  {
+   "id": "sweep/stale-battery",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "onBattery",
+     true
+    ],
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "checkedAt": "@now-10800s",
+      "stale": false,
+      "root": "/home/ada/Projects",
+      "reclaimable": 36000000000.0,
+      "safe": 29000000000.0,
+      "caution": 7000000000.0,
+      "protected": 12,
+      "idle": {
+       "days": 30,
+       "projects": 5,
+       "bytes": 31800000000.0,
+       "kinds": [
+        {
+         "kind": "node_modules",
+         "bytes": 22000000000.0,
+         "count": 19
+        },
+        {
+         "kind": "target",
+         "bytes": 6100000000.0,
+         "count": 4
+        },
+        {
+         "kind": ".next",
+         "bytes": 2400000000.0,
+         "count": 6
+        },
+        {
+         "kind": "dist",
+         "bytes": 900000000.0,
+         "count": 11
+        },
+        {
+         "kind": ".venv",
+         "bytes": 400000000.0,
+         "count": 2
+        }
+       ]
+      },
+      "kinds": [
+       {
+        "kind": "node_modules",
+        "bytes": 22000000000.0,
+        "count": 19
+       },
+       {
+        "kind": "target",
+        "bytes": 6100000000.0,
+        "count": 4
+       },
+       {
+        "kind": ".next",
+        "bytes": 2400000000.0,
+        "count": 6
+       },
+       {
+        "kind": "dist",
+        "bytes": 900000000.0,
+        "count": 11
+       },
+       {
+        "kind": ".venv",
+        "bytes": 400000000.0,
+        "count": 2
+       }
+      ],
+      "projects": [
+       {
+        "name": "old-shop",
+        "path": "/home/ada/Projects/old-shop",
+        "bytes": 9400000000.0,
+        "idleDays": 212
+       },
+       {
+        "name": "sweep-ui",
+        "path": "/home/ada/Projects/kuwai/.worktrees/sweep-ui",
+        "bytes": 6300000000.0,
+        "idleDays": 44
+       },
+       {
+        "name": "rust-raytracer",
+        "path": "/home/ada/Projects/rust-raytracer",
+        "bytes": 6100000000.0,
+        "idleDays": 130
+       },
+       {
+        "name": "hackathon-2025",
+        "path": "/home/ada/Projects/hackathon-2025",
+        "bytes": 3800000000.0,
+        "idleDays": 340
+       },
+       {
+        "name": "blog",
+        "path": "/home/ada/Projects/blog",
+        "bytes": 1200000000.0,
+        "idleDays": 61
+       }
+      ]
+     }
+    ]
+   ]
+  },
+  {
+   "id": "sweep/receipt-trash",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "checkedAt": "@now-2700s",
+      "stale": false,
+      "root": "/home/ada/Projects",
+      "reclaimable": 36000000000.0,
+      "safe": 29000000000.0,
+      "caution": 7000000000.0,
+      "protected": 12,
+      "idle": {
+       "days": 30,
+       "projects": 5,
+       "bytes": 31800000000.0,
+       "kinds": [
+        {
+         "kind": "node_modules",
+         "bytes": 22000000000.0,
+         "count": 19
+        },
+        {
+         "kind": "target",
+         "bytes": 6100000000.0,
+         "count": 4
+        },
+        {
+         "kind": ".next",
+         "bytes": 2400000000.0,
+         "count": 6
+        },
+        {
+         "kind": "dist",
+         "bytes": 900000000.0,
+         "count": 11
+        },
+        {
+         "kind": ".venv",
+         "bytes": 400000000.0,
+         "count": 2
+        }
+       ]
+      },
+      "kinds": [
+       {
+        "kind": "node_modules",
+        "bytes": 22000000000.0,
+        "count": 19
+       },
+       {
+        "kind": "target",
+        "bytes": 6100000000.0,
+        "count": 4
+       },
+       {
+        "kind": ".next",
+        "bytes": 2400000000.0,
+        "count": 6
+       },
+       {
+        "kind": "dist",
+        "bytes": 900000000.0,
+        "count": 11
+       },
+       {
+        "kind": ".venv",
+        "bytes": 400000000.0,
+        "count": 2
+       }
+      ],
+      "projects": [
+       {
+        "name": "old-shop",
+        "path": "/home/ada/Projects/old-shop",
+        "bytes": 9400000000.0,
+        "idleDays": 212
+       },
+       {
+        "name": "sweep-ui",
+        "path": "/home/ada/Projects/kuwai/.worktrees/sweep-ui",
+        "bytes": 6300000000.0,
+        "idleDays": 44
+       },
+       {
+        "name": "rust-raytracer",
+        "path": "/home/ada/Projects/rust-raytracer",
+        "bytes": 6100000000.0,
+        "idleDays": 130
+       },
+       {
+        "name": "hackathon-2025",
+        "path": "/home/ada/Projects/hackathon-2025",
+        "bytes": 3800000000.0,
+        "idleDays": 340
+       },
+       {
+        "name": "blog",
+        "path": "/home/ada/Projects/blog",
+        "bytes": 1200000000.0,
+        "idleDays": 61
+       }
+      ]
+     }
+    ],
+    [
+     "Sweep",
+     "receiptRaw",
+     {
+      "receiptVersion": 1,
+      "id": "rehearsal-trash",
+      "completedAt": "@now-120iso",
+      "targetDir": "/home/ada/Projects",
+      "mode": "trash",
+      "deletedCount": 5,
+      "failedCount": 0,
+      "unattemptedCount": 0,
+      "stopped": false,
+      "totalBytesFreed": 0,
+      "totalBytesMoved": 3758096384
+     }
+    ]
+   ]
+  },
+  {
+   "id": "sweep/empty",
+   "name": "sweep",
+   "panel": "SweepPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Sweep",
+     "data",
+     {
+      "alive": true,
+      "checkedAt": "@now-600s",
+      "root": "/home/ada/Projects",
+      "reclaimable": 0,
+      "safe": 0,
+      "caution": 0,
+      "protected": 0,
+      "idle": {
+       "days": 30,
+       "projects": 0,
+       "bytes": 0,
+       "kinds": []
+      },
+      "kinds": [],
+      "projects": []
+     }
+    ]
+   ]
+  },
+  {
    "id": "notifications/new-machine",
    "name": "notifications",
    "panel": "CenterPanel",
@@ -11966,7 +12282,7 @@
         "nid": 202,
         "time": "@now-300000ms",
         "app": "Backups",
-        "title": "Backup failed: the disk named “Archive (external, 4 TB, the old one from the drawer)” was not found",
+        "title": "Backup failed: the disk named \u201cArchive (external, 4 TB, the old one from the drawer)\u201d was not found",
         "body": "Plug the disk in, or choose another destination in Settings.",
         "full": "",
         "thread": "",
@@ -12113,9 +12429,9 @@
        {
         "nid": 206,
         "time": "@now-720000ms",
-        "app": "日本語のアプリ",
-        "title": "通知のタイトル",
-        "body": "本文がここに入ります。とても長い文章です。",
+        "app": "\u65e5\u672c\u8a9e\u306e\u30a2\u30d7\u30ea",
+        "title": "\u901a\u77e5\u306e\u30bf\u30a4\u30c8\u30eb",
+        "body": "\u672c\u6587\u304c\u3053\u3053\u306b\u5165\u308a\u307e\u3059\u3002\u3068\u3066\u3082\u9577\u3044\u6587\u7ae0\u3067\u3059\u3002",
         "full": "",
         "thread": "",
         "status": "",
@@ -12123,7 +12439,7 @@
         "statusTone": "",
         "icon": "",
         "savedIcon": "",
-        "groupKey": "日本語のアプリ",
+        "groupKey": "\u65e5\u672c\u8a9e\u306e\u30a2\u30d7\u30ea",
         "focusClass": "",
         "jump": "",
         "event": "",
@@ -12330,16 +12646,16 @@
    ]
   },
   {
-   "id": "settings/pointer",
+   "id": "settings/appearance",
    "name": "settings",
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 7
+    "current": 4
    }
   },
   {
-   "id": "settings/displays",
+   "id": "settings/pointer",
    "name": "settings",
    "panel": "SettingsPanel",
    "kind": "typical",
@@ -12348,12 +12664,21 @@
    }
   },
   {
+   "id": "settings/displays",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 9
+   }
+  },
+  {
    "id": "settings/keyboard",
    "name": "settings",
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 5
+    "current": 6
    }
   },
   {
@@ -12371,7 +12696,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 6
+    "current": 7
    },
    "set": [
     [
@@ -12805,7 +13130,7 @@
     [
      "KeyBinds",
      "replaced",
-     "SUPER + CTRL + N: [Utilities] Blank the other screen ← replaced by Blank"
+     "SUPER + CTRL + N: [Utilities] Blank the other screen \u2190 replaced by Blank"
     ]
    ]
   },
@@ -12815,7 +13140,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 6
+    "current": 7
    },
    "set": [
     [
@@ -13268,7 +13593,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 6
+    "current": 7
    },
    "set": [
     [
@@ -13916,13 +14241,13 @@
     "extLoaded": true,
     "extHits": [
      {
-      "title": "KitsuneKode/kuwai · Notch surface",
-      "sub": "Pull request #41 · merged",
+      "title": "KitsuneKode/kuwai \u00b7 Notch surface",
+      "sub": "Pull request #41 \u00b7 merged",
       "url": "https://github.com/KitsuneKode/kuwai/pull/41"
      },
      {
       "title": "Island morph between panels",
-      "sub": "Issue #38 · open",
+      "sub": "Issue #38 \u00b7 open",
       "url": "https://github.com/KitsuneKode/kuwai/issues/38"
      },
      {
@@ -13955,7 +14280,7 @@
        "label": "Package downloads (pacman)",
        "bytes": 10522669875,
        "tag": "check first",
-       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
        "clearable": false
       },
       {
@@ -14022,7 +14347,7 @@
        "label": "Package downloads (pacman)",
        "bytes": 51754355916,
        "tag": "check first",
-       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
        "clearable": false
       },
       {
@@ -14192,7 +14517,7 @@
        "label": "Package downloads (pacman)",
        "bytes": 10522669875,
        "tag": "check first",
-       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
        "clearable": false
       },
       {
@@ -14272,7 +14597,7 @@
        "label": "Package downloads (pacman)",
        "bytes": 10522669875,
        "tag": "check first",
-       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
        "clearable": false
       },
       {
@@ -14454,7 +14779,7 @@
        "label": "Package downloads (pacman)",
        "bytes": 51754355916,
        "tag": "check first",
-       "why": "Older versions you can go back to. Settings → Software Update can prune them after each update",
+       "why": "Older versions you can go back to. Settings \u2192 Software Update can prune them after each update",
        "clearable": false
       },
       {
@@ -14649,38 +14974,47 @@
        "limited": true
       }
      ]
+    ],
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      [
+       {
+        "port": 3000,
+        "proc": "node",
+        "what": "next dev",
+        "project": "my-site",
+        "pid": 4242,
+        "start": 123,
+        "age": 86400,
+        "agent": "Codex",
+        "local": true,
+        "host": "127.0.0.1",
+        "memBytes": 180000000,
+        "cpu": 1.5
+       },
+       {
+        "port": 5173,
+        "proc": "node",
+        "what": "vite",
+        "project": "a-much-longer-project-name-for-the-dashboard",
+        "pid": 4343,
+        "start": 124,
+        "age": 1800,
+        "agent": "Claude",
+        "local": false,
+        "host": "192.168.1.20",
+        "memBytes": 180000000,
+        "cpu": 1.5
+       }
+      ]
+     ]
     ]
    ],
    "kind": "worst",
-   "props": {
-    "ports": [
-     {
-      "port": 3000,
-      "proc": "node",
-      "what": "next dev",
-      "project": "my-site",
-      "pid": 4242,
-      "start": 123,
-      "age": 86400,
-      "agent": "Codex",
-      "local": true
-     },
-     {
-      "port": 5173,
-      "proc": "node",
-      "what": "vite",
-      "project": "a-much-longer-project-name-for-the-dashboard",
-      "pid": 4343,
-      "start": 124,
-      "age": 1800,
-      "agent": "Claude",
-      "local": false
-     }
-    ],
-    "forcePid": 4242,
-    "forceStart": "123",
-    "stopNote": ":3000 didn't stop · Force stop ends it"
-   }
+   "props": {}
   },
   {
    "id": "lock/rest",
@@ -14835,7 +15169,7 @@
    "fake": {
     "password": "hunter2",
     "checking": true,
-    "note": "Checking…"
+    "note": "Checking\u2026"
    }
   },
   {
@@ -15761,7 +16095,7 @@
    "name": "settings",
    "panel": "SettingsPanel",
    "props": {
-    "current": 12,
+    "current": 13,
     "searchText": "sunrise"
    },
    "set": [
@@ -15782,7 +16116,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 12
+    "current": 13
    }
   },
   {
@@ -15791,7 +16125,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 12
+    "current": 13
    },
    "set": [
     [
@@ -15820,7 +16154,7 @@
    "panel": "SettingsPanel",
    "kind": "worst",
    "props": {
-    "current": 12
+    "current": 13
    },
    "set": [
     [
@@ -16250,6 +16584,387 @@
     [
      "Notifs",
      "dnd",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "launcher/kill-port",
+   "name": "launcher",
+   "panel": "LauncherPanel",
+   "kind": "typical",
+   "props": {
+    "query": "! :"
+   },
+   "set": [
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      [
+       {
+        "port": 3000,
+        "host": "127.0.0.1",
+        "proc": "node",
+        "what": "next dev",
+        "project": "marketplace",
+        "pid": 4301,
+        "start": 1001,
+        "age": 7380,
+        "agent": "claude",
+        "parentApp": "Kitty",
+        "memBytes": 412000000,
+        "cpu": 8.4,
+        "local": true
+       },
+       {
+        "port": 5173,
+        "host": "127.0.0.1",
+        "proc": "bun",
+        "what": "vite dev",
+        "project": "portfolio",
+        "pid": 4302,
+        "start": 1002,
+        "age": 2460,
+        "agent": "codex",
+        "parentApp": "Kitty",
+        "memBytes": 188000000,
+        "cpu": 2.1,
+        "local": true
+       },
+       {
+        "port": 5432,
+        "host": "192.168.1.20",
+        "proc": "postgres",
+        "what": "postgres",
+        "project": "household",
+        "pid": 4303,
+        "start": 1003,
+        "age": 172800,
+        "agent": "",
+        "parentApp": "",
+        "memBytes": 92600000,
+        "cpu": 0.4,
+        "local": false
+       }
+      ]
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "updates/packages-loading",
+   "name": "updates",
+   "panel": "PackagesView",
+   "kind": "typical"
+  },
+  {
+   "id": "updates/packages-empty",
+   "name": "updates",
+   "panel": "PackagesView",
+   "kind": "typical",
+   "props": {
+    "list": []
+   }
+  },
+  {
+   "id": "updates/packages-error",
+   "name": "updates",
+   "panel": "PackagesView",
+   "kind": "typical",
+   "props": {
+    "failed": true
+   }
+  },
+  {
+   "id": "system/ports",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "ports"
+   },
+   "set": [
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      [
+       {
+        "port": 3000,
+        "host": "127.0.0.1",
+        "proc": "node",
+        "what": "next dev",
+        "project": "marketplace",
+        "pid": 4301,
+        "start": 1001,
+        "age": 7380,
+        "agent": "claude",
+        "parentApp": "Kitty",
+        "memBytes": 412000000,
+        "cpu": 8.4,
+        "local": true
+       },
+       {
+        "port": 5173,
+        "host": "127.0.0.1",
+        "proc": "bun",
+        "what": "vite dev",
+        "project": "portfolio",
+        "pid": 4302,
+        "start": 1002,
+        "age": 2460,
+        "agent": "codex",
+        "parentApp": "Kitty",
+        "memBytes": 188000000,
+        "cpu": 2.1,
+        "local": true
+       },
+       {
+        "port": 5432,
+        "host": "192.168.1.20",
+        "proc": "postgres",
+        "what": "postgres",
+        "project": "household",
+        "pid": 4303,
+        "start": 1003,
+        "age": 172800,
+        "agent": "",
+        "parentApp": "",
+        "memBytes": 92600000,
+        "cpu": 0.4,
+        "local": false
+       },
+       {
+        "port": 8080,
+        "host": "0.0.0.0",
+        "proc": "python",
+        "what": "uvicorn api",
+        "project": "shopfront",
+        "pid": 4304,
+        "start": 1004,
+        "age": 540,
+        "agent": "agy",
+        "parentApp": "Kitty",
+        "memBytes": 145000000,
+        "cpu": 5.7,
+        "local": false
+       }
+      ]
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/ports-armed",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "ports"
+   },
+   "set": [
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      [
+       {
+        "port": 3000,
+        "host": "127.0.0.1",
+        "proc": "node",
+        "what": "next dev",
+        "project": "marketplace",
+        "pid": 4301,
+        "start": 1001,
+        "age": 7380,
+        "agent": "claude",
+        "parentApp": "Kitty",
+        "memBytes": 412000000,
+        "cpu": 8.4,
+        "local": true
+       },
+       {
+        "port": 5173,
+        "host": "127.0.0.1",
+        "proc": "bun",
+        "what": "vite dev",
+        "project": "portfolio",
+        "pid": 4302,
+        "start": 1002,
+        "age": 2460,
+        "agent": "codex",
+        "parentApp": "Kitty",
+        "memBytes": 188000000,
+        "cpu": 2.1,
+        "local": true
+       },
+       {
+        "port": 5432,
+        "host": "192.168.1.20",
+        "proc": "postgres",
+        "what": "postgres",
+        "project": "household",
+        "pid": 4303,
+        "start": 1003,
+        "age": 172800,
+        "agent": "",
+        "parentApp": "",
+        "memBytes": 92600000,
+        "cpu": 0.4,
+        "local": false
+       },
+       {
+        "port": 8080,
+        "host": "0.0.0.0",
+        "proc": "python",
+        "what": "uvicorn api",
+        "project": "shopfront",
+        "pid": 4304,
+        "start": 1004,
+        "age": 540,
+        "agent": "agy",
+        "parentApp": "Kitty",
+        "memBytes": 145000000,
+        "cpu": 5.7,
+        "local": false
+       }
+      ]
+     ]
+    ],
+    [
+     "Ports",
+     "call",
+     "press",
+     [
+      "4301:1001",
+      "stop",
+      "marketplace"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/ports-worst",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "worst",
+   "props": {
+    "tab": "ports"
+   },
+   "set": [
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      [
+       {
+        "port": 3000,
+        "host": "127.0.0.1",
+        "proc": "node",
+        "what": "next dev --turbo --experimental-https",
+        "project": "marketplace-with-an-extraordinarily-long-project-name",
+        "pid": 4301,
+        "start": 1001,
+        "age": 604800,
+        "agent": "claude-opus",
+        "parentApp": "Kitty",
+        "memBytes": 2412000000,
+        "cpu": 98.4,
+        "local": true
+       },
+       {
+        "port": 65535,
+        "host": "192.168.1.20",
+        "proc": "postgres",
+        "what": "postgres",
+        "project": "household",
+        "pid": 4303,
+        "start": 1003,
+        "age": 172800,
+        "agent": "",
+        "parentApp": "",
+        "memBytes": 92600000,
+        "cpu": 0.4,
+        "local": false
+       }
+      ]
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/ports-empty",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "ports"
+   },
+   "set": [
+    [
+     "Ports",
+     "call",
+     "show",
+     [
+      []
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "system/ports-error",
+   "name": "system",
+   "panel": "SystemPanel",
+   "kind": "typical",
+   "props": {
+    "tab": "ports"
+   },
+   "set": [
+    [
+     "Ports",
+     "failed",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "clipboard/failed",
+   "name": "clipboard",
+   "panel": "../clipboard/ClipboardPanel",
+   "window": true,
+   "kind": "typical",
+   "scales": [
+    1,
+    1.2
+   ],
+   "why": "the shelf is fixed pixels: Text size does not reach its cards, search row or footer yet",
+   "set": [
+    [
+     "Clipboard",
+     "loaded",
+     true
+    ],
+    [
+     "Clipboard",
+     "loadFailed",
+     true
+    ],
+    [
+     "Clipboard",
+     "call",
+     "setRaw",
+     [
+      []
+     ]
+    ],
+    [
+     "Clipboard",
+     "open",
      true
     ]
    ]

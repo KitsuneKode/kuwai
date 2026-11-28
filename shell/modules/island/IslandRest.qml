@@ -677,7 +677,7 @@ Item {
             visible: !!Display.hdrOn[rest.bar.screenName]
             anchors.verticalCenter: parent.verticalCenter
             text: "HDR"
-            size: Theme.tCaption; weight: Theme.wSemibold
+            size: Theme.tCaption; compact: true; weight: Theme.wSemibold
             color: Theme.yellow
             HoverHandler { id: hdrHover; margin: 6 }
             Tip {

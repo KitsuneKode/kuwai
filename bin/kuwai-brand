@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+"""Regenerate kuwai's deterministic brand SVGs."""
+import math
+import re
+import sys
+from pathlib import Path
+
+from fontTools.ttLib import TTFont
+from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.transformPen import TransformPen
+
+ROOT = Path(__file__).resolve().parent.parent
+BRANDKIT = ROOT / "docs/brandkit"
+ASSETS = BRANDKIT / "assets"
+HICOLOR = ROOT / "system/icons/hicolor/scalable/apps"
+GEIST_SOURCES = [
+    ROOT / "shell/assets/fonts/Geist-SemiBold.ttf",
+]
+NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def fmt(value):
+    text = f"{value:.2f}".rstrip("0").rstrip(".")
+    return "0" if text in ("", "-0") else text
+
+
+def round_path(data):
+    return NUMBER.sub(lambda match: fmt(float(match.group(0))), data)
+
+
+def point_text(point):
+    return fmt(point[0]) + " " + fmt(point[1])
+
+
+def catmull_segments(points, closed=False):
+    if closed:
+        items = list(points)
+        count = len(items)
+        out = []
+        for i in range(count):
+            p0 = items[(i - 1) % count]
+            p1 = items[i]
+            p2 = items[(i + 1) % count]
+            p3 = items[(i + 2) % count]
+            c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+            c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+            out.append("C" + point_text(c1) + " " + point_text(c2) + " " + point_text(p2))
+        return "".join(out)
+    items = [points[0]] + list(points) + [points[-1]]
+    out = []
+    for i in range(1, len(items) - 2):
+        p0, p1, p2, p3 = items[i - 1], items[i], items[i + 1], items[i + 2]
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        out.append("C" + point_text(c1) + " " + point_text(c2) + " " + point_text(p2))
+    return "".join(out)
+
+
+def superellipse_point(cx, cy, rx, ry, power, angle):
+    c = math.cos(angle)
+    s = math.sin(angle)
+    x = cx + rx * math.copysign(abs(c) ** (2 / power), c)
+    y = cy + ry * math.copysign(abs(s) ** (2 / power), s)
+    return (x, y)
+
+
+def squircle_path(x, y, width, height, power=5.0, samples=64):
+    cx, cy = x + width / 2, y + height / 2
+    points = [
+        superellipse_point(cx, cy, width / 2, height / 2, power, math.tau * i / samples)
+        for i in range(samples)
+    ]
+    return "M" + point_text(points[0]) + catmull_segments(points, closed=True) + "Z"
+
+
+def notch_path(closed=True):
+    cx, cy, rx, ry, power = 24, 22.8, 11.8, 12.6, 4.0
+    steps = 16
+    points = [
+        superellipse_point(cx, cy, rx, ry, power, math.pi - math.pi * i / steps)
+        for i in range(steps + 1)
+    ]
+    return (
+        "M2.5 10H7.2"
+        "C10.4 10 12.2 12 12.2 15.2"
+        "V" + fmt(cy) +
+        catmull_segments(points) +
+        "V15.2"
+        "C35.8 12 37.6 10 40.8 10"
+        "H45.5" + ("Z" if closed else "")
+    )
+
+
+def rounded_rect_path(x, y, width, height, radius):
+    c = radius * 0.5522847498
+    return (
+        "M" + fmt(x + radius) + " " + fmt(y) +
+        "H" + fmt(x + width - radius) +
+        "C" + fmt(x + width - radius + c) + " " + fmt(y) + " " + fmt(x + width) + " " + fmt(y + radius - c) + " " + fmt(x + width) + " " + fmt(y + radius) +
+        "V" + fmt(y + height - radius) +
+        "C" + fmt(x + width) + " " + fmt(y + height - radius + c) + " " + fmt(x + width - radius + c) + " " + fmt(y + height) + " " + fmt(x + width - radius) + " " + fmt(y + height) +
+        "H" + fmt(x + radius) +
+        "C" + fmt(x + radius - c) + " " + fmt(y + height) + " " + fmt(x) + " " + fmt(y + height - radius + c) + " " + fmt(x) + " " + fmt(y + height - radius) +
+        "V" + fmt(y + radius) +
+        "C" + fmt(x) + " " + fmt(y + radius - c) + " " + fmt(x + radius - c) + " " + fmt(y) + " " + fmt(x + radius) + " " + fmt(y) + "Z"
+    )
+
+
+def circle_path(cx, cy, radius):
+    r = fmt(radius)
+    return (
+        "M" + fmt(cx - radius) + " " + fmt(cy) +
+        "a" + r + " " + r + " 0 1 0 " + fmt(radius * 2) + " 0" +
+        "a" + r + " " + r + " 0 1 0 " + fmt(-radius * 2) + " 0"
+    )
+
+
+def svg_document(viewbox, width, height, title, body, title_id):
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + viewbox + '" width="' + str(width) + '" height="' + str(height) + '" role="img" aria-labelledby="' + title_id + '">'
+        '<title id="' + title_id + '">' + title + '</title>' + body + '</svg>\n'
+    )
+
+
+def notch_fill_and_rim(body_fill, rim, rim_opacity, ink, width="1.4", scale=1, dot_ink="#ff9f0a"):
+    notch = notch_path()
+    rim_notch = notch_path(False)
+    pill = (16.2, 22, 9.2, 3.6, 1.8)
+    dot = (29.6, 23.8, 2.1)
+    return (
+        '<path d="' + notch + '" fill="' + body_fill + '"/>'
+        '<path d="' + rim_notch + '" fill="none" stroke="' + rim + '" stroke-opacity="' + fmt(rim_opacity) + '" stroke-width="' + width + '" stroke-linejoin="round" stroke-linecap="round"/>'
+        '<rect x="' + fmt(pill[0]) + '" y="' + fmt(pill[1]) + '" width="' + fmt(pill[2]) + '" height="' + fmt(pill[3]) + '" rx="' + fmt(pill[4]) + '" fill="' + ink + '"/>'
+        '<circle cx="' + fmt(dot[0]) + '" cy="' + fmt(dot[1]) + '" r="' + fmt(dot[2]) + '" fill="' + dot_ink + '"/>'
+    )
+
+
+def mark_on_dark():
+    body = notch_fill_and_rim("#050507", "#ffffff", 0.56, "#f5f5f7")
+    return svg_document("0 0 48 48", 48, 48, "kuwai mark on dark", body, "kuwai-mark-on-dark-title")
+
+
+def mark_on_light():
+    body = notch_fill_and_rim("#0b0b0f", "#0b0b0f", 0.48, "#ffffff")
+    return svg_document("0 0 48 48", 48, 48, "kuwai mark on light", body, "kuwai-mark-on-light-title")
+
+
+def mark_mono():
+    cutouts = rounded_rect_path(16.2, 22, 9.2, 3.6, 1.8) + circle_path(29.6, 23.8, 2.1)
+    body = '<path d="' + notch_path() + cutouts + '" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"/>'
+    return svg_document("0 0 48 48", 48, 48, "kuwai monochrome mark", body, "kuwai-mark-mono-title")
+
+
+def small_mark(size, title, title_id):
+    if size == 16:
+        notch = "M1 4H3C4 4 5 5 5 6V8C5 10 6 12 8 12C10 12 11 10 11 8V6C11 5 12 4 13 4H15Z"
+        dot = (8, 8, 2)
+        stroke = "1"
+    else:
+        notch = "M2 8H6C8 8 10 10 10 12V16C10 20 12 24 16 24C20 24 22 20 22 16V12C22 10 24 8 26 8H30Z"
+        dot = (16, 16, 3)
+        stroke = "2"
+    body = (
+        '<path d="' + notch + '" fill="#050507"/>'
+        '<path d="' + notch[:-1] + '" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="' + stroke + '" stroke-linejoin="round" stroke-linecap="round"/>'
+        '<circle cx="' + fmt(dot[0]) + '" cy="' + fmt(dot[1]) + '" r="' + fmt(dot[2]) + '" fill="#ff9f0a"/>'
+    )
+    return svg_document(f"0 0 {size} {size}", size, size, title, body, title_id)
+
+
+def symbolic_mark():
+    notch = "M1 4H3C4 4 5 5 5 6V8C5 10 6 12 8 12C10 12 11 10 11 8V6C11 5 12 4 13 4H15Z"
+    body = '<path d="' + notch + circle_path(8, 8, 2) + '" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"/>'
+    return svg_document("0 0 16 16", 16, 16, "kuwai symbolic", body, "kuwai-symbolic-title")
+
+
+def load_geist():
+    for path in GEIST_SOURCES:
+        if path.exists():
+            return TTFont(path)
+    raise FileNotFoundError("Geist SemiBold is missing")
+
+
+def glyph_path(font, glyph_name, scale, x, baseline):
+    glyph_set = font.getGlyphSet()
+    pen = SVGPathPen(glyph_set)
+    transform = TransformPen(pen, (scale, 0, 0, -scale, x, baseline))
+    glyph_set[glyph_name].draw(transform)
+    return round_path(pen.getCommands())
+
+
+def wordmark_geometry():
+    font = load_geist()
+    cmap = font.getBestCmap()
+    scale = 0.03
+    baseline = 34.41
+    tracking = -0.54
+    x = 56.0
+    cursor = x
+    pieces = []
+    positions = {}
+    for ch in "kuwai":
+        glyph_name = "dotlessi" if ch == "i" else cmap[ord(ch)]
+        pieces.append(glyph_path(font, glyph_name, scale, cursor, baseline))
+        positions[ch] = cursor
+        cursor += font["hmtx"][glyph_name][0] * scale + tracking
+    end = cursor - tracking
+    tittle_x = positions["i"] + 134 * scale
+    tittle_y = baseline - 662 * scale
+    return {
+        "letters": "".join(pieces),
+        "tittle_x": tittle_x,
+        "tittle_y": tittle_y,
+        "tittle_r": 2.05,
+        "width": math.ceil(end + 2),
+    }
+
+
+def wordmark(on_dark):
+    geo = wordmark_geometry()
+    ink = "#f5f5f7" if on_dark else "#0b0b0f"
+    if on_dark:
+        mark = notch_fill_and_rim("#050507", "#ffffff", 0.56, "#f5f5f7")
+    else:
+        mark = notch_fill_and_rim("#0b0b0f", "#0b0b0f", 0.48, "#ffffff")
+    body = (
+        mark +
+        '<path d="' + geo["letters"] + '" fill="' + ink + '"/>'
+        '<circle cx="' + fmt(geo["tittle_x"]) + '" cy="' + fmt(geo["tittle_y"]) + '" r="' + fmt(geo["tittle_r"]) + '" fill="' + ink + '"/>'
+    )
+    name = "on dark" if on_dark else "on light"
+    key = "on-dark" if on_dark else "on-light"
+    return svg_document("0 0 " + str(geo["width"]) + " 48", geo["width"], 48, "kuwai wordmark " + name, body, "kuwai-wordmark-" + key + "-title")
+
+
+def tile_svg(title="kuwai app icon", title_id="kuwai-tile-title"):
+    outer = squircle_path(16, 16, 480, 480, 5.0, 72)
+    inner = squircle_path(19, 19, 474, 474, 5.0, 72)
+    notch = notch_path()
+    pill = (16.2, 22, 9.2, 3.6, 1.8)
+    dot = (29.6, 23.8, 2.1)
+    body = (
+        '<defs>'
+        '<linearGradient id="kuwaiTileBg" x1="256" y1="16" x2="256" y2="496" gradientUnits="userSpaceOnUse">'
+        '<stop offset="0" stop-color="#1b1b22"/><stop offset="0.55" stop-color="#0b0b0f"/><stop offset="1" stop-color="#050507"/>'
+        '</linearGradient>'
+        '<clipPath id="kuwaiTileClip"><path d="' + outer + '"/></clipPath>'
+        '</defs>'
+        '<path d="' + outer + '" fill="url(#kuwaiTileBg)"/>'
+        '<path d="' + inner + '" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="2"/>'
+        '<g clip-path="url(#kuwaiTileClip)"><g transform="translate(64 -80) scale(8)">'
+        '<path d="' + notch + '" fill="#030305"/>'
+        '<path d="' + notch_path(False) + '" fill="none" stroke="#ffffff" stroke-opacity="0.54" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/>'
+        '<rect x="' + fmt(pill[0]) + '" y="' + fmt(pill[1]) + '" width="' + fmt(pill[2]) + '" height="' + fmt(pill[3]) + '" rx="' + fmt(pill[4]) + '" fill="#f5f5f7"/>'
+        '<circle cx="' + fmt(dot[0]) + '" cy="' + fmt(dot[1]) + '" r="' + fmt(dot[2]) + '" fill="#ff9f0a"/>'
+        '</g></g>'
+    )
+    return svg_document("0 0 512 512", 512, 512, title, body, title_id)
+
+
+def outputs():
+    dark_mark = mark_on_dark()
+    light_mark = mark_on_light()
+    dark_wordmark = wordmark(True)
+    light_wordmark = wordmark(False)
+    tile = tile_svg()
+    files = {
+        BRANDKIT / "kuwai-mark-on-dark.svg": dark_mark,
+        BRANDKIT / "kuwai-mark-on-light.svg": light_mark,
+        BRANDKIT / "kuwai-mark-mono.svg": mark_mono(),
+        BRANDKIT / "kuwai-mark-16.svg": small_mark(16, "kuwai 16 pixel mark", "kuwai-mark-16-title"),
+        BRANDKIT / "kuwai-mark-32.svg": small_mark(32, "kuwai 32 pixel mark", "kuwai-mark-32-title"),
+        BRANDKIT / "kuwai-mark-tile.svg": tile,
+        BRANDKIT / "kuwai-wordmark-on-dark.svg": dark_wordmark,
+        BRANDKIT / "kuwai-wordmark-on-light.svg": light_wordmark,
+        BRANDKIT / "kuwai-mark.svg": dark_mark,
+        BRANDKIT / "kuwai-wordmark.svg": dark_wordmark,
+        ASSETS / "kuwai-mark.svg": dark_mark,
+        ASSETS / "kuwai-wordmark.svg": dark_wordmark,
+        ASSETS / "kuwai-mark-dark.svg": light_mark,
+        ASSETS / "kuwai-wordmark-dark.svg": light_wordmark,
+        ASSETS / "kuwai-mark-tile.svg": tile,
+        HICOLOR / "kuwai.svg": tile_svg("kuwai", "kuwai-icon-title"),
+        HICOLOR / "kuwai-symbolic.svg": symbolic_mark(),
+    }
+    return files
+
+
+def main(argv):
+    if not argv or argv == ["--generate"]:
+        mode = "--generate"
+    elif argv == ["--check"]:
+        mode = "--check"
+    else:
+        print("usage: kuwai-brand [--generate|--check]", file=sys.stderr)
+        return 2
+    files = outputs()
+    if mode == "--generate":
+        for path, text in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists() or path.read_text() != text:
+                path.write_text(text)
+        print("brand: wrote " + str(len(files)) + " svgs")
+        return 0
+    stale = [str(path.relative_to(ROOT)) for path, text in files.items() if not path.exists() or path.read_text() != text]
+    if stale:
+        print("stale brand svgs: " + ", ".join(stale) + " (run bin/kuwai-brand --generate)")
+        return 1
+    print("brand: " + str(len(files)) + " svgs current")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

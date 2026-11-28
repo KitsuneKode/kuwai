@@ -112,6 +112,7 @@ Singleton {
     }
     property var times: ({})        // cliphist id → when it was copied (ms)
     property bool loaded: false
+    property bool loadFailed: false
 
     readonly property string bin: Paths.bin + "/kuwai-clip"
     readonly property string dataDir: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/kuwai-data/clipboard"
@@ -163,19 +164,20 @@ Singleton {
     Process {
         id: lister
         command: [root.bin, "list"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const out = [];
-                for (const line of text.split("\n")) {
-                    const tab = line.indexOf("\t");
-                    if (tab < 1) continue;
-                    out.push(root.parse(line.slice(0, tab), line.slice(tab + 1)));
-                }
-                root.stampNew(out);
-                root.holds = ClipState.prune(root.holds, out);
-                root.setRaw(out);
-                root.loaded = true;
+        stdout: StdioCollector { id: clipList }
+        onExited: (code, status) => {
+            if (code !== 0) { root.loaded = true; root.loadFailed = true; return; }
+            const out = [];
+            for (const line of clipList.text.split("\n")) {
+                const tab = line.indexOf("\t");
+                if (tab < 1) continue;
+                out.push(root.parse(line.slice(0, tab), line.slice(tab + 1)));
             }
+            root.stampNew(out);
+            root.holds = ClipState.prune(root.holds, out);
+            root.setRaw(out);
+            root.loaded = true;
+            root.loadFailed = false;
         }
     }
 

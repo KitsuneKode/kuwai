@@ -1,0 +1,98 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "Extending kuwai",
+      url: "https://kuwai.kitsunekode.in/extending/",
+      description: "Path B-Lite declarative panels and safe extension without untrusted QML.",
+      isPartOf: { "@id": "https://kuwai.kitsunekode.in/#website" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://kuwai.kitsunekode.in/" },
+        { "@type": "ListItem", position: 2, name: "Extending", item: "https://kuwai.kitsunekode.in/extending/" }
+      ]
+    }
+  ]
+};
+---
+<BaseLayout
+  title="Extending kuwai: Path B-Lite panels"
+  description="Safe declarative JSON panels for kuwai: no untrusted QML, only built-in primitives."
+  canonicalPath="/extending/"
+  ogImage="/og-image.png"
+  solidHeader={true}
+  schemaJson={schema}
+>
+  <main class="subpage-main">
+    <section class="subpage-head">
+      <div class="container">
+        <h1 class="subpage-title">Extending kuwai</h1>
+        <p class="section-intro">
+          kuwai's shell is Quickshell QML, but anything you add from outside must not execute arbitrary code. Path B-Lite is the supported way to ship small island panels as data, not as downloaded QML.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Path B-Lite (declarative JSON)</h2>
+          <p class="section-intro">A panel definition is a JSON document validated against kuwai's schema. The shell renders it with the same <code>Card</code>, <code>Button</code>, <code>SettingsRow</code>, and <code>Label</code> primitives every built-in panel uses. Text fields are plain text; links go through the same safe opener as notifications.</p>
+        </div>
+
+        <div class="info-card">
+          <h3>What you can describe</h3>
+          <ul class="plain-list">
+            <li>Title, sections, and rows with labels and detail strings.</li>
+            <li>Actions that call known island targets (open launcher, settings page, or an approved URL).</li>
+            <li>Read-only status lines fed from local JSON the shell already trusts.</li>
+          </ul>
+        </div>
+
+        <div class="info-card" style="margin-top: 1.25rem;">
+          <h3>What is refused</h3>
+          <ul class="plain-list">
+            <li>Arbitrary QML, JavaScript, or shell hooks inside the panel file.</li>
+            <li>Markup in user-visible strings (everything is <code>Text.PlainText</code>).</li>
+            <li>Commands pasted into scripts; actions are enumerated, not free-form.</li>
+          </ul>
+        </div>
+
+        <p class="section-footnote">
+          Panel files are intended to live under <code>~/.config/kuwai/panels/</code> once the loader lands in the shell. Until then, fork the repository and add a full QML module if you need behaviour that JSON cannot express.
+        </p>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-head">
+          <h2>Themes from Omarchy</h2>
+          <p class="section-intro">Bring colours from an Omarchy theme without running its install hooks. Only <code>colors.toml</code> is read; hex values must be <code>#RRGGBB</code>.</p>
+        </div>
+        <pre class="terminal-code"><code>kuwai-look import-omarchy ~/path/to/omarchy-theme --dry-run
+kuwai-look import-omarchy ~/path/to/omarchy-theme my-theme</code></pre>
+        <p class="section-intro">The command writes <code>palette.toml</code> and <code>theme.toml</code> into <code>~/.local/share/kuwai-data/themes/</code>. Scripts and hooks beside <code>colors.toml</code> are ignored.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Further reading</h2>
+        </div>
+        <ul class="plain-list">
+          <li><a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/manual/looks.md" class="inline-link" target="_blank" rel="noopener noreferrer">Looks and kuwai-look</a></li>
+          <li><a href="https://github.com/KitsuneKode/kuwai/blob/main/docs/DESIGN.md" class="inline-link" target="_blank" rel="noopener noreferrer">Design tokens</a></li>
+          <li><a href="/island/" class="inline-link">Island and capsules</a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

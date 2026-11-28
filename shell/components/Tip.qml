@@ -32,12 +32,19 @@ Item {
     width: 0
     height: 0
     property real k: 0               // 0 hidden → 1 shown
-    Behavior on k { NumberAnimation { duration: Theme.quickMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    property bool instant: false
+    Behavior on k { NumberAnimation { duration: tip.instant || Theme.reduceMotion ? 0 : (tip.eligible ? Theme.quickMs : Theme.durExit); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
 
-    Timer { id: rest; interval: Theme.tipMs; onTriggered: if (tip.eligible) tip.k = 1 }
+    Timer { id: rest; interval: Theme.tipMs; onTriggered: if (tip.eligible) { tip.instant = false; tip.k = 1; } }
     onEligibleChanged: {
-        if (eligible) { if (TipClock.warm()) k = 1; else rest.restart(); }
-        else { rest.stop(); k = 0; }
+        if (eligible) {
+            if (TipClock.warm()) { instant = true; k = 1; }
+            else { instant = false; rest.restart(); }
+        } else {
+            instant = false;
+            rest.stop();
+            k = 0;
+        }
     }
 
     function availableTextWidth(shellScreen, nativeScreen) {
@@ -78,7 +85,9 @@ Item {
                 height: pop.implicitHeight
                 radius: Math.min(Theme.r3, height / 2)
                 opacity: tip.k
-                y: Theme.reduceMotion ? 0 : (1 - tip.k) * (tip.below ? -3 : 3)
+                transformOrigin: tip.below ? Item.Top : Item.Bottom
+                scale: Theme.reduceMotion || tip.instant ? 1 : 0.97 + 0.03 * tip.k
+                y: Theme.reduceMotion || tip.instant ? 0 : (1 - tip.k) * (tip.below ? -3 : 3)
                 color: Qt.rgba(0.11, 0.11, 0.13, 0.98)
                 border.width: 1
                 border.color: Theme.edge(1)

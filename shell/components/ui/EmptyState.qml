@@ -5,6 +5,7 @@ import qs.components
 Column {
     id: empty
     property string icon: ""
+    property string iconStyle: "duotone"
     property string glyph: ""
     property string title: ""
     property string body: ""
@@ -18,6 +19,7 @@ Column {
         visible: empty.icon !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         name: empty.icon
+        style: empty.iconStyle
         size: Theme.sp(Theme.glyphXL)
         color: Theme.textTertiary
     }

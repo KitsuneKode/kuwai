@@ -38,6 +38,7 @@ Rectangle {
         anchors.verticalCenterOffset: -0.5
         text: cap.glyph
         size: cap.size
+        compact: true
         weight: cap.word ? Theme.wMedium : Theme.wSemibold
         color: Theme.textSecondary
     }

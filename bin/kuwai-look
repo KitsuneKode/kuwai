@@ -8,6 +8,8 @@
     kuwai-look theme NAME [--mode theme|auto|dark|light] [--no-apply]
     kuwai-look mode theme|auto|dark|light [--no-apply]
     kuwai-look install REPO [SLUG]
+    kuwai-look import-omarchy PATH-OR-DIR [SLUG] [--dry-run]
+    kuwai-look sync-fonts [--no-apply] [--dry-run]
     kuwai-look undo [--no-apply]
     kuwai-look init [--no-apply]
     kuwai-look status [--json]
@@ -31,6 +33,8 @@ if os.path.join(ROOT, "lib") not in sys.path:
     sys.path.insert(0, os.path.join(ROOT, "lib"))
 
 from look.extract import extract_image
+from look.fonts import sync_desktop_fonts
+from look.omarchy import OmarchyParseError, derive_slug as omarchy_slug, load_omarchy, render_theme_toml
 from look.packs import installed_walls
 from look.render import write_generation
 from look.roles import build_palette
@@ -642,6 +646,64 @@ def clone_limits():
     resource.setrlimit(resource.RLIMIT_FSIZE, (THEME_MAX, THEME_MAX))
 
 
+def cmd_import_omarchy(source, slug=None, dry_run=False):
+    try:
+        loaded = load_omarchy(source)
+    except OmarchyParseError as exc:
+        raise SystemExit(f"kuwai-look: {exc}") from exc
+    target_slug = omarchy_slug(source, slug)
+    raw = loaded["raw"]
+    payload = {
+        "ok": True,
+        "slug": target_slug,
+        "mode": loaded["mode"],
+        "source": loaded["colorsPath"],
+        "dryRun": dry_run,
+        "palette": {
+            "bg": raw["bg"],
+            "fg": raw["fg"],
+            "accent": raw["accent"],
+        },
+    }
+    if dry_run:
+        payload["paletteToml"] = loaded["paletteToml"]
+        return payload
+    os.makedirs(USER_THEMES, exist_ok=True)
+    stage_dir = os.path.join(USER_THEMES, f".stage-{target_slug}-{os.getpid()}")
+    dest_dir = os.path.join(USER_THEMES, target_slug)
+    if os.path.exists(stage_dir):
+        shutil.rmtree(stage_dir)
+    os.makedirs(stage_dir, exist_ok=True)
+    with open(os.path.join(stage_dir, "palette.toml"), "w", encoding="utf-8") as f:
+        f.write(loaded["paletteToml"])
+    theme_toml = render_theme_toml(
+        target_slug,
+        os.path.basename(os.path.dirname(loaded["colorsPath"])) if os.path.basename(loaded["colorsPath"]) == "colors.toml" else target_slug,
+        loaded["mode"],
+        raw["accent"],
+    )
+    with open(os.path.join(stage_dir, "theme.toml"), "w", encoding="utf-8") as f:
+        f.write(theme_toml)
+    with open(os.path.join(stage_dir, ".kuwai-source.json"), "w", encoding="utf-8") as f:
+        json.dump({"kind": "omarchy", "colors": loaded["colorsPath"]}, f)
+    for fn in ("palette.toml", "theme.toml", ".kuwai-source.json"):
+        os.chmod(os.path.join(stage_dir, fn), 0o644)
+    old_dir = None
+    if os.path.exists(dest_dir):
+        old_dir = os.path.join(USER_THEMES, f".old-{target_slug}-{os.getpid()}")
+        os.replace(dest_dir, old_dir)
+    try:
+        os.replace(stage_dir, dest_dir)
+    except OSError:
+        if old_dir:
+            os.replace(old_dir, dest_dir)
+        raise
+    if old_dir:
+        shutil.rmtree(old_dir, ignore_errors=True)
+    payload["path"] = dest_dir
+    return payload
+
+
 def cmd_install(source, slug=None):
     target_slug = derive_slug(source, slug)
     with tempfile.TemporaryDirectory(prefix="kuwai-theme-") as tmp:
@@ -975,6 +1037,20 @@ def main(argv):
         return 0
     if cmd == "install" and len(args) in (1, 2):
         res = with_lock(lambda: cmd_install(args[0], args[1] if len(args) == 2 else None))
+        print(json.dumps(res))
+        return 0
+    dry_omarchy = "--dry-run" in args
+    omarchy_args = [a for a in args if a != "--dry-run"]
+    if cmd == "import-omarchy" and len(omarchy_args) in (1, 2):
+        res = with_lock(lambda: cmd_import_omarchy(
+            omarchy_args[0],
+            omarchy_args[1] if len(omarchy_args) == 2 else None,
+            dry_run=dry_omarchy,
+        ))
+        print(json.dumps(res))
+        return 0
+    if cmd == "sync-fonts" and not omarchy_args:
+        res = sync_desktop_fonts(CONFIG_HOME, STATE_HOME, apply_live=apply_live, dry_run=dry_omarchy)
         print(json.dumps(res))
         return 0
     if cmd == "undo" and not args:

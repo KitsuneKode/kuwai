@@ -327,6 +327,7 @@ Rectangle {
                 color: Theme.textPrimary
                 font.family: Theme.fontText
                 font.pixelSize: Theme.sp(15)
+                font.variableAxes: Theme.axesFor(15)
                 wrapMode: TextEdit.Wrap
                 selectByMouse: true
                 selectionColor: Theme.accent

@@ -22,6 +22,9 @@ Environment=QS_DISABLE_FILE_WATCHER=1
 # A small card and a dimmed backdrop: the software renderer draws it fine and
 # skips loading the GPU drivers (~370 MB → ~140 MB).
 Environment=QT_QUICK_BACKEND=software
+Environment=PATH=/usr/bin:/bin
+UnsetEnvironment=QT_QPA_PLATFORMTHEME QT_PLUGIN_PATH QML_IMPORT_PATH QML2_IMPORT_PATH LD_PRELOAD QT_STYLE_OVERRIDE
+ProtectHome=read-only
 # Root's copy first (kuwai auth pin), so the code that reads your password
 # isn't code your account can change; your checkout's until it's pinned.
 ExecStart=/bin/sh -c 'p=/usr/local/share/kuwai/shell-auth; [ -f "$p/shell.qml" ] || p="${KUWAI_ROOT:-%h/.local/share/kuwai}/shell-auth"; exec /usr/bin/qs -p "$p"'

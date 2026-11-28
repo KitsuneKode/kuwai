@@ -152,6 +152,7 @@ Item {
                 color: Theme.textPrimary
                 font.family: Theme.fontText
                 font.pixelSize: 15
+                font.variableAxes: Theme.axesFor(15)
             }
 
             TextEdit {
@@ -165,6 +166,7 @@ Item {
                 color: Theme.textPrimary
                 font.family: Theme.fontText
                 font.pixelSize: 15
+                font.variableAxes: Theme.axesFor(15)
                 Keys.onReturnPressed: event => {
                     if (event.modifiers & Qt.ShiftModifier) { event.accepted = false; return; }
                     event.accepted = true;
@@ -348,6 +350,7 @@ Item {
                                         color: Theme.textPrimary
                                         font.family: Theme.fontText
                                         font.pixelSize: 15
+                                        font.variableAxes: Theme.axesFor(15)
                                         onLinkActivated: link => { if (Turn.safeLink(link)) Apps.open(link); }
                                         HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor }
                                     }

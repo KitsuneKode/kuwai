@@ -24,17 +24,17 @@ Singleton {
     // ── Material ─────────────────────────────────────────────────────────
     // One glass, the voxtype HUD's: near-black #111114 over the compositor's
     // blur (components/GlassCard draws the ring, sheen and hairline).
-    readonly property color glassTint: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.94 : 0.58)
+    readonly property color glassTint: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.94 : 0.74)
     // Text-heavy cards (toasts) sit over anything: a little denser, so body
     // copy stays readable over busy windows.
-    readonly property color glassTintThick: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.96 : 0.68)
+    readonly property color glassTintThick: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.96 : 0.78)
     // Floating menus (the center, the island): the same glass, denser still,
     // with a deep shadow under it; it reads as raised, not as a lighter grey.
-    readonly property color glassTintElevated: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.97 : 0.74)
+    readonly property color glassTintElevated: Qt.rgba(0.067, 0.067, 0.078, contrast ? 0.97 : 0.82)
     // The island's material, for the surfaces that belong with it (the
     // notification center, toasts): near-black, a little see-through so the
     // blur behind still reads on a large surface. One object, one material.
-    readonly property color glassIsland: Qt.rgba(0.02, 0.02, 0.027, contrast ? 0.98 : 0.84)
+    readonly property color glassIsland: Qt.rgba(0.02, 0.02, 0.027, contrast ? 0.98 : 0.86)
     readonly property color notchGlassMid: Qt.rgba(0.024, 0.024, 0.031, contrast ? 0.97 : 0.86)
     readonly property color notchGlassBottom: Qt.rgba(0.035, 0.035, 0.045, contrast ? 0.96 : 0.78)
     readonly property color platter: Qt.rgba(1, 1, 1, 0.15)
@@ -210,6 +210,13 @@ Singleton {
     function contrastRatio(a, b) {
         const la = luminance(Qt.color(a)), lb = luminance(Qt.color(b));
         return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+    function inkOnFill(tone) {
+        const c = Qt.color(tone);
+        if (Qt.colorEqual(c, yellow)) return inkOnLight;
+        if (Qt.colorEqual(c, blue) || Qt.colorEqual(c, green) || Qt.colorEqual(c, orange) || Qt.colorEqual(c, red)
+            || Qt.colorEqual(c, purple) || Qt.colorEqual(c, indigo) || Qt.colorEqual(c, pink)) return textPrimary;
+        return contrastRatio(c, inkOnLight) > contrastRatio(c, textPrimary) ? inkOnLight : textPrimary;
     }
     function inkFor(surfaces, target) {
         const list = Array.isArray(surfaces) && surfaces.length ? surfaces : [themeBg];
@@ -416,23 +423,19 @@ Singleton {
     }
 
     // ── Type ─────────────────────────────────────────────────────────────
-    // The UI face is resolved once, at start, from what is installed
-    // (Qt.fontFamilies), in this order:
-    //   sf      Apple's SF Pro (Text below 20 px, Display from 20, Rounded for
-    //           numerals) with Apple's own tracking. Used when it's installed;
-    //           kuwai doesn't ship it (Apple's licence limits it to Apple
-    //           platforms), so it is an upgrade, never a requirement.
-    //   inter   Inter (OFL, Arch's `inter-font` in [extra]): the default
-    //           anyone can install. Inter 4 has optical sizes too: the static
-    //           "Inter" + "Inter Display" pair, or the variable font's opsz
-    //           axis (14–32). Its spacing is built into each optical size, so
-    //           no tracking table; no rounded cut, so numerals take its open
-    //           digits (ss01) instead.
+    // The UI face comes from Fonts.qml and the live Typography settings:
+    //   sf-rounded / sf   Apple's SF Pro when already installed (never
+    //           bundled: Apple's licence limits it to Apple platforms), with
+    //           Text below 20 px, Display from 20, Compact on tight badges
+    //           and keycaps, and Apple's own tracking.
+    //   geist   the bundled OFL default, static weight-separated families so
+    //           Qt never maps one variable font per weight × size (~300 MB).
+    //   inter   Inter (OFL), static optical sizes or the variable opsz axis;
+    //           its spacing is built in and numerals can use open digits.
     //   system  whatever fontconfig calls sans-serif: no tracking, no features.
-    // KUWAI_FONT=sf|inter|system picks one of those that is installed.
+    // `auto` prefers SF Rounded, then SF, then Geist. KUWAI_FONT overrides it.
     //   fontGlyph    Symbols Nerd Font, never mixed into text runs
-    // SF Compact (watchOS) and New York (serif) don't belong in a desktop UI.
-    readonly property var installedFonts: Qt.fontFamilies()
+    readonly property var installedFonts: Fonts.installedFonts
     // An output can report 0 (or nothing) for its size for a moment while it
     // is added, moved or rescaled. Windows size from this, never straight
     // from screen.width/height: a reading under minScreen isn't trusted and
@@ -443,59 +446,42 @@ Singleton {
         const v = screen ? screen[axis] : NaN;
         return Number.isFinite(v) && v >= minScreen ? v : fallback;
     }
-    function hasFont(name) { return installedFonts.indexOf(name) >= 0; }
-    readonly property bool hasSf: hasFont("SF Pro Text") && hasFont("SF Pro Display")
-    readonly property string interFamily: hasFont("Inter") && hasFont("Inter Display") ? "Inter"
-                                        : hasFont("Inter Variable") ? "Inter Variable"
-                                        : hasFont("Inter") ? "Inter" : ""
-    readonly property string fontKind: {
-        const want = (Quickshell.env("KUWAI_FONT") || "").toLowerCase();
-        if (want === "system") return "system";
-        if (want === "inter" && interFamily) return "inter";
-        if (want === "sf" && hasSf) return "sf";
-        return hasSf ? "sf" : interFamily ? "inter" : "system";
-    }
-    readonly property string systemFamily: Qt.application.font.family || "sans-serif"
-    readonly property string fontText: fontKind === "sf" ? "SF Pro Text" : fontKind === "inter" ? interFamily : systemFamily
-    readonly property string fontDisplay: fontKind === "sf" ? "SF Pro Display"
-                                        : fontKind === "inter" && interFamily === "Inter" && hasFont("Inter Display") ? "Inter Display"
-                                        : fontText
-    // SF Pro Rounded only beside SF Pro; elsewhere numerals are the text face.
-    readonly property bool roundedFace: fontKind === "sf" && hasFont("SF Pro Rounded")
-    readonly property string fontRounded: roundedFace ? "SF Pro Rounded" : fontText
-    readonly property string fontUi: fontText          // older name, same face
-    readonly property string fontGlyph: "Symbols Nerd Font"
-    readonly property string fontMono: hasFont("SF Mono") ? "SF Mono" : hasFont("Geist Mono") ? "Geist Mono" : hasFont("GeistMono Nerd Font") ? "GeistMono Nerd Font" : "monospace"   // code and raw text
-    // A variable Inter without its static Display cut: optical size goes
-    // through the opsz axis (Label sets it).
-    readonly property bool fontOpszAxis: fontKind === "inter" && fontDisplay === fontText
-
+    function hasFont(name) { return Fonts.hasFont(name); }
+    readonly property bool hasSf: Fonts.hasSf
+    readonly property string interFamily: Fonts.interFamily
+    readonly property string fontKind: Fonts.profile
+    readonly property string systemFamily: Fonts.systemFamily
     // Apple's SF weights (Inter's nearest instances are 400/500/600/700)
     readonly property int wRegular: 400
     readonly property int wMedium: 510
     readonly property int wSemibold: 590
     readonly property int wBold: 700
 
+    readonly property string fontText: Fonts.textFamily()
+    readonly property string fontDisplay: Fonts.displayFamily()
+    readonly property string fontCompact: Fonts.compactFamily()
+    function textFamily(weight) { return Fonts.textFamily(weight); }
+    function displayFamily(weight) { return Fonts.displayFamily(weight); }
+    function roundedFamily(weight) { return Fonts.roundedFamily(weight); }
+    function compactFamily(weight) { return Fonts.compactFamily(weight); }
+    function compactRoundedFamily(weight) { return Fonts.compactRoundedFamily(weight); }
+    // SF Pro Rounded only beside SF Pro; elsewhere numerals are the text face.
+    readonly property bool roundedFace: fontKind === "sf-rounded" && Fonts.hasSfRounded
+    readonly property string fontRounded: Fonts.roundedFamily(wSemibold)
+    readonly property string fontUi: fontText          // older name, same face
+    readonly property string fontGlyph: "Symbols Nerd Font"
+    readonly property string fontMono: Fonts.mono   // code and raw text
+    // A variable Inter without its static Display cut: optical size goes
+    // through the opsz axis (Label sets it).
+    readonly property bool fontOpszAxis: fontKind === "inter" && fontDisplay === fontText
+
     // Tracking (px) by size, from SF Pro's own `trak` tables (track 0,
-    // 1/2048 em per point size), which macOS applies and Qt doesn't. Only for
-    // SF Pro: they were measured for it, and Inter's spacing is per optical size.
-    readonly property var trakSizes:   [6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 22, 24, 28, 32, 36, 50, 64, 80]
-    readonly property var trakPro:     [82, 38, 24, 12, 0, -12, -22, -32, -40, -52, -46, -24, 6, 28, 26, 21, 14, 7, 0]
-    readonly property var trakRounded: [174, 130, 116, 104, 92, 80, 70, 60, 52, 45, 37, 32, 29, 26, 24, 22, 14, 6, 0]
-    function tracking(px, rounded) {
-        if (fontKind !== "sf") return 0;
-        const xs = trakSizes, ys = rounded && roundedFace ? trakRounded : trakPro;
-        let v = ys[ys.length - 1];
-        if (px <= xs[0]) v = ys[0];
-        else for (let k = 1; k < xs.length; k++) {
-            if (px <= xs[k]) {
-                const t = (px - xs[k - 1]) / (xs[k] - xs[k - 1]);
-                v = ys[k - 1] + (ys[k] - ys[k - 1]) * t;
-                break;
-            }
-        }
-        return v / 2048 * px;
-    }
+    // 1/2048 em per point size), which macOS applies and Qt doesn't. Geist's
+    // curve is in Fonts.qml.
+    readonly property var trakSizes: Fonts.sfTrackSizes
+    readonly property var trakPro: Fonts.sfTrackPro
+    readonly property var trakRounded: Fonts.sfTrackRounded
+    function tracking(px, rounded, compact) { return Fonts.tracking(px, rounded, compact); }
     // Three optical sizes, not one per pixel size: every distinct value is its
     // own font face with its own glyph cache (and its own mapping of the
     // variable font). SF Pro: Text 17 up to 19 px, a middle cut, Display from
@@ -509,7 +495,7 @@ Singleton {
     // axis can give it (a variable Inter), nothing otherwise.
     function axesFor(px) { return fontOpszAxis ? { "opsz": opszFor(px) } : noAxes; }
     // The same with a weight, for text that sets its own (TextMorph, RollingNumber).
-    function axesWeight(px, w) { return fontOpszAxis ? { "opsz": opszFor(px), "wght": w } : { "wght": w }; }
+    function axesWeight(px, w) { return fontOpszAxis ? { "opsz": opszFor(px), "wght": w } : noAxes; }
     // Numerals' OpenType features. Rounded: SF Pro Rounded is its own face;
     // Inter's nearest is its open digits (ss01: 6, 9, 4 open). Tabular for
     // anything that changes in place (clocks, levels, counts).
@@ -543,6 +529,9 @@ Singleton {
     readonly property int durSettle: 260
     readonly property int durSlow: 400
     readonly property int durGentle: 700
+    readonly property real pressScale: 0.97
+    readonly property real pressScaleRow: 0.985
+    readonly property real pressScaleSmall: 0.96
     readonly property int pressMs: durFast          // press feedback (scale 0.97)
     readonly property int enterMs: durBase          // small surfaces arriving, rows growing
     readonly property int exitMs: durFast           // leaving: quicker than arriving
@@ -740,6 +729,7 @@ Singleton {
     readonly property int stackGap: 14           // GAP
     readonly property int stackVisible: 3        // VISIBLE_TOASTS_AMOUNT
     readonly property real stackScaleStep: 0.05  // each toast behind is 5% smaller
+    readonly property int sinkMs: 500
     readonly property int stackMs: durSlow           // transform/opacity/height transition
     readonly property var easeCss: [0.25, 0.1, 0.25, 1, 1, 1]     // CSS `ease`
     readonly property var easeOutCss: [0, 0, 0.58, 1, 1, 1]       // CSS `ease-out`

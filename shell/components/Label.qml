@@ -17,21 +17,26 @@ Text {
     property int size: Theme.tBody
     property int weight: Theme.wRegular
     property bool rounded: false
+    property bool compact: false
     property bool tabular: false
     property real extraTracking: 0
-    property real opsz: Theme.opszFor(size)
+    readonly property int effectivePx: Math.round(size * Theme.textScale)
+    property real opsz: Theme.opszFor(effectivePx)
 
     // Optical sizes as shipped: the Text cut below 20 px, Display from
     // 20 px, static weights (Theme.fontDisplay is the text face when there is
     // no separate cut; axesFor then sets Inter's opsz). (The variable SF Pro was mapped
     // once per weight × size combination: ~300 MB of the shell's memory.)
-    font.family: rounded ? Theme.fontRounded : (size >= 20 ? Theme.fontDisplay : Theme.fontText)
+    font.family: compact ? (rounded ? Theme.compactRoundedFamily(weight) : Theme.compactFamily(weight))
+                 : rounded ? Theme.roundedFamily(weight)
+                 : (effectivePx >= 20 ? Theme.displayFamily(weight) : Theme.textFamily(weight))
     // Settings → Accessibility → Text size scales every label (the layout
     // grows with it: rows size to their text).
-    font.pixelSize: Math.round(size * Theme.textScale)
+    font.pixelSize: effectivePx
     font.weight: weight
-    font.letterSpacing: Theme.tracking(size, rounded) + extraTracking
-    font.variableAxes: Theme.axesFor(size)
+    font.hintingPreference: Font.PreferVerticalHinting
+    font.letterSpacing: Theme.tracking(effectivePx, rounded, compact) + extraTracking
+    font.variableAxes: Theme.axesFor(effectivePx)
     // tabular: figures that line up, keeping Inter's open digits.
     font.features: Theme.numeralFeatures(rounded, tabular)
     // FreeType, not Qt's distance-field glyph atlas: with a variable font at

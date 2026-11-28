@@ -160,6 +160,7 @@ FocusScope {
             focus: true
             font.family: Theme.fontText
             font.pixelSize: 18
+            font.variableAxes: Theme.axesFor(18)
             color: Theme.textPrimary
             selectionColor: Qt.alpha(Theme.accent, 0.4)
             onTextChanged: pal.query = text

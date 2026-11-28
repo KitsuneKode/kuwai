@@ -18,6 +18,7 @@ Singleton {
         { id: "clock", keys: "clock 24-hour time seconds date", label: "Clock & Date", glyph: "\u{f0954}", tint: Theme.orange },
         { id: "notifs", keys: "notifications do not disturb dnd focus toast where they appear clear seen", label: "Notifications", glyph: "\u{f009a}", tint: Theme.red },
         { id: "assistant", keys: "assistant ai agent opt in local ollama diagnose crash", label: "Assistant", glyph: "\u{f06a9}", tint: Theme.indigo },
+        { id: "appearance", keys: "appearance typography font typeface ui clock mono geist sf inter text", label: "Appearance", glyph: "\u{f03d8}", tint: Theme.blue },
         { id: "motion", keys: "reduce motion animation accessibility contrast transparency text size larger bigger", label: "Accessibility & Motion", glyph: "\u{f0e7d}", tint: Theme.purple },
         { id: "keyboard", keys: "keyboard layout language input method ime fcitx ibus switch layouts typing function keys f7 f8 f10 fn", label: "Keyboard", glyph: "\u{f030c}", tint: Theme.gray },
         { id: "shortcuts", keys: "shortcuts keys keybindings keybinds hotkeys bind rebind chord change reset default super", label: "Shortcuts", glyph: "\u{f0633}", tint: Theme.gray },
@@ -33,7 +34,7 @@ Singleton {
         { id: "about", keys: "about restart version shell", label: "About", glyph: "\u{f02fd}", tint: Theme.gray }
     ]
     // The panel's page Components, in sections' order (SettingsPanel's Loader).
-    readonly property var pages: ({ barPage: "bar", clockPage: "clock", notifPage: "notifs", assistantPage: "assistant", motionPage: "motion", keyboardPage: "keyboard", shortcutsPage: "shortcuts", pointerPage: "pointer", displaysPage: "displays", islandRestPage: "island", workspacesPage: "workspaces", powerPage: "power", saverPage: "saver", timePage: "time", clipboardPage: "clipboard", updatesPage: "updates", aboutPage: "about" })
+    readonly property var pages: ({ barPage: "bar", clockPage: "clock", notifPage: "notifs", assistantPage: "assistant", appearancePage: "appearance", motionPage: "motion", keyboardPage: "keyboard", shortcutsPage: "shortcuts", pointerPage: "pointer", displaysPage: "displays", islandRestPage: "island", workspacesPage: "workspaces", powerPage: "power", saverPage: "saver", timePage: "time", clipboardPage: "clipboard", updatesPage: "updates", aboutPage: "about" })
     readonly property var rows: Contract.rows(Settings.schema)
     // Rows and pages matching every word of q, best first:
     // [{ section, row: { label, detail, group } | null }] (the Settings search).

@@ -10,6 +10,8 @@ import qs.components
 Rectangle {
     id: tile
     property string glyph
+    property string icon: ""
+    property string iconStyle: "bold"
     property string title
     property string subtitle
     property bool on: false
@@ -46,9 +48,19 @@ Rectangle {
     color: area.containsMouse ? Theme.tileHover : Theme.tileRest
     border.width: 1
     border.color: Theme.edge(0)
-    scale: area.pressed ? 0.97 : 1
+    scale: area.pressed && !Theme.reduceMotion ? Theme.pressScale : 1
     Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-    Behavior on scale { NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.pressMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+
+    Rectangle {
+        z: -1
+        x: 0
+        y: 1
+        width: tile.width
+        height: tile.height
+        radius: tile.radius
+        color: Theme.cardDrop
+    }
 
     Rectangle {
         id: disc
@@ -57,13 +69,23 @@ Rectangle {
         width: 34; height: 34; radius: 17
         color: tile.on ? tile.tone : Theme.wash(2)
         Behavior on color { ColorAnimation { duration: Theme.colorMs } }
+        Icon {
+            visible: tile.icon !== ""
+            anchors.centerIn: parent
+            name: tile.icon
+            style: tile.iconStyle
+            size: Theme.glyphS
+            active: tile.on
+            color: tile.on ? Theme.inkOnFill(tile.tone) : Theme.textPrimary
+        }
         Text {
+            visible: tile.icon === ""
             textFormat: Text.PlainText
             anchors.centerIn: parent
             text: tile.glyph
             font.family: Theme.fontGlyph
             font.pixelSize: Theme.glyphS
-            color: tile.on && tile.tone === Theme.yellow ? Theme.inkOnLight : Theme.textPrimary
+            color: tile.on ? Theme.inkOnFill(tile.tone) : Theme.textPrimary
         }
     }
     Column {

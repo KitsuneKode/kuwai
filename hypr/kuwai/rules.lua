@@ -143,7 +143,7 @@ layer({ name = "kuwai-auth-private", match = { namespace = "^kuwai-auth$" }, no_
 layer({ name = "kuwai-scrim", match = { namespace = "^kuwai\\.scrim$" }, no_anim = true })
 layer({ name = "glass-osd", match = { namespace = "^glass-osd$" }, blur = true, ignore_alpha = 0.3, xray = false, no_anim = true })
 layer({ name = "voxtype-osd", match = { namespace = "^voxtype-osd$" }, blur = true, ignore_alpha = 0.5 })
-layer({ name = "quickshell", match = { namespace = "^quickshell.*$" }, blur = true, ignore_alpha = 0 })
+layer({ name = "quickshell", match = { namespace = "^quickshell.*$" }, blur = true, ignore_alpha = 0.2 })
 
 layer({ name = "bars", match = { namespace = "^(waybar|gtk-layer-shell:shell:bar|shell:bar)$" }, blur = true, blur_popups = true, ignore_alpha = 0.5 })
 layer({ name = "menus", match = { namespace = "^(rofi|vicinae|waycal|launcher|logout_dialog|wlogout)$" }, blur = true, blur_popups = true, ignore_alpha = 0.5 })

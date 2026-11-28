@@ -10,7 +10,10 @@ import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: pv
+    implicitWidth: Theme.panelM
+    implicitHeight: Theme.panelMaxH
     property var list: null
+    property bool failed: false
     property bool pinned: false
     property string filter: ""
     property string kind: "all"
@@ -26,7 +29,16 @@ Item {
     Process {
         id: reader
         command: [Paths.bin + "/kuwai-pkgs", "installed"]
-        stdout: StdioCollector { onStreamFinished: { try { const d = JSON.parse(text); if (Array.isArray(d)) pv.list = d; } catch (e) {} } }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const d = JSON.parse(text);
+                    if (Array.isArray(d)) { pv.list = d; pv.failed = false; }
+                    else pv.failed = true;
+                } catch (e) { pv.failed = true; }
+            }
+        }
+        onExited: (code, status) => { if (code !== 0) pv.failed = true; }
     }
 
     Column {
@@ -39,7 +51,7 @@ Item {
             Label { id: title; anchors.verticalCenter: parent.verticalCenter; text: "Your packages"; size: Theme.tTitle3; weight: Theme.wSemibold }
             Label {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                text: !pv.list ? "Reading…" : pv.shown.length + " of " + pv.list.length + (Object.keys(Updates.held).length ? " · " + Object.keys(Updates.held).length + " held" : "")
+                text: pv.failed ? "Unavailable" : !pv.list ? "Reading…" : pv.shown.length + " of " + pv.list.length + (Object.keys(Updates.held).length ? " · " + Object.keys(Updates.held).length + " held" : "")
                 size: Theme.tFootnote; color: Theme.textTertiary
                 tabular: true
             }
@@ -55,6 +67,7 @@ Item {
                 clip: true
                 color: Theme.textPrimary
                 font.family: Theme.fontText; font.pixelSize: Theme.tBody
+                font.variableAxes: Theme.axesFor(Theme.tBody)
                 selectByMouse: true
                 onTextChanged: pv.filter = text
                 Keys.onEscapePressed: event => { if (text) { text = ""; event.accepted = true; } else event.accepted = false; }
@@ -76,8 +89,40 @@ Item {
         }
     }
 
+    Item {
+        anchors { left: parent.left; right: parent.right; top: head.bottom; bottom: note.top; topMargin: Theme.s3; leftMargin: Theme.s5; rightMargin: Theme.s5; bottomMargin: Theme.s2 }
+        visible: pv.failed || !pv.list || (pv.list && pv.shown.length === 0)
+        Column {
+            visible: !pv.failed && !pv.list
+            anchors { fill: parent }
+            spacing: Theme.s2
+            Repeater {
+                model: 7
+                Skeleton { width: parent.width; height: Theme.sp(46); radius: Theme.r2 }
+            }
+        }
+        Notice {
+            visible: pv.failed
+            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
+            glyph: "\u{f0026}"
+            title: "Can't read your packages"
+            detail: "The installed package list isn't available right now."
+            action: "Try again"
+            onActed: { pv.failed = false; pv.load(); }
+        }
+        EmptyState {
+            visible: !pv.failed && pv.list && pv.shown.length === 0
+            anchors.centerIn: parent
+            width: parent.width
+            glyph: "\u{f03d7}"
+            title: pv.filter ? "No packages match" : "No packages here"
+            body: pv.filter ? "Try a shorter name or another word from the description." : "Installed packages show up here once they can be read."
+        }
+    }
+
     ListView {
         id: rows
+        visible: !pv.failed && pv.list && pv.shown.length > 0
         anchors { left: parent.left; right: parent.right; top: head.bottom; bottom: note.top; topMargin: Theme.s3; leftMargin: Theme.s5; rightMargin: Theme.s5; bottomMargin: Theme.s2 }
         clip: true
         spacing: Theme.s1

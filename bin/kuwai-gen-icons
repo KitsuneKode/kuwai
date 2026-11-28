@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SOURCE = ROOT / "shell/assets/phosphor/map.json"
+OUTPUT = ROOT / "shell/config/icons.mjs"
+
+NERD_TO_PHOSPHOR = {
+    0xF0026: "warning", 0xF0159: "x-circle", 0xF012C: "check", 0xF0176: "coffee",
+    0xF009B: "bell-slash", 0xF0594: "moon-stars", 0xF05A9: "wifi-high", 0xF00AF: "bluetooth",
+    0xF0599: "sun", 0xF0F31: "cloud-moon", 0xF0595: "cloud-sun", 0xF0590: "cloud",
+    0xF0591: "cloud-fog", 0xF0593: "cloud-lightning", 0xF0598: "cloud-snow", 0xF0597: "cloud-rain",
+    0xF06B0: "arrow-clockwise", 0xF0E7B: "atom", 0xF029A: "gauge", 0xF0EE0: "cpu",
+    0xF00E2: "broom", 0xF04C5: "speedometer", 0xF0028: "warning-circle", 0xF0B79: "chat",
+    0xF05E0: "check-circle", 0xF02EE: "image-broken", 0xF0645: "tree-structure", 0xF035B: "memory",
+    0xF04C4: "speaker-x", 0xF02CA: "hard-drives", 0xF008E: "battery-medium", 0xF0E09: "image",
+    0xF04C3: "speaker-high", 0xF010B: "car", 0xF037D: "mouse", 0xF030C: "keyboard",
+    0xF0296: "game-controller", 0xF011C: "device-mobile", 0xF0897: "watch", 0xF0553: "usb",
+    0xF0322: "laptop", 0xF0379: "monitor", 0xF129E: "usb", 0xF05AA: "wifi-slash",
+    0xF0306: "key", 0xF06A9: "robot", 0xF13AB: "timer", 0xF0954: "clock",
+    0xF009A: "bell", 0xF0633: "command", 0xF0741: "hand-tap", 0xF0570: "squares-four",
+    0xF0425: "power", 0xF0020: "alarm", 0xF014C: "clipboard", 0xF02FD: "info",
+    0xF018F: "copy", 0xF0388: "music-notes", 0xF05C3: "youtube-logo", 0xF066F: "discord-logo",
+    0xF0567: "video", 0xF0219: "file-text", 0xF0141: "caret-left", 0xF0140: "caret-down",
+    0xF0453: "arrow-clockwise", 0xF0387: "music-note", 0xF018D: "terminal", 0xF0765: "circle",
+    0xF0766: "circle-dashed", 0xF0142: "caret-right", 0xF0208: "eye", 0xF00F0: "clock",
+    0xF04AE: "skip-back", 0xF03E4: "pause", 0xF040A: "play", 0xF04AD: "skip-forward",
+    0xF0029: "warning-octagon", 0xF04B2: "moon-stars", 0xF0709: "arrow-counter-clockwise", 0xF00E0: "sun",
+    0xF075F: "speaker-none", 0xF057F: "speaker-low", 0xF0580: "speaker-high", 0xF057E: "speaker-high",
+    0xF0772: "spinner", 0xF0054: "arrow-right", 0xF075A: "music-notes", 0xF00DE: "sun",
+    0xF00DF: "sun", 0xF036C: "microphone", 0xF0370: "microphone", 0xF0079: "battery-full",
+    0xF0371: "microphone-slash", 0xF036D: "microphone-slash", 0xF003B: "squares-four", 0xF009C: "bell",
+    0xF0128: "chart-bar", 0xF0450: "arrows-clockwise", 0xF033E: "lock", 0xF0083: "battery-warning",
+    0xF0393: "thermometer", 0xF03CC: "arrow-square-out", 0xF0565: "shield-check", 0xF0156: "x",
+    0xF0349: "magnifying-glass", 0xF0339: "link", 0xF0493: "gear-six", 0xF0A7A: "trash",
+    0xF0214: "file", 0xF024B: "folder", 0xF0403: "push-pin", 0xF061A: "cpu",
+    0xF03D8: "palette", 0xF0675: "gear", 0xF00B2: "bluetooth-x", 0xF0483: "shield-check",
+}
+
+
+def render():
+    data = json.loads(SOURCE.read_text())
+    for name in NERD_TO_PHOSPHOR.values():
+        if name not in data:
+            raise SystemExit(f"nerdToPhosphor names a missing Phosphor icon: {name}")
+    entries = ",".join(
+        json.dumps(name) + ":" + json.dumps([entry.get("r", 0), entry.get("db", 0), entry.get("df", 0)], separators=(",", ":"))
+        for name, entry in sorted(data.items())
+    )
+    nerd = ",".join(json.dumps(str(cp)) + ":" + json.dumps(name) for cp, name in sorted(NERD_TO_PHOSPHOR.items()))
+    return """export const entries=Object.freeze({%s});
+export const nerdToPhosphor=Object.freeze({%s});
+const keys={r:0,db:1,df:2};
+export function entry(name){return entries[name]||null}
+export function codepoint(name,key){const e=entry(name);if(!e)return 0;const k=keys[key||"r"];if(k===undefined)return 0;if(k>0&&(!e[1]||!e[2]))return 0;return e[k]||0}
+export function glyph(name,key){const cp=codepoint(name,key);return cp?String.fromCodePoint(cp):""}
+export function phosphorForNerd(cp){return nerdToPhosphor[String(cp)]||""}
+export function nerdGlyph(cp,key){const name=phosphorForNerd(cp);return name?glyph(name,key):""}
+""" % (entries, nerd)
+
+
+def main():
+    mode = "--check" if "--check" in sys.argv[1:] else "--generate"
+    text = render()
+    if mode == "--check":
+        if not OUTPUT.exists() or OUTPUT.read_text() != text:
+            print("shell/config/icons.mjs is not current; run bin/kuwai-gen-icons --generate", file=sys.stderr)
+            return 1
+        return 0
+    OUTPUT.write_text(text)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

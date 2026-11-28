@@ -9,24 +9,15 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
+import "icons.mjs" as IconMap
 
 Singleton {
     id: root
-    property var map: ({})
     FontLoader { source: Qt.resolvedUrl("../assets/phosphor/Phosphor.ttf") }
     FontLoader { source: Qt.resolvedUrl("../assets/phosphor/Phosphor-Duotone.ttf") }
     FontLoader { source: Qt.resolvedUrl("../assets/phosphor/Phosphor-Bold.ttf") }
     FontLoader { source: Qt.resolvedUrl("../assets/phosphor/Phosphor-Fill.ttf") }
-    FontLoader { source: Qt.resolvedUrl("../assets/phosphor/Phosphor-Light.ttf") }
-    FontLoader { source: Qt.resolvedUrl("../assets/phosphor/Phosphor-Thin.ttf") }
-    FileView {
-        path: Quickshell.shellDir + "/assets/phosphor/map.json"
-        printErrors: false
-        onLoaded: { try { root.map = JSON.parse(text()); } catch (e) {} }
-    }
-    function glyph(name, key) {
-        const e = map[name];
-        return e && e[key] ? String.fromCodePoint(e[key]) : "";
-    }
+    function glyph(name, key) { return IconMap.glyph(name, key || "r"); }
+    function phosphorForNerd(cp) { return IconMap.phosphorForNerd(cp); }
+    function nerdGlyph(cp, key) { return IconMap.nerdGlyph(cp, key || "r"); }
 }

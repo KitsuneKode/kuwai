@@ -185,7 +185,7 @@ Item {
                     id: tag
                     anchors.centerIn: parent
                     text: row.why
-                    font.family: Theme.fontText; font.pixelSize: Theme.sp(Theme.tCaption); font.weight: Theme.wMedium
+                    font.family: Theme.textFamily(Theme.wMedium); font.pixelSize: Theme.sp(Theme.tCaption); font.weight: Theme.wMedium
                     color: Theme.orange
                 }
             }

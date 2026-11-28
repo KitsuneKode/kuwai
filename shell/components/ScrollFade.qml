@@ -40,9 +40,10 @@ QtObject {
     // originY drifts while its rows change height, and the top row of T3's list
     // faded with the list at its top.
     readonly property real head: !scrolls || flickable.atYBeginning ? 0
-        : Math.max(0, Math.min(1, (flickable.contentY - flickable.originY + flickable.topMargin) / Math.max(1, ramp)))
+        : Math.max(0, Math.min(1, (flickable.contentY - flickable.originY + flickable.topMargin) / Math.max(1, fade.ramp)))
     readonly property real foot: !scrolls || flickable.atYEnd ? 0
-        : Math.max(0, Math.min(1, (flickable.originY + flickable.contentHeight + flickable.bottomMargin - flickable.height - flickable.contentY) / Math.max(1, ramp)))
+        : Math.max(0, Math.min(1, (flickable.originY + flickable.contentHeight + flickable.bottomMargin - flickable.height - flickable.contentY) / Math.max(1, fade.ramp)))
+    readonly property bool liveLayer: scrolls && (head > 0.01 || foot > 0.01)
 
     // The mask: the list's own rectangle, opaque where rows show and clear
     // where they fade. Rendered only into the layer, never on screen; a
@@ -56,13 +57,13 @@ QtObject {
         visible: false
         layer.enabled: fade.layered
         Rectangle {
-            id: ramp
+            id: maskRect
             anchors.fill: parent
             readonly property real edge: fade.span / Math.max(1, height)
             gradient: Gradient {
                 GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 1 - fade.head) }
-                GradientStop { position: Math.max(0.001, ramp.edge); color: "black" }
-                GradientStop { position: Math.min(0.999, 1 - ramp.edge); color: "black" }
+                GradientStop { position: Math.max(0.001, maskRect.edge); color: "black" }
+                GradientStop { position: Math.min(0.999, 1 - maskRect.edge); color: "black" }
                 GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 1 - fade.foot) }
             }
         }
@@ -85,8 +86,8 @@ QtObject {
     // belongs to this object, so a list being torn down never sees it fire.
     property bool layered: false
     function apply() {
-        if (!flickable || scrolls === layered) return;
-        layered = scrolls;
+        if (!flickable || liveLayer === layered) return;
+        layered = liveLayer;
         if (layered) {
             flickable.layer.enabled = true;
             flickable.layer.effect = effect;
@@ -97,6 +98,7 @@ QtObject {
     }
     readonly property Timer settle: Timer { interval: 0; onTriggered: fade.apply() }
     onScrollsChanged: settle.restart()
+    onLiveLayerChanged: settle.restart()
     Component.onCompleted: apply()
     Component.onDestruction: if (flickable && layered) { flickable.layer.effect = null; flickable.layer.enabled = false; }
 }

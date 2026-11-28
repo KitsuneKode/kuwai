@@ -1070,10 +1070,10 @@ Scope {
                     Component.onCompleted: root.searchField = search
                     anchors { left: whenTag.visible ? whenTag.right : scope.visible ? scope.right : glyph.right; leftMargin: 12; right: dateBtn.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                     color: Theme.textPrimary
-                    selectionColor: Qt.alpha(Theme.blue, 0.5)
+                    selectionColor: Qt.alpha(Theme.accent, 0.5)
                     font.family: Theme.fontText
                     font.pixelSize: Theme.sp(Theme.tTitle3)
-                    font.variableAxes: ({ "opsz": Theme.opszFor(Theme.tTitle3), "wght": Theme.wRegular })
+                    font.variableAxes: Theme.axesFor(Theme.tTitle3)
                     font.letterSpacing: Theme.tracking(Theme.tTitle3, false)
                     renderType: Text.NativeRendering
                     cursorDelegate: SpringCaret {}
@@ -1293,14 +1293,14 @@ Scope {
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.query ? "No matches" : root.filter === "pinned" ? "No pins yet" : emptyNote.off ? "Clipboard history is off" : "Nothing here yet"
+                    text: Clipboard.loadFailed ? "Can't read clipboard history" : root.query ? "No matches" : root.filter === "pinned" ? "No pins yet" : emptyNote.off ? "Clipboard history is off" : "Nothing here yet"
                     size: Theme.tCallout
                     weight: Theme.wSemibold
                     color: Theme.textSecondary
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "Ctrl+P pins the selected card." : emptyNote.off ? "Turn it on to keep what you copy here, on this computer only." : "Copy something and it lands here."
+                    text: Clipboard.loadFailed ? "The clipboard store isn't answering right now." : root.query ? `Nothing matches “${root.query}”.` : root.filter === "pinned" ? "Ctrl+P pins the selected card." : emptyNote.off ? "Turn it on to keep what you copy here, on this computer only." : "Copy something and it lands here."
                     size: Theme.tSub
                     color: Theme.textTertiary
                 }
@@ -1357,9 +1357,10 @@ Scope {
                     Component.onCompleted: root.nameField = nameInput
                     anchors { left: saveGlyph.right; leftMargin: 10; right: ext.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
                     color: Theme.textPrimary
-                    selectionColor: Qt.alpha(Theme.blue, 0.5)
+                    selectionColor: Qt.alpha(Theme.accent, 0.5)
                     font.family: Theme.fontText
                     font.pixelSize: 14
+                    font.variableAxes: Theme.axesFor(14)
                     renderType: Text.NativeRendering
                     cursorDelegate: SpringCaret {}
                     clip: true

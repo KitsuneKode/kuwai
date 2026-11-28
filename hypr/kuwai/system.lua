@@ -71,8 +71,6 @@ end
 for _, bin in ipairs({
 	"/usr/(lib|libexec|lib64)/xdg-desktop-portal-hyprland",
 	"/usr/bin/grim",
-	"/usr/bin/grimblast",
-	K.home .. "/.local/lib/hyde/screenshot/grimblast",
 	"/usr/bin/slurp",
 	"/usr/bin/hyprpicker",
 	"/usr/bin/hyprlock",

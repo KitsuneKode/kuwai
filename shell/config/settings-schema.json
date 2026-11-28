@@ -653,6 +653,69 @@
       "restartScope": "live"
     },
     {
+      "key": "fontProfile",
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "sf-rounded",
+        "sf",
+        "geist",
+        "inter",
+        "system"
+      ],
+      "maxLength": 512,
+      "section": "appearance",
+      "label": "UI font",
+      "detail": "Interface typeface; automatic uses installed Apple fonts or the bundled Geist",
+      "group": "Typography",
+      "searchTerms": "ui font interface typeface; automatic uses installed apple fonts or the bundled geist sf rounded geist inter system typography",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "clockFont",
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "sf-rounded",
+        "geist",
+        "sf-display"
+      ],
+      "maxLength": 512,
+      "section": "appearance",
+      "label": "Clock face",
+      "detail": "The numerals in the island clock",
+      "group": "Typography",
+      "searchTerms": "clock face the numerals in the island clock sf rounded geist sf display typography",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "monoFont",
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "sf-mono",
+        "geist-mono",
+        "monolisa",
+        "dank-mono",
+        "jetbrains",
+        "maple",
+        "iosevka"
+      ],
+      "maxLength": 512,
+      "section": "appearance",
+      "label": "Mono font",
+      "detail": "Fixed-width text in code, paths and logs",
+      "group": "Typography",
+      "searchTerms": "mono font fixed-width text in code paths and logs sf mono geist monolisa dank mono jetbrains maple iosevka typography",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "notifSurface",
       "type": "string",
       "default": "one",

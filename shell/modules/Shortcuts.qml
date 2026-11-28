@@ -150,7 +150,7 @@ Scope {
     GlobalShortcut { appid: "kuwai"; name: "island-tuck"; description: "Tuck the island away / bring it back"
         onPressed: {
             if (Settings.bar === "island") Settings.set("islandTucked", !Settings.islandTucked);
-            else Quickshell.execDetached(["sh", "-c", "pkill -x waybar || exec " + (Hyde.hasShell ? "hyde-shell waybar" : "waybar")]);   // Waybar users: on/off (HyDE's, else plain)
+            else Apps.run(["sh", "-c", "pkill -x waybar || exec " + (Hyde.hasShell ? "hyde-shell waybar" : "waybar")]);
         }
     }
     GlobalShortcut { appid: "kuwai"; name: "caffeine"; description: "Caffeine: keep awake (no dim, lock or sleep)"; onPressed: Caffeine.toggle() }
@@ -183,6 +183,7 @@ Scope {
     GlobalShortcut { appid: "kuwai"; name: "switch-next"; description: "Windows: next (hold Alt)"; onPressed: Switcher.begin(1, false) }
     GlobalShortcut { appid: "kuwai"; name: "switch-prev"; description: "Windows: previous"; onPressed: Switcher.begin(-1, false) }
     GlobalShortcut { appid: "kuwai"; name: "switch-app"; description: "Windows of this app"; onPressed: Switcher.begin(1, true) }
+    GlobalShortcut { appid: "kuwai"; name: "switch-app-prev"; description: "Windows of this app, backwards"; onPressed: Switcher.begin(-1, true) }
     GlobalShortcut { appid: "kuwai"; name: "switch-ws"; description: "Windows on this workspace"; onPressed: Switcher.begin(1, false, true) }
     GlobalShortcut { appid: "kuwai"; name: "switch-commit"; description: "Windows: switch (Alt released)"; onPressed: Switcher.commit() }
     GlobalShortcut { appid: "kuwai"; name: "switch-cancel"; description: "Windows: cancel"; onPressed: Switcher.cancel() }

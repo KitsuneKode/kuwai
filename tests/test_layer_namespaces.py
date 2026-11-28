@@ -35,6 +35,8 @@ def test_hypr_covers_t3_snapshot_overlay_and_screencopy():
     assert "t3-snap-shot" in rules
     assert "kuwai-monitor" in rules
     assert "t3-hyprland-snap-shot" in system
+    assert "grimblast" not in system
+    assert not ('type = "keyboard"' in system and 'mode = "deny"' in system)
 
 
 def test_doctor_scripts_guard_against_mutual_recursion():

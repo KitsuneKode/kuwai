@@ -119,11 +119,31 @@ Singleton {
         onLoaded: { ok = true; root.recolor(); }
     }
 
-    readonly property string fontText: "SF Pro Text"
-    readonly property string fontDisplay: "SF Pro Display"
-    readonly property string fontRounded: "SF Pro Rounded"
+    readonly property var installedFonts: Qt.fontFamilies()
+    function hasFont(name) { return installedFonts.indexOf(name) >= 0; }
+    readonly property bool hasSf: hasFont("SF Pro Text") && hasFont("SF Pro Display")
+    readonly property string interFamily: hasFont("Inter") && hasFont("Inter Display") ? "Inter"
+                                        : hasFont("Inter Variable") ? "Inter Variable"
+                                        : hasFont("Inter") ? "Inter"
+                                        : hasFont("Inter 28pt") ? "Inter 28pt" : ""
+    readonly property string fontKind: {
+        const want = (Quickshell.env("KUWAI_FONT") || "").toLowerCase();
+        if (want === "system") return "system";
+        if (want === "inter" && interFamily) return "inter";
+        if (want === "sf" && hasSf) return "sf";
+        return hasSf ? "sf" : interFamily ? "inter" : "system";
+    }
+    readonly property string systemFamily: Qt.application.font.family || "sans-serif"
+    readonly property string fontText: fontKind === "sf" ? "SF Pro Text" : fontKind === "inter" ? interFamily : systemFamily
+    readonly property string fontDisplay: fontKind === "sf" ? "SF Pro Display"
+                                        : fontKind === "inter" && interFamily === "Inter" && hasFont("Inter Display") ? "Inter Display"
+                                        : fontKind === "inter" && interFamily === "Inter" && hasFont("Inter 28pt") ? "Inter 28pt"
+                                        : fontText
+    readonly property bool roundedFace: fontKind === "sf" && hasFont("SF Pro Rounded")
+    readonly property string fontRounded: roundedFace ? "SF Pro Rounded" : fontText
     readonly property string fontGlyph: "Symbols Nerd Font"
-    readonly property string fontMono: "SF Mono"
+    readonly property string fontMono: hasFont("SF Mono") ? "SF Mono" : hasFont("Geist Mono") ? "Geist Mono" : hasFont("JetBrains Mono") ? "JetBrains Mono" : "monospace"
+    readonly property bool fontOpszAxis: fontKind === "inter" && interFamily === "Inter Variable"
     readonly property int wRegular: 400
     readonly property int wMedium: 510
     readonly property int wSemibold: 590
@@ -132,7 +152,8 @@ Singleton {
     readonly property var trakPro:     [82, 38, 24, 12, 0, -12, -22, -32, -40, -52, -46, -24, 6, 28, 26, 21, 14, 7, 0]
     readonly property var trakRounded: [174, 130, 116, 104, 92, 80, 70, 60, 52, 45, 37, 32, 29, 26, 24, 22, 14, 6, 0]
     function tracking(px, rounded) {
-        const xs = trakSizes, ys = rounded ? trakRounded : trakPro;
+        if (fontKind !== "sf") return 0;
+        const xs = trakSizes, ys = rounded && roundedFace ? trakRounded : trakPro;
         let v = ys[ys.length - 1];
         if (px <= xs[0]) v = ys[0];
         else for (let k = 1; k < xs.length; k++) {
@@ -144,7 +165,16 @@ Singleton {
         }
         return v / 2048 * px;
     }
-    function opszFor(px) { return px < 20 ? 17 : px < 25 ? 22 : 28; }
+    function opszFor(px) {
+        if (fontKind === "inter") return px < 20 ? 14 : px < 25 ? 22 : 32;
+        return px < 20 ? 17 : px < 25 ? 22 : 28;
+    }
+    readonly property var noAxes: ({})
+    function axesFor(px) { return fontOpszAxis ? { "opsz": opszFor(px) } : noAxes; }
+
+    readonly property real textScale: Math.max(0.85, Math.min(2, prefsTextScale || 1))
+    property real prefsTextScale: 1
+    function sp(n) { return Math.round(n * textScale); }
 
     readonly property var easeOut: [0.23, 1, 0.32, 1, 1, 1]
     readonly property int pressMs: 140
@@ -159,6 +189,13 @@ Singleton {
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: { try { root.prefsReduce = !!JSON.parse(text()).reduceMotion; } catch (e) {} }
+        onLoaded: {
+            try {
+                const d = JSON.parse(text());
+                root.prefsReduce = !!d.reduceMotion;
+                const s = Number(d.textScale);
+                root.prefsTextScale = Number.isFinite(s) ? s : 1;
+            } catch (e) {}
+        }
     }
 }

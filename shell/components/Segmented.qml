@@ -169,12 +169,25 @@ Rectangle {
                     id: inner
                     anchors.centerIn: parent
                     spacing: 6
-                    Label {
+                    Item {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: opt.modelData.label
-                        size: Theme.tBody
-                        weight: opt.on ? Theme.wSemibold : Theme.wRegular
-                        color: opt.on ? Theme.textPrimary : Theme.textSecondary
+                        width: Math.max(tabLabel.implicitWidth, tabGhost.implicitWidth)
+                        height: tabLabel.implicitHeight
+                        Label {
+                            id: tabGhost
+                            visible: false
+                            text: opt.modelData.label
+                            size: Theme.tBody
+                            weight: Theme.wSemibold
+                        }
+                        Label {
+                            id: tabLabel
+                            anchors.centerIn: parent
+                            text: opt.modelData.label
+                            size: Theme.tBody
+                            weight: opt.on ? Theme.wSemibold : Theme.wRegular
+                            color: opt.on ? Theme.textPrimary : Theme.textSecondary
+                        }
                     }
                     Rectangle {
                         visible: (opt.modelData.badge || 0) > 0
@@ -185,6 +198,7 @@ Rectangle {
                         Label {
                             id: badgeText
                             rounded: true
+                            compact: true
                             anchors.centerIn: parent
                             text: opt.modelData.badge || ""
                             size: Theme.tFootnote

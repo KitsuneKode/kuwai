@@ -423,6 +423,7 @@ Item {
                 verticalAlignment: TextInput.AlignVCenter
                 color: Theme.textPrimary
                 font.family: Theme.fontText; font.pixelSize: 13
+                font.variableAxes: Theme.axesFor(13)
                 clip: true
                 Accessible.name: "Reply to " + (row.it.app || "the app")
                 Keys.onPressed: event => {

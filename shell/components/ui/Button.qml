@@ -19,6 +19,8 @@ FocusScope {
     id: b
     property string text
     property string glyph: ""
+    property string icon: ""
+    property string iconStyle: "bold"
     property string kind: primary ? "primary" : "secondary"   // primary · secondary · danger · quiet
     property bool primary: false
     property bool enabled: true
@@ -27,10 +29,10 @@ FocusScope {
     property string label: ""               // what it does, when the face is only a glyph
     property color tone: Theme.textSecondary // quiet: the glyph's colour (a state's tone)
     property bool busy: false                // quiet: the glyph turns (a check running)
-    readonly property bool iconOnly: text === "" && glyph !== ""
+    readonly property bool iconOnly: text === "" && (glyph !== "" || icon !== "")
     readonly property bool hovered: kind === "quiet" ? qArea.containsMouse : raised.lit
     signal clicked()
-    onBusyChanged: if (!busy) qglyph.rotation = 0
+    onBusyChanged: if (!busy) { qglyph.rotation = 0; qphicon.rotation = 0; }
 
     implicitHeight: Theme.sp(34)
     implicitWidth: kind === "quiet" ? (iconOnly ? implicitHeight : quiet.implicitWidth) : raised.implicitWidth
@@ -40,7 +42,7 @@ FocusScope {
         visible: b.kind !== "quiet"
         focus: b.kind !== "quiet"
         anchors.fill: parent
-        text: b.text; glyph: b.glyph; kind: b.kind; enabled: b.enabled; elideText: b.elideText; size: b.size
+        text: b.text; glyph: b.glyph; icon: b.icon; iconStyle: b.iconStyle; kind: b.kind; enabled: b.enabled; elideText: b.elideText; size: b.size
         onClicked: b.clicked()
     }
     Rectangle {
@@ -58,9 +60,19 @@ FocusScope {
             id: qrow
             anchors.centerIn: parent
             spacing: 6
+            Icon {
+                id: qphicon
+                visible: b.icon !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                name: b.icon
+                style: b.iconStyle
+                size: Theme.sp(b.iconOnly ? Math.max(b.size, Theme.glyphS) : b.size)
+                color: b.enabled ? b.tone : Theme.textTertiary
+                RotationAnimation on rotation { running: b.busy && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }
+            }
             Text {
                 id: qglyph
-                textFormat: Text.PlainText; visible: b.glyph !== ""; anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText; visible: b.icon === "" && b.glyph !== ""; anchors.verticalCenter: parent.verticalCenter
                 text: b.glyph; font.family: Theme.fontGlyph; font.pixelSize: Theme.sp(b.iconOnly ? Math.max(b.size, Theme.glyphS) : b.size)
                 color: b.enabled ? b.tone : Theme.textTertiary
                 RotationAnimation on rotation { running: b.busy && !Theme.reduceMotion; loops: Animation.Infinite; from: 0; to: 360; duration: Theme.spinMs }

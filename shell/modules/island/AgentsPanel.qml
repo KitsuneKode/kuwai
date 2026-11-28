@@ -74,7 +74,7 @@ FocusScope {
     readonly property string budgetLine: !budgeted || !costs ? ""
         : "Today ~" + money(costs.today.cost) + (costs.today.unpriced > 0 ? "+" : "") + " of your $" + budget + " budget"
     readonly property bool overBudget: budgeted && !!costs && costs.today.cost > budget
-    Component.onCompleted: askModels()
+    Component.onCompleted: { askModels(); syncPorts(); }
     Timer { interval: 30000; repeat: true; running: ap.visible; onTriggered: ap.askModels() }
     property real now: Date.now()
     Timer { interval: 30000; repeat: true; running: ap.visible; triggeredOnStart: true; onTriggered: ap.now = Date.now() }
@@ -83,69 +83,17 @@ FocusScope {
     property bool inStrip: false
     readonly property string headerMeta: [needN ? needN + " need" + (needN === 1 ? "s" : "") + " you" : "", workN ? workN + " working" : ""].filter(x => x).join(" · ")
     readonly property color headerMetaTone: needN ? Theme.orange : Theme.textTertiary
-    property var ports: []
-    Process {
-        id: portsProc
-        command: [Paths.bin + "/kuwai-ports"]
-        stdout: StdioCollector {
-            onStreamFinished: { try { const v = JSON.parse(text); if (JSON.stringify(v) !== JSON.stringify(ap.ports)) ap.ports = v; } catch (e) {} }
-        }
+    property bool portsWatched: false
+    readonly property bool wantsPorts: visible && Settings.agentServers
+    onWantsPortsChanged: syncPorts()
+    function syncPorts() {
+        if (wantsPorts && !portsWatched) { Ports.watch(); portsWatched = true; }
+        else if (!wantsPorts && portsWatched) { Ports.unwatch(); portsWatched = false; }
     }
-    Timer { interval: Theme.panelPollMs; repeat: true; running: ap.visible && Settings.agentServers; triggeredOnStart: true; onTriggered: if (!portsProc.running) portsProc.running = true }
-    property int stopArmed: 0
-    property string stopStart: ""
-    property string stopNote: ""
-    property int forcePid: 0
-    property string forceStart: ""
-    Timer { id: stopDisarm; interval: Theme.undoMs; onTriggered: ap.stopArmed = 0 }
+    Component.onDestruction: if (portsWatched) Ports.unwatch()
     function age(s) { return s < 3600 ? Math.max(1, Math.round(s / 60)) + "m" : s < 86400 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d"; }
-    function forceFor(r) { return !!r && forcePid === r.pid && forceStart === String(r.start); }
     function serverSubline(r) {
         return [r.local === false ? "on this network" : "", r.project, r.agent ? "from " + r.agent : "", r.age !== undefined ? age(r.age) : ""].filter(x => x).join(" · ");
-    }
-    function stopServer(r) {
-        if (forceFor(r)) {
-            forcePid = 0;
-            forceStart = "";
-            stopProc.who = ":" + r.port;
-            stopProc.pid = r.pid;
-            stopProc.start = String(r.start);
-            stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", stopProc.start, "--force"];
-            stopProc.running = true;
-            return;
-        }
-        if (stopArmed !== r.pid) { stopArmed = r.pid; stopStart = String(r.start); stopDisarm.restart(); return; }
-        stopArmed = 0;
-        stopDisarm.stop();
-        stopProc.who = ":" + r.port;
-        stopProc.pid = r.pid;
-        stopProc.start = stopStart;
-        stopProc.command = [Paths.bin + "/kuwai-procs", "--end", String(r.pid), "--start", stopStart];
-        stopProc.running = true;
-    }
-    Process {
-        id: stopProc
-        property string who: ""
-        property int pid: 0
-        property string start: ""
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let r = {};
-                try { r = JSON.parse(text); } catch (e) {}
-                if (!r.ok) {
-                    ap.stopNote = r.why ? "Couldn't stop " + stopProc.who + ": " + r.why : "Couldn't stop " + stopProc.who;
-                    if (ap.forcePid === stopProc.pid) { ap.forcePid = 0; ap.forceStart = ""; }
-                } else if (r.gone === false) {
-                    ap.forcePid = stopProc.pid;
-                    ap.forceStart = stopProc.start;
-                    ap.stopNote = stopProc.who + " didn't stop · Force stop ends it";
-                } else {
-                    ap.stopNote = "";
-                    if (ap.forcePid === stopProc.pid) { ap.forcePid = 0; ap.forceStart = ""; }
-                }
-                if (!portsProc.running) portsProc.running = true;
-            }
-        }
     }
 
     // "claude-opus-5-5" → "Opus 5.5", "grok-4.7" → "Grok 4.7", "gpt-6.1-sol" → "GPT-6.1 Sol".
@@ -368,7 +316,6 @@ FocusScope {
             readonly property real others: (head.visible ? head.height + col.spacing : 0) + footRow.height + (portsCard.visible ? portsCard.height : 0)
                 + (keyHints.visible ? keyHints.height : 0) + (health.visible ? health.height + col.spacing : 0)
                 + (budgetNote.visible ? budgetNote.height + col.spacing : 0)
-                + (stopNoteLine.visible ? stopNoteLine.implicitHeight + col.spacing : 0)
                 + col.spacing * (1 + (portsCard.visible ? 1 : 0) + (keyHints.visible ? 1 : 0))
             readonly property real room: Theme.panelMaxH - (ap.inStrip ? Theme.sp(34) : 0) - col.y - 18
             height: Math.min(contentHeight, Math.max(Theme.sp(96), room - others))
@@ -685,25 +632,54 @@ FocusScope {
 
         Rectangle {
             id: portsCard
-            visible: ap.ports.length > 0 && Settings.agentServers
+            visible: Ports.count > 0 && Settings.agentServers
             width: parent.width
-            height: portsCol.implicitHeight + Theme.s2 * 2
+            height: portsBox.implicitHeight + Theme.s2 * 2
             radius: Theme.r3
             color: Theme.card
             border.width: 1; border.color: Theme.cardEdge
-            ListView {
-                id: portsCol
+            Column {
+                id: portsBox
                 x: Theme.s3; y: Theme.s2
                 width: parent.width - Theme.s3 * 2
-                readonly property real rowH: Theme.sp(44)
-                height: Math.min(count, 2) * rowH
-                implicitHeight: height
-                clip: true
-                interactive: count > 2
-                boundsBehavior: Flickable.StopAtBounds
-                model: ap.ports
-                delegate: Item {
-                        required property var modelData
+                spacing: Theme.s1
+                Item {
+                    width: parent.width
+                    height: Theme.sp(28)
+                    Label {
+                        anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                        text: Ports.count + (Ports.count === 1 ? " local server" : " local servers")
+                        size: Theme.tFootnote; weight: Theme.wSemibold; color: Theme.textTertiary
+                    }
+                    Button {
+                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        height: Theme.sp(28); size: Theme.tFootnote
+                        kind: "quiet"
+                        text: "All ports"
+                        onClicked: Island.openSystem("ports")
+                        Accessible.name: "Show all listening ports in System"
+                    }
+                }
+                ListView {
+                    id: portsCol
+                    width: parent.width
+                    readonly property real rowH: Theme.sp(44)
+                    height: Math.min(count, Theme.textScale >= 1.5 ? 1 : 2) * rowH
+                    clip: true
+                    interactive: count > 2
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: Ports.rows
+                    delegate: Item {
+                        id: serverRow
+                        required property int index
+                        required property int port
+                        required property string proc
+                        required property string what
+                        required property string project
+                        required property string agent
+                        required property real age
+                        required property bool local
+                        required property bool openable
                         width: portsCol.width
                         height: portsCol.rowH
                         Item {
@@ -712,60 +688,42 @@ FocusScope {
                             width: Theme.sp(24); height: width
                             AgentMark {
                                 anchors.fill: parent
-                                visible: !!modelData.agent
-                                agent: (modelData.agent || "").toLowerCase()
-                                name: modelData.agent || ""
+                                visible: serverRow.agent !== ""
+                                agent: serverRow.agent.toLowerCase()
+                                name: serverRow.agent
                             }
-                            Rectangle { visible: !modelData.agent; anchors.centerIn: parent; width: 8; height: 8; radius: 4; color: Theme.green }
+                            Rectangle { visible: serverRow.agent === ""; anchors.centerIn: parent; width: Theme.s2; height: width; radius: width / 2; color: Theme.green }
                         }
                         Column {
-                            id: portWords
-                            anchors { left: portLead.right; leftMargin: Theme.s2; right: portStop.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
+                            anchors { left: portLead.right; leftMargin: Theme.s2; right: portOpen.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
                             spacing: 1
                             Label {
                                 width: parent.width
                                 elide: Text.ElideRight
-                                text: ":" + modelData.port + "  " + (modelData.what || modelData.proc)
+                                text: ":" + serverRow.port + "  " + (serverRow.what || serverRow.proc)
                                 size: Theme.tSub; weight: Theme.wSemibold
                                 tabular: true
                             }
                             Label {
                                 width: parent.width
                                 elide: Text.ElideRight
-                                text: ap.serverSubline(modelData)
+                                text: ap.serverSubline(serverRow)
                                 size: Theme.tFootnote; color: Theme.textTertiary
                             }
-                        }
-                        Button {
-                            id: portStop
-                            anchors { right: portOpen.left; rightMargin: Theme.s2; verticalCenter: parent.verticalCenter }
-                            height: Theme.sp(28); size: Theme.tFootnote
-                            kind: ap.forceFor(modelData) ? "danger" : "quiet"
-                            visible: !!modelData.start
-                            enabled: !stopProc.running || stopProc.pid !== modelData.pid
-                            text: ap.forceFor(modelData) ? "Force stop" : stopProc.running && stopProc.pid === modelData.pid ? "Stopping…" : ap.stopArmed === modelData.pid ? "Stop it?" : "Stop"
-                            onClicked: ap.stopServer(modelData)
-                            Accessible.name: (ap.forceFor(modelData) ? "Force stop" : "Stop") + " the server on port " + modelData.port
                         }
                         Button {
                             id: portOpen
                             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                             height: Theme.sp(28); size: Theme.tFootnote
                             text: "Open"
-                            onClicked: { Apps.open("http://localhost:" + modelData.port); Island.close(); }
-                            Accessible.name: "Open localhost port " + modelData.port + ", " + modelData.proc + " in " + modelData.project
+                            visible: serverRow.openable
+                            onClicked: { Ports.openUrl(serverRow.port); Island.close(); }
+                            Accessible.name: "Open localhost port " + serverRow.port + ", " + serverRow.proc + " in " + serverRow.project
                         }
                     }
+                }
             }
             ScrollHint { flickable: portsCol; inside: true }
-        }
-        Label {
-            id: stopNoteLine
-            visible: ap.stopNote !== "" && portsCard.visible
-            width: parent.width
-            wrapMode: Text.Wrap
-            text: ap.stopNote
-            size: Theme.tFootnote; color: Theme.orange
         }
 
 
@@ -773,7 +731,7 @@ FocusScope {
         KeyHints {
             id: keyHints
             visible: Island.via === "key"
-            hints: [["↑↓", "Choose"], ["↵", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["esc", "Back"]]
+            hints: [["↑↓", "Choose"], ["↵", "Go"], ["⌫", "Mark read / forget"], ["A", "All read"], ["U", "Usage"], ["Esc", "Back"]]
         }
         // The way on: how much they've got left, or the full list with recent ones to resume.
         Label {

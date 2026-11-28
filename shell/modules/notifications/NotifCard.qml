@@ -113,10 +113,10 @@ Item {
     // fades faster, as in Sonner.
     readonly property bool sinking: removed && lastIndex > 0 && !lastExpanded
     // Reduced motion: toasts fade in place; the stack doesn't travel or scale.
-    Behavior on y { enabled: !card.swiping && !Theme.reduceMotion; NumberAnimation { duration: card.sinking ? 500 : Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
-    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: card.sinking ? 500 : Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
+    Behavior on y { enabled: !card.swiping && !Theme.reduceMotion; NumberAnimation { duration: card.sinking ? Theme.sinkMs : Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
+    Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: card.sinking ? Theme.sinkMs : Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
     Behavior on opacity { enabled: !card.swipingOut; NumberAnimation { duration: card.sinking ? 200 : card.removed ? Theme.unmountMs : Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
-    Behavior on height { NumberAnimation { duration: Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
+    Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.stackMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeCss } }
 
     onNaturalHeightChanged: item.cardHeight = naturalHeight
     Component.onCompleted: {
@@ -600,6 +600,7 @@ Item {
                     color: Theme.textPrimary
                     font.family: Theme.fontText
                     font.pixelSize: 13
+                    font.variableAxes: Theme.axesFor(13)
                     clip: true
                     Component.onCompleted: if (card.replying) forceActiveFocus()
                     onVisibleChanged: if (visible) Qt.callLater(() => forceActiveFocus())

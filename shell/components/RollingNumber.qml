@@ -28,7 +28,7 @@ Row {
     TextMetrics {
         id: zero
         text: "0"
-        font.family: num.rounded ? Theme.fontRounded : Theme.fontText
+        font.family: num.rounded ? Theme.roundedFamily(num.weight) : Theme.textFamily(num.weight)
         // As Label sets it: measured at the base size, the digits' cells stayed
         // narrow at a larger Text size and the digits overlapped.
         font.pixelSize: Math.round(num.size * Theme.textScale)

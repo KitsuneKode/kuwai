@@ -14,15 +14,18 @@ def module():
     return m
 
 
-def stat_text(pid, name, ppid, start):
-    rest = ["S", str(ppid)] + ["0"] * 17 + [str(start), "0", "0"]
+def stat_text(pid, name, ppid, start, ticks=0, rss_pages=0):
+    rest = ["S", str(ppid)] + ["0"] * 20
+    rest[11] = str(ticks)
+    rest[19] = str(start)
+    rest[21] = str(rss_pages)
     return f"{pid} ({name}) " + " ".join(rest) + "\n"
 
 
-def process(proc, pid, name, ppid, start, cmd, cwd):
+def process(proc, pid, name, ppid, start, cmd, cwd, ticks=0, rss_pages=0):
     p = proc / str(pid)
     (p / "fd").mkdir(parents=True)
-    (p / "stat").write_text(stat_text(pid, name, ppid, start))
+    (p / "stat").write_text(stat_text(pid, name, ppid, start, ticks, rss_pages))
     (p / "cmdline").write_bytes(b"\0".join(str(x).encode() for x in cmd) + b"\0")
     (p / "cwd").symlink_to(cwd)
     return p
@@ -74,9 +77,87 @@ def test_proc_socket_inodes_name_the_owner_without_ss(tmp_path, monkeypatch):
     rows = m.scan(str(proc))
     assert rows == [
         {"port": 3000, "proc": "node", "what": "next dev", "project": "shop", "pid": 101, "start": 5000,
-         "age": 100, "agent": "Codex", "local": True}
+         "age": 100, "agent": "Codex", "parentApp": "", "memBytes": 0, "host": "127.0.0.1", "local": True, "cpu": 0.0}
     ]
     assert m.ipv6("00000000000000000000000001000000") == "::1"
+
+
+def test_daemon_allowlist_keeps_listeners_outside_home(tmp_path, monkeypatch):
+    m = module()
+    monkeypatch.setattr(m, "HOME", str(tmp_path))
+    proc = tmp_path / "proc"
+    proc.mkdir()
+    (proc / "uptime").write_text("100 0\n")
+    for pid, name, cmd in [(501, "postgres", ["postgres"]), (502, "redis-server", ["redis-server"]), (503, "docker-proxy", ["docker-proxy"])]:
+        process(proc, pid, name, 1, 1000, [cmd[0]], Path("/var/lib") / name)
+        sock(proc, pid, 3, 700 + pid)
+    net(proc, "tcp", [
+        tcp_line("0100007F", 5432, 1201),
+        tcp_line("0100007F", 6379, 1202),
+        tcp_line("00000000", 8081, 1203),
+    ])
+    net(proc, "tcp6", [])
+    rows = m.scan(str(proc))
+    assert [(r["port"], r["proc"], r["host"]) for r in rows] == [(5432, "postgres", "127.0.0.1"), (6379, "redis-server", "127.0.0.1"), (8081, "docker-proxy", "0.0.0.0")]
+
+
+def test_pss_is_proportional_memory_and_rss_is_the_fallback(tmp_path, monkeypatch):
+    m = module()
+    monkeypatch.setattr(m, "HOME", str(tmp_path))
+    proj = tmp_path / "shop"
+    (proj / ".git").mkdir(parents=True)
+    proc = tmp_path / "proc"
+    proc.mkdir()
+    (proc / "uptime").write_text("100 0\n")
+    process(proc, 101, "node", 1, 1000, ["node", "server.js"], proj, rss_pages=512)
+    (proc / "101" / "smaps_rollup").write_text("Rss: 4096 kB\nPss: 2048 kB\n")
+    sock(proc, 101, 3, 111)
+    process(proc, 102, "node", 1, 1000, ["node", "worker.js"], proj, rss_pages=512)
+    sock(proc, 102, 3, 112)
+    net(proc, "tcp", [tcp_line("0100007F", 3000, 111), tcp_line("0100007F", 3001, 112)])
+    net(proc, "tcp6", [])
+    rows = m.scan(str(proc))
+    assert rows[0]["memBytes"] == 2048 * 1024
+    assert rows[1]["memBytes"] == 512 * m.PAGE
+
+
+def test_parent_app_names_the_terminal_the_server_runs_inside(tmp_path, monkeypatch):
+    m = module()
+    monkeypatch.setattr(m, "HOME", str(tmp_path))
+    proj = tmp_path / "shop"
+    (proj / ".git").mkdir(parents=True)
+    proc = tmp_path / "proc"
+    proc.mkdir()
+    (proc / "uptime").write_text("100 0\n")
+    process(proc, 77, "kitty", 1, 500, ["kitty"], tmp_path)
+    process(proc, 101, "node", 77, 1000, ["node", "server.js"], proj)
+    sock(proc, 101, 3, 111)
+    net(proc, "tcp", [tcp_line("0100007F", 3000, 111)])
+    net(proc, "tcp6", [])
+    rows = m.scan(str(proc))
+    assert rows[0]["parentApp"] == "Kitty"
+
+
+def test_parent_app_falls_back_to_the_gui_scope_without_its_instance_number(tmp_path, monkeypatch):
+    m = module()
+    monkeypatch.setattr(m, "HOME", str(tmp_path))
+    proj = tmp_path / "shop"
+    (proj / ".git").mkdir(parents=True)
+    proc = tmp_path / "proc"
+    proc.mkdir()
+    (proc / "uptime").write_text("100 0\n")
+    process(proc, 101, "node", 1, 1000, ["node", "server.js"], proj)
+    (proc / "101" / "cgroup").write_text("0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-com.t3tools.T3Code-7010.scope\n")
+    sock(proc, 101, 3, 111)
+    net(proc, "tcp", [tcp_line("0100007F", 3000, 111)])
+    net(proc, "tcp6", [])
+    rows = m.scan(str(proc))
+    assert rows[0]["parentApp"] == "T3Code"
+
+
+def test_cpu_comes_from_proc_samples_without_a_blocking_sleep(tmp_path):
+    source = (ROOT / "bin/kuwai-ports").read_text()
+    assert "time.sleep" not in source
 
 
 def test_a_wildcard_listener_is_reachable_beyond_localhost(tmp_path, monkeypatch):
