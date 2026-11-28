@@ -969,6 +969,22 @@ FocusScope {
                 }
             }
             SettingsGroup {
+                title: "Dictation"
+                SettingsRow {
+                    key: "dictationPill"
+                    label: "Dictation words"
+                    detail: Settings.dictationPill === "words" ? "Every word in the pill at the bottom of the screen, the newest sliding in; for voxtype with preedit off"
+                          : Settings.dictationPill === "ticker" ? "The field shows the words; a pill on the window's bottom edge shows the newest few, or all of them where the field can't"
+                          : Settings.dictationPill === "status" ? "The field shows the words; the pill shows only the level and the time, and a caption on the window shows them where the field can't"
+                          : "The field shows the words; the pill shows them only where the field can't"
+                    Segmented {
+                        options: [{ id: "field", label: "Field" }, { id: "words", label: "Pill" }, { id: "ticker", label: "Ticker" }, { id: "status", label: "Status" }]
+                        current: Settings.dictationPill
+                        onPicked: id => Settings.set("dictationPill", id)
+                    }
+                }
+            }
+            SettingsGroup {
                 title: "Idle projects"
                 SettingsRow {
                     key: "sweepMark"

@@ -12,6 +12,10 @@
   kuwai-rehearse --out DIR               where the frames and the sheet go
   kuwai-rehearse --wall IMAGE…           can the lock screen's clock be read
                                          over these wallpapers?
+  kuwai-rehearse --pill FILE             the dictation pill (shuush's
+                                         KitsuneHud.qml) in each style, four
+                                         windows, seven moments, text 1x and 2x:
+                                         one sheet per style and one side by side
 
 A whole run also drives the gestures with a real pointer, with motion and
 without (tests/ui/gestures.qml): the row follows the pointer 1:1, a flick or
@@ -135,6 +139,97 @@ def sheet(shots, path, columns=4):
     page.save(path)
 
 
+PILL_STYLES = {"field": "Today (field)", "words": "A · all in the pill", "ticker": "B · field + ticker on the window", "status": "C · field + status pill + caption"}
+PILL_WINDOWS = [("composer", "T3 composer"), ("terminal", "terminal"), ("maximised", "maximised T3"), ("fullscreen", "fullscreen T3")]
+PILL_MOMENTS = [("quiet", "quiet listening"), ("loud", "loud listening"), ("long", "long take (2 min)"), ("transcribing", "transcribing"),
+                ("delivered", "delivered"), ("cancelled", "cancelled"), ("muted", "mic muted")]
+PILL_CROP = (260, 520, 1340, 1000)
+
+
+def pill_stage(pill, style, scale, out):
+    run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "dictation", "--backend", "x11", "--motion", "full",
+                          "--text-scale", f"{scale:g}", "--pill", str(pill), "--pill-style", style, "--output", str(out)],
+                         capture_output=True, text=True)
+    log = out / "runtime.log"
+    facts = {}
+    for m in re.finditer(r"PILL_FRAME (\{.*\})", log.read_text(errors="replace") if log.is_file() else ""):
+        d = json.loads(m[1])
+        facts[(d["ctx"], d["moment"])] = d
+    return run.returncode, facts
+
+
+def pill_covers(d):
+    a, b = d.get("pill"), d.get("field")
+    if not a or not b or d["ctx"] == "terminal":
+        return False
+    return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+
+
+def pill_grid(title, columns, rows, cell, path, k=0.7):
+    from PIL import Image, ImageDraw, ImageFont
+    def face(bold, size):
+        found = subprocess.run(["fc-match", "-f", "%{file}", "sans-serif:bold" if bold else "sans-serif"], capture_output=True, text=True).stdout.strip()
+        try:
+            return ImageFont.truetype(found, size)
+        except OSError:
+            return ImageFont.load_default(size)
+    big, font = face(True, 30), face(False, 19)
+    cw, ch = round((PILL_CROP[2] - PILL_CROP[0]) * k), round((PILL_CROP[3] - PILL_CROP[1]) * k)
+    side, top, pad = 220, 96, 12
+    page = Image.new("RGB", (side + len(columns) * (cw + pad) + pad, top + len(rows) * (ch + pad) + pad), (24, 24, 28))
+    draw = ImageDraw.Draw(page)
+    draw.text((pad, 20), title, fill=(244, 244, 245), font=big)
+    for i, name in enumerate(columns):
+        draw.text((side + i * (cw + pad), top - 30), name, fill=(212, 212, 216), font=font)
+    for j, name in enumerate(rows):
+        y = top + j * (ch + pad)
+        for n, line in enumerate(name.split("\n")):
+            draw.text((pad, y + ch // 2 - 14 + n * 22), line, fill=(212, 212, 216), font=font)
+        for i in range(len(columns)):
+            img, note = cell(j, i)
+            x = side + i * (cw + pad)
+            if img is None:
+                draw.rectangle([x, y, x + cw, y + ch], outline=(255, 59, 48), width=2)
+                draw.text((x + 12, y + 12), "not staged", fill=(255, 59, 48), font=font)
+                continue
+            page.paste(img.crop(PILL_CROP).resize((cw, ch), Image.LANCZOS), (x, y))
+            if note:
+                draw.rectangle([x, y, x + cw, y + 28], fill=(0, 0, 0))
+                draw.text((x + 8, y + 3), note, fill=(255, 179, 64), font=font)
+    page.save(path)
+
+
+def pill_sheets(pill, out):
+    from concurrent.futures import ThreadPoolExecutor
+    from PIL import Image
+    runs = [(st, sc) for st in ("words", "ticker", "status") for sc in (1, 2)] + [("field", 1)]
+    with ThreadPoolExecutor(2) as pool:
+        done = dict(zip(runs, pool.map(lambda r: pill_stage(pill, r[0], r[1], out / r[0] / f"x{r[1]}"), runs)))
+    bad = [f"{st} x{sc}" for (st, sc), (code, facts) in done.items() if code or len(facts) != len(PILL_WINDOWS) * len(PILL_MOMENTS)]
+
+    def shot(st, sc, ctx, moment):
+        path = out / st / f"x{sc}" / f"{ctx}__{moment}.png"
+        facts = done[(st, sc)][1].get((ctx, moment), {})
+        note = "the pill is over the field" if pill_covers(facts) else ""
+        return (Image.open(path).convert("RGB") if path.is_file() else None), note
+
+    sheets = []
+    for st in ("words", "ticker", "status"):
+        rows = [(m, label, sc) for sc in (1, 2) for m, label in PILL_MOMENTS]
+        path = out / f"sheet-{st}.png"
+        pill_grid(PILL_STYLES[st], [w[1] for w in PILL_WINDOWS], [f"{label}\ntext {sc}x" for _, label, sc in rows],
+                  lambda j, i: shot(st, rows[j][2], PILL_WINDOWS[i][0], rows[j][0]), path)
+        sheets.append(path)
+    pairs = [("composer", "loud"), ("composer", "long"), ("terminal", "loud"), ("terminal", "long"), ("maximised", "loud")]
+    names = dict(PILL_WINDOWS) | dict(PILL_MOMENTS)
+    order = ("field", "words", "ticker", "status")
+    path = out / "side-by-side.png"
+    pill_grid("The three styles and today's, side by side (text 1x)", [PILL_STYLES[st] for st in order],
+              [f"{names[c]}\n{names[m]}" for c, m in pairs], lambda j, i: shot(order[i], 1, *pairs[j]), path)
+    sheets.append(path)
+    return bad, sheets
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("only", nargs="*", help="scene id prefixes (default: all)")
@@ -147,7 +242,17 @@ def main():
     ap.add_argument("--wall", nargs="+", type=Path, metavar="IMAGE",
                     help="instead of staging: can the lock screen's date and clock be read over these wallpapers? (exit 1 if not)")
     ap.add_argument("--accent", default="#0a84ff", help="with --wall: the theme's accent, which tints the clock")
+    ap.add_argument("--pill", type=Path, metavar="FILE", help="instead of the scenes: the dictation pill in each style (one sheet per style, one side by side)")
     args = ap.parse_args()
+
+    if args.pill:
+        out = args.out or Path(tempfile.mkdtemp(prefix="kuwai-pill-"))
+        bad, sheets = pill_sheets(args.pill.resolve(), out)
+        for b in bad:
+            print(f"could not stage the pill in {b} ({out})", file=sys.stderr)
+        for path in sheets:
+            print(path)
+        return 2 if bad else 0
 
     if args.wall:
         from rehearse import wall

@@ -22,7 +22,7 @@ def has_runtime_failure(log):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'saver', 'meeting'], default='primitives')
+    parser.add_argument('--case', choices=['primitives', 'settings-store', 'island', 'rehearse', 'gestures', 'clock-ground', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'saver', 'meeting', 'dictation'], default='primitives')
     parser.add_argument('--compile-components', action='store_true', help='requires a real PanelWindow backend; otherwise UNQUALIFIED')
     parser.add_argument('--self-test-isolation', action='store_true')
     parser.add_argument('--text-scale', type=float, choices=[1, 1.2, 2], default=1)
@@ -30,6 +30,8 @@ def main():
     parser.add_argument('--motion', choices=['reduced', 'full'], default='reduced')
     parser.add_argument('--backend', choices=['offscreen', 'x11'], default='offscreen', help='x11 uses private Xvfb/Mesa and can compile PanelWindow components')
     parser.add_argument('--scenes', type=Path, help='--case rehearse: the scenes to stage (JSON list; bin/kuwai-rehearse writes it)')
+    parser.add_argument('--pill', type=Path, help="--case dictation: the dictation pill to stage (shuush's KitsuneHud.qml)")
+    parser.add_argument('--pill-style', choices=['field', 'words', 'ticker', 'status'], default='field')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     if args.compile_components and args.case != 'primitives':
@@ -46,7 +48,15 @@ def main():
         app, home = private/'app', private/'home'
         home.mkdir()
         shutil.copytree(root/'shell', app/'shell')
-        if args.case == 'rehearse':
+        if args.case == 'dictation':
+            if not args.pill or not args.pill.is_file():
+                print(json.dumps({'status':'UNQUALIFIED','reason':'--case dictation needs --pill FILE'}))
+                return 2
+            (app/'pill').mkdir()
+            shutil.copy2(args.pill, app/'pill/KitsuneHud.qml')
+            (home/'data/applications').mkdir(parents=True)
+            (home/'data/applications/t3code.desktop').write_text('[Desktop Entry]\nType=Application\nName=T3 Code\nExec=t3code\nStartupWMClass=com.t3tools.T3Code\n')
+        if args.case in ('rehearse', 'dictation'):
             for q in (app/'shell').rglob('*.qml'):
                 text = q.read_text()
                 plain = re.sub(r'^[ \t]*WlrLayershell\.\w+:.*\n(?:[ \t]*[?:].*\n)*', '', text, flags=re.M)
@@ -85,6 +95,9 @@ def main():
                 stub.write_text('#!/bin/sh\nexit 99\n')
                 stub.chmod(0o755)
         shutil.copy2(root/'bin/kuwai-settings', helpers/'kuwai-settings')
+        if args.case == 'dictation':
+            (helpers/'hyprctl').write_text('#!/bin/sh\ncase "$1" in\nclients) cat /run/test/hypr/clients.json ;;\nmonitors) cat /run/test/hypr/monitors.json ;;\ngetoption) [ "$2" = decoration:rounding ] && echo \'{"int":18}\' || echo \'{"int":2}\' ;;\n*) exit 1 ;;\nesac\n')
+            (helpers/'hyprctl').chmod(0o755)
         if args.case == 'meeting':
             shutil.copy2(root/'tests/ui/fixtures/meeting/fake-voxtype', helpers/'voxtype')
             shutil.copytree(root/'tests/ui/fixtures/meeting', helpers/'meeting-fixtures')
@@ -103,7 +116,7 @@ def main():
              'XDG_CONFIG_HOME':'/home/test/config','XDG_STATE_HOME':'/home/test/state',
              'XDG_CACHE_HOME':'/home/test/cache','XDG_DATA_HOME':'/home/test/data',
              'QT_QPA_PLATFORM':'offscreen','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic',
-             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_UI_PIXELS':f'{args.pixels:g}','KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','LANG':'C.UTF-8'}
+             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_UI_PIXELS':f'{args.pixels:g}','KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','KUWAI_PILL_STYLE':args.pill_style,'LANG':'C.UTF-8'}
         if args.backend == 'x11':
             vendors = sorted(Path('/usr/share/glvnd/egl_vendor.d').glob('*mesa*.json'))
             if not vendors:
@@ -120,13 +133,13 @@ def main():
             launch = 'mkdir -p /run/test; chmod 700 /run/test; '
             if args.backend == 'x11':
                 launch += ('mkdir -p /tmp/.X11-unix; chmod 1777 /tmp/.X11-unix; '
-                           'Xvfb :99 -screen 0 ' + ('2400x1400x24' if args.case == 'rehearse' else '1280x720x24') + ' -nolisten tcp >/out/xvfb.log 2>&1 & server=$!; '
+                           'Xvfb :99 -screen 0 ' + ('2400x1400x24' if args.case == 'rehearse' else '1600x1000x24' if args.case == 'dictation' else '1280x720x24') + ' -nolisten tcp >/out/xvfb.log 2>&1 & server=$!; '
                            'i=0; while [ ! -S /tmp/.X11-unix/X99 ] && [ $i -lt 100 ]; do '
                            'kill -0 "$server" 2>/dev/null || exit 2; i=$((i+1)); sleep 0.02; done; '
                            '[ -S /tmp/.X11-unix/X99 ] || exit 2; ')
             command += ['/usr/bin/sh','-c',launch + 'exec dbus-run-session -- qs -p /app/shell/ui-smoke.qml']
         try:
-            result=subprocess.run(command,env={'PATH':'/usr/bin:/bin'},capture_output=True,text=True,timeout=(90 if args.case == 'saver' else 20) + 2 * len(scenes))
+            result=subprocess.run(command,env={'PATH':'/usr/bin:/bin'},capture_output=True,text=True,timeout=(90 if args.case == 'saver' else 150 if args.case == 'dictation' else 20) + 2 * len(scenes))
         except subprocess.TimeoutExpired as e:
             (output/'runtime.log').write_text(b'\n'.join(x if isinstance(x, bytes) else str(x or '').encode() for x in (e.stdout, e.stderr)).decode(errors='replace'))
             print(json.dumps({'status':'UNQUALIFIED','reason':'isolated runtime timed out','log':str(output/'runtime.log')}))
@@ -146,7 +159,7 @@ def main():
             print(json.dumps({'status':'FAIL','reason':'native fixture assertion failed','log':str(output/'runtime.log')}))
             return 1
         image = {'island': 'island.png', 'gestures': 'gestures.png', 'clock-ground': 'lock-sky.png', 'saver': 'flow-0.png'}.get(args.case, 'primitives.png')
-        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'meeting') or (output/image).is_file())
+        ok='UI_SMOKE_CAPTURED' in result.stdout+result.stderr and (args.case in ('rehearse', 'idle', 'center-keys', 'center-clear', 'center-controls', 'card-keys', 'pill', 'panel-keys', 'notch-center', 'meeting', 'dictation') or (output/image).is_file())
         print(json.dumps({'status':'PASS' if ok else 'UNQUALIFIED','scope':args.backend + (' island layout/input' if args.case == 'island' else ' ' + args.case),
                           'compiledComponents':len(json.loads(env['KUWAI_UI_COMPILE'])), 'output':str(output)}))
         return 0 if ok else 2

@@ -981,6 +981,25 @@
       "restartScope": "live"
     },
     {
+      "key": "dictationPill",
+      "type": "string",
+      "default": "field",
+      "enum": [
+        "field",
+        "words",
+        "ticker",
+        "status"
+      ],
+      "maxLength": 512,
+      "section": "island",
+      "label": "Dictation words",
+      "detail": "Where the words of a take show while you speak",
+      "group": "Dictation",
+      "searchTerms": "dictation words where the words of a take show while you speak field words ticker status dictation voxtype pill",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "quickPrimary",
       "type": "string",
       "default": "caffeine",
