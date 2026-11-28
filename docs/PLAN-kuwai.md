@@ -40,9 +40,26 @@ Left:
       then `--system --tag v0.2.0` (check the fingerprint 7C78…0270; never plain
       `kuwai setup` here) → `sudo /usr/local/lib/kuwai/current/greeter/install`
       → `kuwai auth pin` → `kuwai update install-helper`.
-- [ ] Real hardware only: Plymouth at boot, lock plate and swipe, saver styles,
-      live wallpaper pause/resume, DPMS, Activity Stop/Force quit, warm mic,
-      per-monitor wallpapers on two screens, Docker prune from Caches.
+- [ ] Real hardware only (the owner, a few minutes each):
+      - Plymouth: reboot; the black screen with one accent ring shows, no text.
+      - Lock: Super+L; the backing plate is behind the clock; a swipe up (or a
+        key) shows the password field; a wrong then right password unlocks.
+      - Saver styles: Settings → Screensaver, each style, then wait or start it
+        from the island; brightness comes back on wake; centred clock.
+      - Live wallpaper: pause/resume when a window covers it and on battery.
+      - DPMS: screens turn off after the idle time and come back on a key.
+      - Activity tab: Stop and Force quit on a harmless app (e.g. a calculator).
+      - Dictation: warm mic (first word kept), release tail (last word kept),
+        queued takes, the ticker pill on a maximised window and in a terminal.
+      - Per-monitor wallpapers on two screens; a Docker prune from Caches.
+- [ ] Housekeeping (2026-11-28 evening): uncommitted in the live checkout,
+      from another session: hypr/kuwai/startup.lua runs a new, untracked
+      bin/kuwai-gtk-font; that session should commit it (with a test) or drop
+      it. Unmerged branches are all superseded (their work is on main under other
+      commits: notification undo 576ea65, the System panel, theme-list cache,
+      greetd harness port 09bb818, logout fix 04915c6, the per-monitor wallpaper
+      duplicate run) and can be deleted, with the wip/*-saved-20261124 snapshots,
+      after a glance; 29 merged clean worktrees under ~/.t3/worktrees/rice too.
 - [x] A greetd login in the fresh VM: tests/fresh/vm.sh logs in through greetd
       and the kuwai greeter, password from a guest-only file (09bb818, 96/96).
 - [x] Notification centre in the island look (6951884); kittymux's pxbar padding
