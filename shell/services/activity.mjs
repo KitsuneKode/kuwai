@@ -85,6 +85,7 @@ export function step(prev, frame, opts) {
  * @returns {{op: "remove" | "move" | "insert", at?: number, from?: number, to?: number, key?: string}[]}
  */
 export function diff(from, to) {
+    /** @type {{op: "remove" | "move" | "insert", at?: number, from?: number, to?: number, key?: string}[]} */
     const ops = [];
     const work = from.slice();
     const want = new Set(to);

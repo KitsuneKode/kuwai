@@ -1,3 +1,4 @@
+/** @param {unknown} previous @param {any} value */
 export function newBoundary(previous, value) {
     return value && (value.phase === "day" || value.phase === "night")
         && typeof value.boundary === "string"

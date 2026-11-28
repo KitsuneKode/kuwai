@@ -22,7 +22,7 @@ jobs:
           fail=0
           while IFS= read -r -d '' f; do
             /usr/lib/qt6/bin/qmllint --bare -W 0 --max-warnings -1 --syntax error "$f" || { echo "::error file=$f::QML syntax"; fail=1; }
-          done < <(find shell greeter -name '*.qml' -print0 2>/dev/null)
+          done < <(find shell shell-auth shell-saver greeter -name '*.qml' -print0 2>/dev/null)
           exit $fail
       - name: Lua syntax
         run: |

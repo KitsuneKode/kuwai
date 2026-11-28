@@ -11,7 +11,7 @@ function whole(n) {
 }
 
 /**
- * @param {{ parts?: unknown } | null | undefined} item
+ * @param {{ parts?: any } | null | undefined} item
  * @returns {Part[]}
  */
 export function partRows(item) {
