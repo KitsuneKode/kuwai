@@ -22,6 +22,13 @@ test('default accent chooses readable dark ink for small text',()=>{
  expect(new Function('s','with(s){return '+expression+'}')(scope)).toBe('#000000');
 });
 
+test('the high-contrast setting cannot hide inkFor contrast arithmetic',()=>{
+ const color=(c)=>typeof c==='object'?c:{r:parseInt(c.slice(1,3),16)/255,g:parseInt(c.slice(3,5),16)/255,b:parseInt(c.slice(5,7),16)/255};
+ const s=functions('shell/config/Theme.qml',['inkFor','contrastRatio','luminance'],{themeBg:'#16161d',contrast:true,Qt:{color}});
+ expect(s.inkFor(['#ffffff'],'x')).toBe('#000000');
+ expect(s.inkFor(['#000000'],'x')).toBe('#ffffff');
+});
+
 test('overview includes XWayland windows even when capture is unavailable',()=>{
  const t={workspace:{id:2},wayland:null,address:'abc'};
  const s=functions('shell/modules/overview/Overview.qml',['windowsOf'],{Hyprland:{toplevels:{values:[t]}}});
