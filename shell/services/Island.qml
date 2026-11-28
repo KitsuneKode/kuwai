@@ -24,7 +24,7 @@ Singleton {
     // Every panel the island opens, by name, with what it is called: the one
     // list (its name for a screen reader, the Back row's "‹ Calendar").
     // IslandBar maps each name to its component (tests/shell/island-panels.test.mjs).
-    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", agents: "Agents", usage: "Usage", read: "Read", cleanup: "Cleanup", notifications: "Notifications", controls: "Controls", welcome: "Welcome", meeting: "Meeting" })
+    readonly property var titles: ({ activities: "More activities", calendar: "Calendar", power: "Power", launcher: "Search", settings: "Settings", system: "System", theme: "Themes", keys: "Shortcuts", switcher: "Windows", updates: "Software Update", media: "Now Playing", agents: "Agents", usage: "Usage", read: "Read", cleanup: "Cleanup", notifications: "Notifications", controls: "Controls", welcome: "Welcome", meeting: "Meeting", dictation: "Dictation" })
     readonly property var panels: Object.keys(titles)
     function titleOf(name) { return titles[name] || ""; }
     // Old names that still open their panel: "vitals" (machine + agents'
@@ -249,6 +249,7 @@ Singleton {
     // Opened by resting the pointer (the music's art): it folds away when the
     // pointer leaves the island, unless you click to keep it (open()).
     property bool previewing: false
+    readonly property bool keyless: previewing || panel === "dictation"
     function preview(name, screenName) { openOn(name, screenName, "pointer", "island"); previewing = true; }
     // The launcher's last search, kept between openings (selected, so typing replaces it).
     property string lastQuery: ""

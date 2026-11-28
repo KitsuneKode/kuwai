@@ -21902,6 +21902,2868 @@
     "bars": true,
     "moving": false
    }
+  },
+  {
+   "id": "dictation/listening-terminal",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/listening-long",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "worst",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "right so what I want to say in this reply is that the migration went fine on staging, the only thing that broke was the nightly export, which still points at the old bucket, and I would like us to fix that before Friday so nobody wakes up to an empty report"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "LibreOffice Writer"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-754000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/listening-field",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/quiet",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     ""
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-6000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     0
+    ],
+    [
+     "DictationLive",
+     "quiet",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/muted",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     ""
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-4000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "muted",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/silent-mic",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     ""
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-4000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "silent",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/private",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "my new password is correct horse battery staple"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Firefox"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/queued",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-3000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "takeId",
+     "2"
+    ],
+    [
+     "DictationLive",
+     "pending",
+     [
+      {
+       "id": "1",
+       "at": "@now-9000ms"
+      },
+      {
+       "id": "2",
+       "at": "@now-3000ms"
+      }
+     ]
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/writing-terminal",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "transcribing"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/writing-field",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "transcribing"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/delivered-terminal",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "delivered",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "final",
+     "So the idea is that we cache the tokens once.\nEvery later take reads them from the cache."
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ]
+   ]
+  },
+  {
+   "id": "dictation/delivered-field",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "delivered",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "final",
+     "So the idea is that we cache the tokens once."
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ]
+   ]
+  },
+  {
+   "id": "dictation/clipboard",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "clipboard",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "final",
+     "So the idea is that we cache the tokens once."
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ]
+   ]
+  },
+  {
+   "id": "dictation/recovered",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "recovered",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/private-end",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Firefox"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "private",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/cancelled",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "cancelled",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/nothing",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "nothing",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/failed",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "failed",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/untyped",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "untyped",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/silent",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "silent",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/warm",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "DictationLive",
+     "warm",
+     true
+    ]
+   ]
+  },
+  {
+   "id": "dictation/with-media",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Media",
+     "active",
+     null
+    ],
+    [
+     "Media",
+     "staged",
+     true
+    ],
+    [
+     "Media",
+     "call",
+     "stagePlayer",
+     [
+      {
+       "identity": "Spotify",
+       "desktopEntry": "spotify",
+       "dbusName": "org.mpris.MediaPlayer2.spotify",
+       "trackTitle": "Slow Tide",
+       "trackArtist": "The Paper Lanterns",
+       "trackArtUrl": "file:///home/test/cover-sample.png",
+       "metadata": {},
+       "playbackState": 1,
+       "isPlaying": true,
+       "lengthSupported": true,
+       "length": 243,
+       "positionSupported": true,
+       "position": 81,
+       "canSeek": true,
+       "canGoNext": true,
+       "canGoPrevious": true,
+       "canTogglePlaying": true,
+       "canControl": true,
+       "canRaise": true,
+       "loopSupported": true,
+       "loopState": 0,
+       "shuffleSupported": true,
+       "shuffle": false
+      }
+     ]
+    ],
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/with-meeting",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Sounds good.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ],
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/with-notification",
+   "name": "dictation",
+   "panel": "IslandBar",
+   "window": true,
+   "kind": "typical",
+   "settle": 1600,
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ],
+    [
+     "Notifs",
+     "peek",
+     {
+      "nid": 91,
+      "time": "@now-1000ms",
+      "app": "Mail",
+      "title": "Ada Lovelace",
+      "body": "Lunch on Thursday? I found the place with the long table.",
+      "status": "",
+      "statusGlyph": "",
+      "statusTone": "",
+      "icon": "",
+      "groupKey": "Mail",
+      "focusClass": "",
+      "jump": "",
+      "event": "",
+      "agentState": "",
+      "url": "",
+      "full": "",
+      "thread": "",
+      "quiet": false,
+      "urgency": 1,
+      "severity": "",
+      "count": 1,
+      "snoozedUntil": 0,
+      "replyable": false,
+      "actions": [],
+      "discard": false,
+      "leaving": false,
+      "popup": false,
+      "hovered": false
+     }
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-listening",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-long",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "right so what I want to say in this reply is that the migration went fine on staging, the only thing that broke was the nightly export, which still points at the old bucket, and I would like us to fix that before Friday so nobody wakes up to an empty reportright so what I want to say in this reply is that the migration went fine on staging, the only thing that broke was the nightly export, which still points at the old bucket, and I would like us to fix that before Friday so nobody wakes up to an empty reportright so what I want to say in this reply is that the migration went fine on staging, the only thing that broke was the nightly export, which still points at the old bucket, and I would like us to fix that before Friday so nobody wakes up to an empty report"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "LibreOffice Writer"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-754000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-field",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     true
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-private",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "my new password is correct horse battery staple"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Firefox"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-quiet",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "streaming"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     ""
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-6000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     0
+    ],
+    [
+     "DictationLive",
+     "quiet",
+     true
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-writing",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "transcribing"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "Activities",
+     "voxText",
+     "so the idea is that we cache the tokens once, and every later take reads them from the cache instead of asking again"
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "since",
+     "@now-17000ms"
+    ],
+    [
+     "DictationLive",
+     "bars",
+     [
+      0.35,
+      0.7,
+      0.95,
+      0.6,
+      0.3
+     ]
+    ],
+    [
+     "DictationLive",
+     "lastSpeech",
+     "@now-200ms"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     true
+    ],
+    [
+     "DictationLive",
+     "takeId",
+     "2"
+    ],
+    [
+     "DictationLive",
+     "pending",
+     [
+      {
+       "id": "1",
+       "at": "@now-9000ms"
+      },
+      {
+       "id": "2",
+       "at": "@now-3000ms"
+      }
+     ]
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     null
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-delivered",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "delivered",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "final",
+     "So the idea is that we cache the tokens once.\nEvery later take reads them from the cache."
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-recovered",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "T3 Code"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "recovered",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
+  },
+  {
+   "id": "dictation/panel-untyped",
+   "name": "dictation",
+   "panel": "DictationPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "DictationLive",
+     "staged",
+     true
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "Activities",
+     "voxInField",
+     false
+    ],
+    [
+     "DictationLive",
+     "app",
+     "Kitty"
+    ],
+    [
+     "DictationLive",
+     "screen",
+     ""
+    ],
+    [
+     "DictationLive",
+     "ending",
+     {
+      "kind": "untyped",
+      "at": "@now-300ms",
+      "take": "",
+      "chars": 52,
+      "limit": false
+     }
+    ],
+    [
+     "DictationLive",
+     "fieldTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "privateTake",
+     false
+    ],
+    [
+     "DictationLive",
+     "wordsOpen",
+     false
+    ],
+    [
+     "DictationLive",
+     "final",
+     ""
+    ]
+   ]
   }
  ]
 }

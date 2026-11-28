@@ -209,6 +209,43 @@ has the same answers.
 
 ![Alarm, reminder and timer cards](media/island-alarm-cards.gif)
 
+## Dictation (the island hosts it)
+
+A take lives in the island, like a live activity on a phone, and its words are
+said in one place only. `services/Dictation.qml` reads the take (logic in
+`services/dictation.mjs`), `island/DictationMark` is its two sides,
+`island/DictationWords` the words under them, `island/DictationPanel` the
+expanded view. Settings → Dictation words: `island` (the default) hides
+shuush's pill at the bottom of the screen (VoxtypeHost suppresses its surface;
+KitsuneHud's own `island` style stays hidden while this shell is alive).
+
+- **Stage:** dictation outranks everything but a password prompt, a moment
+  included; a running meeting keeps its small mark (● 12:04) beside it; music
+  steps into its capsule. A notification that isn't critical waits until the
+  take is written (`Notifs.peekWaits`), then peeks as usual.
+- **States:** listening (a breathing red dot, five bars from the mic, the clock,
+  where it goes: "0:12 T3 Code"); too quiet (orange, three seconds without a
+  word); mic muted or sending nothing (a crossed mic); writing (the bars turn
+  accent and a light runs through them, "Writing into Kitty"); then the ending,
+  held long enough to read: Typed into Kitty ✓, Copied · paste it, Kept · the
+  window changed (click to bring it back, `shuush recover`), Private · not
+  typed, Cancelled · nothing typed, Didn’t hear anything, one plain sentence
+  for a failure. More takes waiting: a small `+1`. Voxtype keeping the mic warm
+  after a take: a hollow dot among the privacy dots.
+- **Words, never twice:** where the field shows the live words (the fork's
+  preedit, `live_in_field`, latched for the whole take) the island shows none.
+  Where it can't (terminals, apps without an input method) the island grows down
+  into the words, the newest two lines sliding up, then the first line of what
+  was typed. A private field (`sensitive_field`, `pp_private`) or a shared
+  screen: no words, ever. The ring stays around the target window; its caption
+  is gone.
+- **Expanded:** click the activity: the full text so far, Cancel and Finish,
+  Bring back for a kept take. It never takes the keyboard (`Island.keyless`):
+  the words are going into the window you were in. Right-click cancels; Esc
+  cancels as before.
+- **Reduced motion:** the dot stops breathing, the bars hold a still shape, the
+  words don't slide; colour and words still change.
+
 ## Meetings (voxtype's meeting mode)
 
 kuwai is voxtype's meeting view host (`services/Meeting.qml`, logic in

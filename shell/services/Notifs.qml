@@ -397,7 +397,9 @@ Singleton {
         dismiss(i);
     }
     onPeekHeldChanged: if (peekHeld) peekFor.stop(); else if (peek) peekFor.restart()
-    Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld) root.nextPeek() }
+    Timer { id: peekFor; interval: 5000; onTriggered: if (!root.peekHeld && !root.peekWaits) root.nextPeek() }
+    readonly property bool peekWaits: !!peek && rank(peek) > 0 && (DictationLive.live || DictationLive.writing)
+    onPeekWaitsChanged: if (!peekWaits && peek && !peekHeld) peekFor.restart()
 
     // Read one in the island: the expanded peek (the whole message when the
     // sender gave it, Reply under it), from the bell's list or the center.

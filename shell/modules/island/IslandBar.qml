@@ -50,7 +50,7 @@ Scope {
             // The dynamic island floats below the edge (the reference); the
             // notch hangs from it (Settings → Bar & Island → Shape).
             readonly property bool notch: Settings.islandStyle === "notch"
-            readonly property int restH: 34
+            readonly property int restH: Math.max(34, Theme.sp(28))
             readonly property real restW: restRow.implicitWidth + 32
             readonly property int top: notch ? 0 : 6
             // The ears grow with the island (9 at rest → 14 open, on the
@@ -164,9 +164,9 @@ Scope {
             // high-scale output); panels then fit inside it (panelSize).
             readonly property real maxWinW: Math.min(1120, Theme.screenSize(modelData, "width", 1120))
             readonly property real maxWinH: Math.min(640, Theme.screenSize(modelData, "height", 664) - 24)
-            readonly property bool splitActive: split.pills.some(p => p.visible)
+            readonly property bool splitActive: Object.keys(split.demand).some(k => split.demand[k]) || split.pills.some(p => p.visible)
             readonly property bool islandExpanded: panelHere || bannerHere || peekHere || deviceHere || grown
-                || m.value > 0.005 || pv.value > 0.005 || bv.value > 0.005 || nv.value > 0.005 || dv.value > 0.005
+                || m.value > 0.005 || pv.value > 0.005 || bv.value > 0.005 || nv.value > 0.005 || dv.value > 0.005 || wv.value > 0.005 || voxWords
                 || clockFlying || glanceDragging
             readonly property real restWinW: Math.min(maxWinW, Math.max(520, Math.ceil((Math.max(restW, nearStrip.visible ? nearStrip.width : 0) + 96) / 64) * 64))
             implicitWidth: islandExpanded || splitActive ? maxWinW : restWinW
@@ -182,7 +182,7 @@ Scope {
             // resting the pointer on the notch stole typing from the window,
             // and a window that opened then (Satty) came up without focus.
             // (And for its card while you asked for it: Super+Ctrl+↵, Island.cardKeys.)
-            WlrLayershell.keyboardFocus: (panelHere && !Island.previewing) || (Island.cardKeys && (peekHere || deviceHere))
+            WlrLayershell.keyboardFocus: (panelHere && !Island.keyless) || (Island.cardKeys && (peekHere || deviceHere))
                 ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             mask: Region {
                 item: frame.visible && frame.opacity > 0.01 ? frame : null
@@ -303,7 +303,7 @@ Scope {
             Timer { id: arm; property int seq: 0; interval: 160; onTriggered: if (win.panelHere && seq === win.armSeq) win.armed = true }
             HyprlandFocusGrab {
                 windows: [win]
-                active: win.panelHere && win.armed && !Island.previewing
+                active: win.panelHere && win.armed && !Island.keyless
                 onCleared: if (win.panelHere) Island.close()
             }
 
@@ -485,7 +485,7 @@ Scope {
             readonly property bool bannerHere: Alerts.banner !== null && screenName === (Screens.present(Alerts.bannerOn) ? Alerts.bannerOn : Screens.focusedName) && !panelHere && !grown
             Spring { id: bv; tier: win.bannerHere ? win.grow : win.shrink; epsilon: 0.001; target: win.bannerHere ? 1 : 0 }
             // A notification that matters peeks the same way (below a warning).
-            readonly property bool peekHere: Notifs.peek !== null && !Notifs.peek.discard && screenName === (Screens.present(Notifs.peekOn) ? Notifs.peekOn : Screens.focusedName) && !panelHere && !grown && !bannerHere
+            readonly property bool peekHere: Notifs.peek !== null && !Notifs.peek.discard && !Notifs.peekWaits && screenName === (Screens.present(Notifs.peekOn) ? Notifs.peekOn : Screens.focusedName) && !panelHere && !grown && !bannerHere
             Spring { id: nv; tier: win.peekHere ? win.grow : win.shrink; epsilon: 0.001; target: win.peekHere ? 1 : 0 }
             // A device connecting or going (Moments.card), below both.
             readonly property bool deviceHere: Moments.card !== null && screenName === (Screens.present(Moments.cardOn) ? Moments.cardOn : Screens.focusedName) && !panelHere && !grown && !bannerHere && !peekHere
@@ -505,7 +505,11 @@ Scope {
             // warning, a device — and an agent asking you (Moments.allowed), unless
             // Settings → fullscreen notifications is off.
             readonly property bool askingMoment: agentMoment && !!Moments.now && (!!Moments.now.sticky || !!Moments.now.asks) && (Settings.notifFullscreen || "important") !== "off"
-            readonly property bool overFilm: screenFullscreen && (cardHere || askingMoment || nv.value > 0.01 || bv.value > 0.01 || dv.value > 0.01)
+            readonly property bool voxHere: DictationLive.onStage && (DictationLive.screen === "" || DictationLive.screen === screenName)
+            readonly property bool voxWords: voxHere && DictationLive.wordsHere(screenName) && restRow.activity === "vox" && !panelHere && !grown && !cardHere
+            Spring { id: wv; tier: win.voxWords ? win.grow : win.shrink; epsilon: 0.001; target: win.voxWords ? 1 : 0 }
+            readonly property real voxWordsH: voxWords && voxWordsLoader.item ? voxWordsLoader.item.implicitHeight : 0
+            readonly property bool overFilm: screenFullscreen && (cardHere || askingMoment || voxHere || nv.value > 0.01 || bv.value > 0.01 || dv.value > 0.01 || wv.value > 0.01)
             property real pull: 0
             property bool committing: false
             property bool pushed: false
@@ -605,10 +609,10 @@ Scope {
             // Expanded with a whole message (a mail, a comment): room to read it.
             readonly property real peekH: Notifs.peekExpanded ? (peekLoader.item ? Math.min(peekLoader.item.wantH, maxWinH - 40) : 172) : 76
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
-            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? Theme.cardW : peekHere ? Theme.cardW : deviceHere ? (win.alarmCard ? Theme.cardW : Theme.cardWNarrow) : restRow.implicitWidth + 32
-            readonly property bool filmRest: screenFullscreen && !panelHere && !grown && !cardHere && !askingMoment && !Activities.micInUse && !Activities.camInUse
+            readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? Theme.cardW : peekHere ? Theme.cardW : deviceHere ? (win.alarmCard ? Theme.cardW : Theme.cardWNarrow) : voxWords ? Math.max(restRow.implicitWidth + 32, Theme.cardW) : restRow.implicitWidth + 32
+            readonly property bool filmRest: screenFullscreen && !panelHere && !grown && !cardHere && !askingMoment && !voxHere && !Activities.micInUse && !Activities.camInUse
             readonly property real cardH: alarmCard && deviceLoader.item ? Math.min(maxWinH - 40, Math.max(84, deviceLoader.item.implicitHeight)) : 84
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? cardH : filmRest ? 0 : restH
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? cardH : filmRest ? 0 : restH + voxWordsH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
@@ -784,6 +788,7 @@ Scope {
             Component { id: welcomePanel; WelcomePanel {} }
             Component { id: readPanel; ReadPanel {} }
             Component { id: meetingPanel; MeetingPanel {} }
+            Component { id: dictationPanel; DictationPanel {} }
 
             Elevation {
                 target: frame
@@ -962,7 +967,8 @@ Scope {
                     // with the notch. It took its new width at once before, so
                     // content jumped to the final layout and was clipped
                     // while the black shape caught up.
-                    Spring { id: rw; tier: restRow.implicitWidth >= rw.value ? win.grow : win.shrink; epsilon: 0.3; target: restRow.implicitWidth; Component.onCompleted: settle() }
+                    readonly property real restWant: win.voxWords && restRow.compact ? Math.max(restRow.implicitWidth, Theme.cardW - 32) : restRow.implicitWidth
+                    Spring { id: rw; tier: body.restWant >= rw.value ? win.grow : win.shrink; epsilon: 0.3; target: body.restWant; Component.onCompleted: settle() }
                     IslandRest {
                         id: restRow
                         bar: win
@@ -972,6 +978,18 @@ Scope {
                         y: Math.round((win.restH - height) / 2)
                         opacity: Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value, dv.value) * 2)
                         visible: opacity > 0.01
+                    }
+
+                    Loader {
+                        id: voxWordsLoader
+                        active: win.voxWords || wv.value > 0.01
+                        x: Math.round((body.width - width) / 2)
+                        y: win.restH - Theme.s1
+                        width: item ? item.implicitWidth : 0
+                        height: item ? item.implicitHeight : 0
+                        opacity: win.reveal(wv.value, win.voxWords) * restRow.opacity
+                        visible: opacity > 0.01
+                        sourceComponent: DictationWords {}
                     }
 
                     // ── The assistant, working with its panel closed ─────
@@ -1298,7 +1316,7 @@ Scope {
                             active: win.panelHere || pv.value > 0.01
                             focus: true
                             onStatusChanged: if (status === Loader.Error && win.panelHere) { console.warn("island: the " + win.shownPanel + " panel didn't build; closing it"); Island.close(); }
-                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel, welcome: welcomePanel, meeting: meetingPanel })[win.shownPanel] || null
+                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel, welcome: welcomePanel, meeting: meetingPanel, dictation: dictationPanel })[win.shownPanel] || null
                             onLoaded: if (item && item.inStrip !== undefined) item.inStrip = win.sectioned && !Island.canBack
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.

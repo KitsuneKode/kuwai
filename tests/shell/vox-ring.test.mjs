@@ -93,9 +93,10 @@ describe('what the pill is told', () => {
     expect(w.glide).toEqual({ stiffness: 1069, damping: 57.5 });
     expect(w.still).toBe(true);
   });
-  test('an unknown style is the ticker, the default; the scale stays within 1 to 2, no box is no target', () => {
-    expect(pillWish('fancy', 7, null)).toEqual({ style: 'ticker', textScale: 2, target: null, glide: null, still: false });
-    expect(pillWish(undefined, 1, null).style).toBe('ticker');
+  test('an unknown style is the island, the default; the scale stays within 1 to 2, no box is no target', () => {
+    expect(pillWish('fancy', 7, null)).toEqual({ style: 'island', textScale: 2, target: null, glide: null, still: false });
+    expect(pillWish(undefined, 1, null).style).toBe('island');
+    expect(pillWish('ticker', 1, null).style).toBe('ticker');
     expect(pillWish('field', 1, null).style).toBe('field');
     expect(pillWish('status', 0, null).textScale).toBe(1);
   });
@@ -105,5 +106,7 @@ describe('what the pill is told', () => {
     expect(captionWanted('status', true)).toBe(false);
     expect(captionWanted('words', false)).toBe(false);
     expect(captionWanted('ticker', false)).toBe(false);
+    expect(captionWanted('island', false)).toBe(false);
+    expect(captionWanted('island', true)).toBe(false);
   });
 });
