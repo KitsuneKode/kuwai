@@ -7,7 +7,7 @@ import Quickshell.Io
 
 Singleton {
     id: root
-    readonly property bool panel: (Island.panel !== "" && !Island.previewing) || Notifs.centerOpen || Assistant.open || Clipboard.open
+    readonly property bool panel: (Island.panel !== "" && !Island.keyless) || Notifs.centerOpen || Assistant.open || Clipboard.open
     function publish() { file.setText(panel ? "panel\n" : "\n"); }
     onPanelChanged: publish()
     Component.onCompleted: publish()

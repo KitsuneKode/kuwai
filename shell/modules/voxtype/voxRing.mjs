@@ -52,17 +52,17 @@ export function listen(s, peak, dtMs) {
     return { noise, top, glow };
 }
 
-export const PILL_STYLES = ['field', 'words', 'ticker', 'status'];
+export const PILL_STYLES = ['island', 'field', 'words', 'ticker', 'status'];
 
 export function pillWish(style, textScale, box, stroke, motion) {
     const target = box && box.address && box.win
         ? { address: box.address, monitor: box.monitor, x: box.win.x, y: box.win.y, w: box.win.w, h: box.win.h,
             seam: box.inside ? null : box.y + box.h - (stroke || 0) / 2 } : null;
     const tier = motion && motion.tier;
-    return { style: PILL_STYLES.includes(style) ? style : 'ticker', textScale: Math.max(1, Math.min(2, Number(textScale) || 1)), target,
+    return { style: PILL_STYLES.includes(style) ? style : 'island', textScale: Math.max(1, Math.min(2, Number(textScale) || 1)), target,
              glide: tier ? { stiffness: tier.stiffness, damping: tier.damping } : null, still: !!(motion && motion.still) };
 }
 
 export function captionWanted(style, inField) {
-    return style === 'words' || style === 'ticker' ? false : !inField;
+    return style === 'island' || style === 'words' || style === 'ticker' ? false : !inField;
 }

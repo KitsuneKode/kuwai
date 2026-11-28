@@ -29,6 +29,8 @@ It never touches the session: the shell's files are copied into a bubblewrap
 sandbox with its own X server (software rendering), an empty home and no
 network or session bus. Helpers are stand-ins that exit at once, so a panel
 with no scene data shows what it shows on a machine that has nothing yet.
+`/proc/meminfo` there is a calm, fixed one: the machine's own memory never
+raises a warning into a frame.
 
 ## What a scene is
 
@@ -175,9 +177,17 @@ does not fit the screen.
 
 ## The dictation pill
 
+By default the island hosts dictation and the pill stays hidden
+(`dictationPill`: `island`); the scenes `dictation/*` stage the real island
+(`IslandBar` as a window) in every state of a take, beside music, a meeting
+and a waiting notification, and the expanded view (`DictationPanel`).
+`bin/kuwai-ui-test --case voxhost` stages
+`VoxtypeHost` over a fake voxtype UI and proves a changed pill file is drawn
+after the take and never during it.
+
 The pill is shuush's (`osd/kitsune-hud/KitsuneHud.qml`), drawn in this shell
 by `VoxtypeHost`; how it shows a take is Settings → Dictation words
-(`dictationPill`: `ticker`, the default; `field`; `words`; `status`), which
+(`dictationPill`: `island`, the default; `ticker`; `field`; `words`; `status`), which
 `VoxTarget` passes on with the Text size, the target window and the spring
 its ring glides on in `$XDG_RUNTIME_DIR/kuwai/voxtype-pill.json`.
 

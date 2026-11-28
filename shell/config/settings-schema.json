@@ -983,8 +983,9 @@
     {
       "key": "dictationPill",
       "type": "string",
-      "default": "ticker",
+      "default": "island",
       "enum": [
+        "island",
         "field",
         "words",
         "ticker",
@@ -995,7 +996,7 @@
       "label": "Dictation words",
       "detail": "Where the words of a take show while you speak",
       "group": "Dictation",
-      "searchTerms": "dictation words where the words of a take show while you speak field words ticker status dictation voxtype pill",
+      "searchTerms": "dictation words where the words of a take show while you speak island field words ticker status dictation voxtype pill",
       "requires": [],
       "restartScope": "live"
     },
