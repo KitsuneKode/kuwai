@@ -27,6 +27,7 @@ Scope {
     property bool testing: false
     property var realFeed: null
     property var demoTimers: []
+    property var voxWas: null
     LazyLoader { id: galleryLoader; active: false; Gallery {} }
     property int settingsPage: 0
     property string settingsQuery: ""
@@ -89,6 +90,15 @@ Scope {
                       : { secondary: ["Repeat", () => {}], primary: ["Done", () => {}] };
             Moments.showCard({ key: "test-" + kind, kind: kind, id: Date.now(), title: title, sub: sub, act: act }, 12000);
         }
+        function meeting(state: string, text: string): void {
+            if (state === "offer") {
+                Moments.showCard({ key: "test-meeting", kind: "meeting", id: Date.now(), title: text || "Weekly sync", sub: "Record this meeting?",
+                                   act: { secondary: ["Not now", () => {}], primary: ["Record", () => {}] } }, 12000);
+                return;
+            }
+            if (state === "both" && hook.voxWas === null) { hook.voxWas = Activities.voxState; Activities.voxState = "recording"; Activities.voxSince = Date.now(); }
+            Meeting.stage(state === "both" ? "recording" : state, text);
+        }
         function timer(seconds: int, label: string): void { Timers.start(seconds, label); }
         function demoTimer(seconds: int, label: string): void {
             Timers.start(seconds, label);
@@ -124,6 +134,8 @@ Scope {
             if (hook.testing) { Kittymux.feedPinned = false; Kittymux.feed = hook.realFeed; hook.testing = false; }
             for (const t of Timers.timers.slice()) if (/^test/i.test(t.label) || hook.demoTimers.indexOf(t.id) >= 0) Timers.cancel(t.id);
             hook.demoTimers = [];
+            if (Meeting.staged) Meeting.stage("off");
+            if (hook.voxWas !== null) { Activities.voxState = hook.voxWas; hook.voxWas = null; }
         }
     }
 }

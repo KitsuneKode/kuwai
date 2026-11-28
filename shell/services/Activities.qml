@@ -175,7 +175,7 @@ Singleton {
         return raw.replace(/^Monitor of /i, "");
     })
     // Dictation already has its own live activity — don't also flash the privacy dot.
-    readonly property bool micInUse: !voxListening && micUsers.length > 0
+    readonly property bool micInUse: Meeting.active || (!voxListening && micUsers.length > 0)
     readonly property var mic: Pipewire.defaultAudioSource
     // Default input label (USB Boya, built-in, …). Prefer voxtype's capture device while dictating.
     readonly property string micName: {
@@ -187,6 +187,7 @@ Singleton {
         return cleanMicLabel(mic);
     }
     readonly property string micUseSummary: {
+        if (Meeting.active) return (Meeting.paused ? "the paused meeting" : "the meeting recording") + (voxListening ? " and dictation" : "");
         if (voxListening) return micName ? "Dictating · " + micName : "Dictating";
         if (!micInUse) return "";
         const who = [...new Set(micUsers)].join(", ");

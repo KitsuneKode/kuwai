@@ -1,0 +1,78 @@
+#!/usr/bin/python3
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent / "meeting-fixtures"
+RUN = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "voxtype"
+RUN.mkdir(parents=True, exist_ok=True)
+LOG = RUN.parent / "fake-voxtype.log"
+ID = "a32baa9b-b9df-4051-8830-b422d21495ed"
+args = sys.argv[1:]
+with LOG.open("a") as f:
+    f.write(json.dumps(args, separators=(",", ":")) + "\n")
+
+
+def say(line):
+    sys.stdout.write(line.rstrip("\n") + "\n")
+    sys.stdout.flush()
+
+
+def cmd(word):
+    (RUN / "fake-cmd").write_text(word)
+
+
+if args[:3] == ["config", "get", "meeting.enabled"]:
+    say("true")
+elif args[:2] == ["meeting", "start"]:
+    (RUN / "meeting_state").write_text("recording\n" + ID)
+    sys.stderr.write("Note: tell the others\n")
+elif args[:2] in (["meeting", "pause"], ["meeting", "resume"], ["meeting", "stop"]):
+    cmd(args[1])
+    state = {"pause": "paused", "resume": "recording", "stop": "idle"}[args[1]]
+    (RUN / "meeting_state").write_text(state if state == "idle" else state + "\n" + ID)
+elif args[:2] == ["meeting", "watch"]:
+    feed = [l for l in (HERE / "feed.ndjson").read_text().splitlines() if l.strip()]
+    for line in feed[:8]:
+        say(line)
+    seen = ""
+    while True:
+        for _ in range(3):
+            say(json.dumps({"event": "levels", "meeting_id": ID, "t_ms": 1000, "mic": -20.0, "loopback": None}))
+        word = (RUN / "fake-cmd").read_text() if (RUN / "fake-cmd").exists() else ""
+        if word and word != seen:
+            seen = word
+            if word == "pause":
+                say(json.dumps({"event": "status", "status": "paused", "recording_notice": False}))
+            elif word == "resume":
+                say(json.dumps({"event": "status", "status": "recording", "recording_notice": False}))
+            elif word == "stop":
+                for line in feed[12:]:
+                    say(line)
+        time.sleep(0.1)
+elif args[:2] == ["meeting", "list"]:
+    gone = (RUN / "deleted").read_text().split() if (RUN / "deleted").exists() else []
+    rows = [m for m in json.loads((HERE / "list.json").read_text()) if m["id"] not in gone]
+    say(json.dumps(rows))
+elif args[:2] == ["meeting", "show"]:
+    say((HERE / "show.json").read_text())
+elif args[:2] == ["meeting", "delete"]:
+    with (RUN / "deleted").open("a") as f:
+        f.write(args[2] + "\n")
+elif args[:2] == ["meeting", "export"]:
+    text = "# Release sync\n\n**You:** Okay, let's start the release sync.\n"
+    if "--output" in args:
+        Path(args[args.index("--output") + 1]).write_text(text)
+    else:
+        sys.stdout.write(text)
+elif args[:2] == ["meeting", "notice"]:
+    if "--ack" not in args:
+        say(json.dumps({"notice": "Laws on recording differ by place. Let the others know.", "announce_recording": False, "acknowledged": False, "acknowledged_at": None}))
+elif args[:2] == ["meeting", "suggest"]:
+    say("Meeting detection in the daemon: off (default off outside Omarchy; set [meeting.detect] enabled = true)")
+    say("would prompt: Record \"Budget review\"? (Microsoft Teams)")
+else:
+    sys.stderr.write("fake voxtype: unknown " + " ".join(args) + "\n")
+    sys.exit(2)

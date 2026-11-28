@@ -146,12 +146,12 @@ Scope {
         osds = ({});
         syncOsds();
         const picker = make("EnginePicker.qml");
-        const meeting = make("MeetingControls.qml");
         // Their panels take the keyboard; an island panel holding it would
         // leave them unfocused, so the island steps aside when one opens.
-        for (const p of [picker, meeting]) if (p) p.openChanged.connect(() => { if (p.open && Island.panel) Island.close(); });
-        parts = [state, audio, style, picker, meeting].filter(p => p);
+        if (picker) picker.openChanged.connect(() => { if (picker.open && Island.panel) Island.close(); });
+        parts = [state, audio, style, picker].filter(p => p);
         hosting = true;
+        syncMeeting();
         console.info("voxtype host: drawing voxtype's UI in this shell");
     }
     // A monitor plugged in, out, or back from power-off (it returns as a new
@@ -164,8 +164,24 @@ Scope {
         target: Quickshell
         function onScreensChanged() { if (host.hosting) screensSettle.restart(); }
     }
+    property var meetingView: null
+    function syncMeeting() {
+        const want = hosting && !Settings.meetingsInIsland;
+        if (want && !meetingView) {
+            meetingView = make("MeetingControls.qml");
+            if (meetingView) meetingView.openChanged.connect(() => { if (host.meetingView && host.meetingView.open && Island.panel) Island.close(); });
+        } else if (!want && meetingView) {
+            meetingView.destroy();
+            meetingView = null;
+        }
+    }
+    Connections {
+        target: Settings
+        function onMeetingsInIslandChanged() { host.syncMeeting(); }
+    }
     function teardown() {
         screensSettle.stop();
+        if (meetingView) { meetingView.destroy(); meetingView = null; }
         for (const n in osds) osds[n].destroy();
         osds = ({});
         for (const p of parts) p.destroy();

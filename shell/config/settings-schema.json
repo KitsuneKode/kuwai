@@ -957,6 +957,30 @@
       "restartScope": "live"
     },
     {
+      "key": "meetingsInIsland",
+      "type": "boolean",
+      "default": true,
+      "section": "island",
+      "label": "Meetings in the island",
+      "detail": "A meeting voxtype records shows in the island: its time, its level and its latest line; click it for the transcript, speakers and notes",
+      "group": "Meetings",
+      "searchTerms": "meetings in the island a meeting voxtype records shows in the island: its time, its level and its latest line; click it for the transcript, speakers and notes  meetings",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
+      "key": "meetingOffers",
+      "type": "boolean",
+      "default": true,
+      "section": "island",
+      "label": "Offer to record calls",
+      "detail": "When a calendar event with a call link starts, or a call takes the microphone, the island asks once; it never records by itself",
+      "group": "Meetings",
+      "searchTerms": "offer to record calls when a calendar event with a call link starts, or a call takes the microphone, the island asks once; it never records by itself  meetings",
+      "requires": [],
+      "restartScope": "live"
+    },
+    {
       "key": "quickPrimary",
       "type": "string",
       "default": "caffeine",

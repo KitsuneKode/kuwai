@@ -17,6 +17,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "meeting.mjs" as MeetingLogic
 
 Singleton {
     id: root
@@ -104,6 +105,7 @@ Singleton {
             const name = head.split(";")[0].toUpperCase();
             if (name === "SUMMARY") ev.title = icsText(value);
             else if (name === "LOCATION") ev.location = icsText(value);
+            else if (name === "URL" || name === "DESCRIPTION" || name === "X-GOOGLE-CONFERENCE" || name === "X-MICROSOFT-SKYPETEAMSMEETINGURL") ev.links = (ev.links || "") + " " + value.replace(/\\n/gi, " ");
             else if (name === "DTSTART") ev.start = parseTime(value);
             else if (name === "DTEND") ev.end = parseTime(value);
             else if (name === "RRULE") ev.rrule = value;
@@ -117,9 +119,10 @@ Singleton {
         function expand(e, lo, hi, into) {
             if (!e.start || e.cancelled) return;
             const dur = e.end ? Math.max(0, e.end.ms - e.start.ms) : (e.start.allDay ? 86400000 : 3600000);
+            const call = MeetingLogic.callLink((e.location || "") + " " + (e.links || ""));
             const push = s => {
                 if (s + dur < lo || s > hi || e.exdates.indexOf(s) >= 0) return;
-                into.push({ start: s, end: s + dur, title: e.title || "(No title)", location: e.location || "", allDay: e.start.allDay, private: !!e.private });
+                into.push({ start: s, end: s + dur, title: e.title || "(No title)", location: e.location || "", allDay: e.start.allDay, private: !!e.private, call: call });
             };
             if (!e.rrule) { push(e.start.ms); return; }
             const r = {};

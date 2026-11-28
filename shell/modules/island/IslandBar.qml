@@ -490,7 +490,7 @@ Scope {
             // A device connecting or going (Moments.card), below both.
             readonly property bool deviceHere: Moments.card !== null && screenName === (Screens.present(Moments.cardOn) ? Moments.cardOn : Screens.focusedName) && !panelHere && !grown && !bannerHere && !peekHere
             // An alarm, a reminder or a timer done (AlarmCard) rides the device card's place.
-            readonly property bool alarmCard: !!Moments.card && ["alarm", "reminder", "timer"].indexOf(Moments.card.kind || "") >= 0
+            readonly property bool alarmCard: !!Moments.card && ["alarm", "reminder", "timer", "meeting"].indexOf(Moments.card.kind || "") >= 0
             Spring { id: dv; tier: win.deviceHere ? win.grow : win.shrink; epsilon: 0.001; target: win.deviceHere ? 1 : 0 }
 
             // ── Pushing a card back ──────────────────────────────────────
@@ -607,7 +607,8 @@ Scope {
             readonly property real bannerH: bannerHere && alertLoader.item ? alertLoader.item.implicitHeight : 72
             readonly property real targetW: panelHere ? panelSize.width : grown ? hoverSize.width : bannerHere ? Theme.cardW : peekHere ? Theme.cardW : deviceHere ? (win.alarmCard ? Theme.cardW : Theme.cardWNarrow) : restRow.implicitWidth + 32
             readonly property bool filmRest: screenFullscreen && !panelHere && !grown && !cardHere && !askingMoment && !Activities.micInUse && !Activities.camInUse
-            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? 84 : filmRest ? 0 : restH
+            readonly property real cardH: alarmCard && deviceLoader.item ? Math.min(maxWinH - 40, Math.max(84, deviceLoader.item.implicitHeight)) : 84
+            readonly property real targetH: panelHere ? panelSize.height : grown ? hoverSize.height : bannerHere ? bannerH : peekHere ? peekH : deviceHere ? cardH : filmRest ? 0 : restH
             // Published so surfaces that grow out of the island (the HUD, the
             // clipboard) start from the shape actually on screen: rest, banner,
             // hover or panel. Changes with the state, not per frame.
@@ -782,6 +783,7 @@ Scope {
             Component { id: centerPanel; CenterPanel {} }
             Component { id: welcomePanel; WelcomePanel {} }
             Component { id: readPanel; ReadPanel {} }
+            Component { id: meetingPanel; MeetingPanel {} }
 
             Elevation {
                 target: frame
@@ -1096,12 +1098,12 @@ Scope {
                         active: win.deviceHere || dv.value > 0.01
                         x: Math.round((body.width - (win.alarmCard ? Theme.cardW : Theme.cardWNarrow)) / 2)
                         readonly property real k: win.reveal(dv.value, win.deviceHere)
-                        opacity: k * win.fitIn(win.alarmCard ? Theme.cardW : Theme.cardWNarrow, 84).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
+                        opacity: k * win.fitIn(win.alarmCard ? Theme.cardW : Theme.cardWNarrow, win.cardH).shown * Math.max(0, 1 - Math.max(m.value, pv.value, bv.value, nv.value) * 3)
                         // Reduce motion: the shape jumps, the content fades (fades only).
                         Behavior on opacity { enabled: Theme.reduceMotion; NumberAnimation { duration: Theme.microMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
                         visible: opacity > 0.01
                         property var keep: null
-                        readonly property bool alarmKind: { const c = Moments.card || keep; return !!c && ["alarm", "reminder", "timer"].indexOf(c.kind || "") >= 0; }
+                        readonly property bool alarmKind: { const c = Moments.card || keep; return !!c && ["alarm", "reminder", "timer", "meeting"].indexOf(c.kind || "") >= 0; }
                         sourceComponent: alarmKind ? alarmComp : deviceComp
                         Component { id: deviceComp; DeviceCard { item: Moments.card || deviceLoader.keep; bar: win } }
                         Component { id: alarmComp; AlarmCard { item: Moments.card || deviceLoader.keep; bar: win } }
@@ -1296,7 +1298,7 @@ Scope {
                             active: win.panelHere || pv.value > 0.01
                             focus: true
                             onStatusChanged: if (status === Loader.Error && win.panelHere) { console.warn("island: the " + win.shownPanel + " panel didn't build; closing it"); Island.close(); }
-                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel, welcome: welcomePanel })[win.shownPanel] || null
+                            sourceComponent: ({ activities: activitiesPanel, calendar: calendarPanel, power: powerPanel, launcher: launcherPanel, settings: settingsPanel, system: systemPanel, theme: themePanel, keys: keysPanel, switcher: switcherPanel, updates: updatesPanel, media: mediaPanel, agents: agentsPanel, usage: usagePanel, read: readPanel, cleanup: cleanupPanel, notifications: centerPanel, controls: centerPanel, welcome: welcomePanel, meeting: meetingPanel })[win.shownPanel] || null
                             onLoaded: if (item && item.inStrip !== undefined) item.inStrip = win.sectioned && !Island.canBack
                         }
                         // Right click (anywhere a control doesn't take it) or the mouse's back button: back.

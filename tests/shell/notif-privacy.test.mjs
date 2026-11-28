@@ -50,6 +50,7 @@ describe('mail and texts are messages too', () => {
 
 import { eventTitle } from '../../shell/services/notifPrivacy.mjs';
 import { functions } from '../helpers/qml.mjs';
+import * as MeetingLogic from '../../shell/services/meeting.mjs';
 
 describe('the next event on the lock screen and the saver', () => {
   const standup = { title: 'Standup', start: 0, private: false };
@@ -85,7 +86,7 @@ describe('the next event on the lock screen and the saver', () => {
 
 describe('which event the lock names', () => {
   const ics = (extra) => ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART:20261127T140000', 'DTEND:20261127T150000', 'SUMMARY:Review'].concat(extra, ['END:VEVENT', 'END:VCALENDAR']).join('\n');
-  const cal = () => functions('shell/services/Calendar.qml', ['parse', 'parseTime', 'icsText', 'nextToday'], { events: [] });
+  const cal = () => functions('shell/services/Calendar.qml', ['parse', 'parseTime', 'icsText', 'nextToday'], { events: [], MeetingLogic });
   test('CLASS:PRIVATE and CONFIDENTIAL are private; PUBLIC and none are not', () => {
     const c = cal();
     const at = Date.now;

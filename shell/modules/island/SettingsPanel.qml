@@ -952,6 +952,23 @@ FocusScope {
                 }
             }
             SettingsGroup {
+                title: "Meetings"
+                SettingsRow {
+                    key: "meetingsInIsland"
+                    label: "Meetings in the island"; detail: Settings.meetingsInIsland ? "A meeting voxtype records shows in the island: its time, its level and its latest line; click it for the transcript, speakers and notes" : "Voxtype's own meeting window shows meetings; the island keeps only the live activity"
+                    Toggle { on: Settings.meetingsInIsland; label: "Meetings in the island"; onToggled: Settings.set("meetingsInIsland", !Settings.meetingsInIsland) }
+                }
+                SettingsRow {
+                    key: "meetingOffers"
+                    label: "Offer to record calls"; detail: "When a calendar event with a call link starts, or a call takes the microphone, the island asks once; it never records by itself"
+                    Toggle { on: Settings.meetingOffers; label: "Offer to record calls"; onToggled: Settings.set("meetingOffers", !Settings.meetingOffers) }
+                }
+                SettingsRow {
+                    label: "Past meetings"; detail: "Their transcripts, summaries and action items, to read, copy, save or delete"
+                    Button { height: Theme.sp(30); size: Theme.tSub; text: "Open"; onClicked: { Meeting.startView = "past"; Island.open("meeting", Island.screen, "pointer", "island"); } }
+                }
+            }
+            SettingsGroup {
                 title: "Idle projects"
                 SettingsRow {
                     key: "sweepMark"

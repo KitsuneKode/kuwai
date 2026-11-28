@@ -16752,6 +16752,1894 @@
      ]
     ]
    ]
+  },
+  {
+   "id": "meeting/offer",
+   "name": "meeting",
+   "panel": "AlarmCard",
+   "kind": "typical",
+   "props": {
+    "item": {
+     "key": "meeting-offer",
+     "kind": "meeting",
+     "id": 1,
+     "title": "Weekly sync",
+     "sub": "Record this meeting?",
+     "act": {
+      "secondary": [
+       "Not now"
+      ],
+      "primary": [
+       "Record"
+      ]
+     }
+    },
+    "bar": {}
+   }
+  },
+  {
+   "id": "meeting/offer-worst",
+   "name": "meeting",
+   "panel": "AlarmCard",
+   "kind": "worst",
+   "props": {
+    "item": {
+     "key": "meeting-offer",
+     "kind": "meeting",
+     "id": 2,
+     "title": "Quarterly business review with the extended leadership team and partners",
+     "sub": "Record this meeting?",
+     "act": {
+      "secondary": [
+       "Not now"
+      ],
+      "primary": [
+       "Record"
+      ]
+     }
+    },
+    "bar": {}
+   }
+  },
+  {
+   "id": "meeting/new-machine",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "off"
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/no-voxtype",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "missing"
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/restart",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "restart"
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/idle",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/recording",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ],
+      "notice": true,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ],
+    [
+     "Meeting",
+     "noticeText",
+     "Laws on recording and transcribing conversations differ by place, and some require everyone on the call to agree. Voxtype doesn't tell the other people for you, so let them know you're using a meeting assistant."
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/starting",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/paused",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "paused",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/dictating",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ],
+    [
+     "Activities",
+     "voxState",
+     "recording"
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/silent-mic",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "Your microphone has sound, but nothing you say is transcribed",
+      "problemCode": "track_not_transcribed",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/sharing",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ],
+    [
+     "Notifs",
+     "shareKnown",
+     true
+    ],
+    [
+     "Notifs",
+     "dndMute",
+     true
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/long-lines",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Quarterly business review with the extended leadership team and two partner agencies",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       },
+       {
+        "id": 5,
+        "start": 41000,
+        "end": 44000,
+        "text": "So the thing I keep coming back to is that the restart banner stays visible after the daemon restarts, and it stays there even after you've dismissed it twice, which on a laptop that sleeps a lot means you see it every single morning, and nobody on the support channel could tell me why it happens only with the Omarchy package and not with the AUR one.",
+        "source": "loopback",
+        "speakerId": "Remote 3",
+        "label": "Dr. Anneliese Grünwald-Montgomery (Partner Success, EMEA)",
+        "who": "Dr. Anneliese Grünwald-Montgomery (Partner Success, EMEA)",
+        "you": false
+       },
+       {
+        "id": 6,
+        "start": 52000,
+        "end": 55000,
+        "text": "https://github.com/peteonrails/voxtype/issues/1137#issuecomment-2938471029384710293847 is the one",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/ended",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "idle",
+      "id": "",
+      "title": "",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": {
+       "text": "Release sync for 1.2.1. The build passed on every variant; one known issue goes in the release notes.",
+       "points": [],
+       "decisions": [
+        "Ship with the restart banner as a known issue"
+       ],
+       "actions": [
+        {
+         "text": "Draft the release notes",
+         "who": "Dana",
+         "done": false
+        },
+        {
+         "text": "Tag the release",
+         "who": "You",
+         "done": false
+        }
+       ],
+       "model": "claude"
+      },
+      "summaryFor": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "lastTitle": "Release sync",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/summarizing",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "idle",
+      "id": "",
+      "title": "",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "lastTitle": "Release sync",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "view": "now"
+   }
+  },
+  {
+   "id": "meeting/list-empty",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "listLoaded",
+     true
+    ],
+    [
+     "Meeting",
+     "meetings",
+     []
+    ]
+   ],
+   "props": {
+    "view": "past"
+   }
+  },
+  {
+   "id": "meeting/list-loading",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "listLoaded",
+     false
+    ],
+    [
+     "Meeting",
+     "listBusy",
+     true
+    ]
+   ],
+   "props": {
+    "view": "past"
+   }
+  },
+  {
+   "id": "meeting/list-failed",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "listLoaded",
+     false
+    ],
+    [
+     "Meeting",
+     "listFailed",
+     true
+    ]
+   ],
+   "props": {
+    "view": "past"
+   }
+  },
+  {
+   "id": "meeting/list-full",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "listLoaded",
+     true
+    ],
+    [
+     "Meeting",
+     "meetings",
+     [
+      {
+       "id": "00000001-0000-4000-8000-000000000001",
+       "title": "Release sync",
+       "startedAt": "@now-3600000ms",
+       "endedAt": 0,
+       "secs": 1868,
+       "status": "completed",
+       "speakers": 3,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000002-0000-4000-8000-000000000002",
+       "title": "Design review: the island's panels",
+       "startedAt": "@now-90000000ms",
+       "endedAt": 0,
+       "secs": 2700,
+       "status": "completed",
+       "speakers": 4,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000003-0000-4000-8000-000000000003",
+       "title": "1:1 with Dana",
+       "startedAt": "@now-176400000ms",
+       "endedAt": 0,
+       "secs": 1500,
+       "status": "completed",
+       "speakers": 2,
+       "hasSummary": false,
+       "url": ""
+      },
+      {
+       "id": "00000004-0000-4000-8000-000000000004",
+       "title": "Standup",
+       "startedAt": "@now-262800000ms",
+       "endedAt": 0,
+       "secs": 540,
+       "status": "completed",
+       "speakers": 5,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000005-0000-4000-8000-000000000005",
+       "title": "",
+       "startedAt": "@now-349200000ms",
+       "endedAt": 0,
+       "secs": 40,
+       "status": "interrupted",
+       "speakers": 1,
+       "hasSummary": false,
+       "url": ""
+      },
+      {
+       "id": "00000006-0000-4000-8000-000000000006",
+       "title": "Customer call: Acme onboarding",
+       "startedAt": "@now-522000000ms",
+       "endedAt": 0,
+       "secs": 3300,
+       "status": "completed",
+       "speakers": 3,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000007-0000-4000-8000-000000000007",
+       "title": "Retro",
+       "startedAt": "@now-694800000ms",
+       "endedAt": 0,
+       "secs": 2400,
+       "status": "completed",
+       "speakers": 6,
+       "hasSummary": false,
+       "url": ""
+      },
+      {
+       "id": "00000008-0000-4000-8000-000000000008",
+       "title": "Planning",
+       "startedAt": "@now-781200000ms",
+       "endedAt": 0,
+       "secs": 4000,
+       "status": "completed",
+       "speakers": 5,
+       "hasSummary": true,
+       "url": ""
+      }
+     ]
+    ]
+   ],
+   "props": {
+    "view": "past"
+   }
+  },
+  {
+   "id": "meeting/list-worst",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "worst",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "listLoaded",
+     true
+    ],
+    [
+     "Meeting",
+     "meetings",
+     [
+      {
+       "id": "00000001-0000-4000-8000-000000000001",
+       "title": "Quarterly business review with the extended leadership team and two partner agencies, recorded for the people who couldn't make it",
+       "startedAt": "@now-3600000ms",
+       "endedAt": 0,
+       "secs": 10800,
+       "status": "completed",
+       "speakers": 12,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000002-0000-4000-8000-000000000002",
+       "title": "Ünïcödé — 会議 · Réunion d'équipe hebdomadaire",
+       "startedAt": "@now-90000000ms",
+       "endedAt": 0,
+       "secs": 61,
+       "status": "completed",
+       "speakers": 2,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000003-0000-4000-8000-000000000003",
+       "title": "",
+       "startedAt": "@now-176400000ms",
+       "endedAt": 0,
+       "secs": 0,
+       "status": "interrupted",
+       "speakers": 0,
+       "hasSummary": false,
+       "url": ""
+      }
+     ]
+    ]
+   ],
+   "props": {
+    "view": "past"
+   }
+  },
+  {
+   "id": "meeting/detail",
+   "name": "meeting",
+   "panel": "MeetingPanel",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "listLoaded",
+     true
+    ],
+    [
+     "Meeting",
+     "meetings",
+     [
+      {
+       "id": "00000001-0000-4000-8000-000000000001",
+       "title": "Release sync",
+       "startedAt": "@now-3600000ms",
+       "endedAt": 0,
+       "secs": 1868,
+       "status": "completed",
+       "speakers": 3,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000002-0000-4000-8000-000000000002",
+       "title": "Design review: the island's panels",
+       "startedAt": "@now-90000000ms",
+       "endedAt": 0,
+       "secs": 2700,
+       "status": "completed",
+       "speakers": 4,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000003-0000-4000-8000-000000000003",
+       "title": "1:1 with Dana",
+       "startedAt": "@now-176400000ms",
+       "endedAt": 0,
+       "secs": 1500,
+       "status": "completed",
+       "speakers": 2,
+       "hasSummary": false,
+       "url": ""
+      },
+      {
+       "id": "00000004-0000-4000-8000-000000000004",
+       "title": "Standup",
+       "startedAt": "@now-262800000ms",
+       "endedAt": 0,
+       "secs": 540,
+       "status": "completed",
+       "speakers": 5,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000005-0000-4000-8000-000000000005",
+       "title": "",
+       "startedAt": "@now-349200000ms",
+       "endedAt": 0,
+       "secs": 40,
+       "status": "interrupted",
+       "speakers": 1,
+       "hasSummary": false,
+       "url": ""
+      },
+      {
+       "id": "00000006-0000-4000-8000-000000000006",
+       "title": "Customer call: Acme onboarding",
+       "startedAt": "@now-522000000ms",
+       "endedAt": 0,
+       "secs": 3300,
+       "status": "completed",
+       "speakers": 3,
+       "hasSummary": true,
+       "url": ""
+      },
+      {
+       "id": "00000007-0000-4000-8000-000000000007",
+       "title": "Retro",
+       "startedAt": "@now-694800000ms",
+       "endedAt": 0,
+       "secs": 2400,
+       "status": "completed",
+       "speakers": 6,
+       "hasSummary": false,
+       "url": ""
+      },
+      {
+       "id": "00000008-0000-4000-8000-000000000008",
+       "title": "Planning",
+       "startedAt": "@now-781200000ms",
+       "endedAt": 0,
+       "secs": 4000,
+       "status": "completed",
+       "speakers": 5,
+       "hasSummary": true,
+       "url": ""
+      }
+     ]
+    ],
+    [
+     "Meeting",
+     "detailId",
+     "00000001-0000-4000-8000-000000000001"
+    ],
+    [
+     "Meeting",
+     "detail",
+     {
+      "id": "00000001-0000-4000-8000-000000000001",
+      "title": "Release sync",
+      "startedAt": "@now-3600000ms",
+      "secs": 1868,
+      "status": "completed",
+      "summary": {
+       "text": "Release sync for 1.2.1. The build passed on every variant; one known issue goes in the release notes.",
+       "points": [],
+       "decisions": [
+        "Ship with the restart banner as a known issue"
+       ],
+       "actions": [
+        {
+         "text": "Draft the release notes",
+         "who": "Dana",
+         "done": false
+        },
+        {
+         "text": "Tag the release",
+         "who": "You",
+         "done": false
+        }
+       ],
+       "model": "claude"
+      },
+      "notes": "Tag at 10 tomorrow.",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       }
+      ]
+     }
+    ]
+   ],
+   "props": {
+    "view": "past"
+   }
+  },
+  {
+   "id": "meeting/mark",
+   "name": "meeting",
+   "panel": "MeetingMark",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Sounds good.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "line": true,
+    "bars": true,
+    "moving": false
+   }
+  },
+  {
+   "id": "meeting/mark-paused",
+   "name": "meeting",
+   "panel": "MeetingMark",
+   "kind": "typical",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "paused",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Sounds good.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "line": true,
+    "moving": false
+   }
+  },
+  {
+   "id": "meeting/mark-worst",
+   "name": "meeting",
+   "panel": "MeetingMark",
+   "kind": "worst",
+   "set": [
+    [
+     "Meeting",
+     "staged",
+     true
+    ],
+    [
+     "Meeting",
+     "enabledState",
+     "on"
+    ],
+    [
+     "Meeting",
+     "micLevel",
+     0.62
+    ],
+    [
+     "Meeting",
+     "callLevel",
+     0.35
+    ],
+    [
+     "Meeting",
+     "feed",
+     {
+      "status": "recording",
+      "id": "a32baa9b-b9df-4051-8830-b422d21495ed",
+      "title": "Release sync",
+      "startedAt": "@now-724000ms",
+      "segments": [
+       {
+        "id": 0,
+        "start": 1410,
+        "end": 4410,
+        "text": "Okay, let's start the release sync.",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 1,
+        "start": 10320,
+        "end": 13320,
+        "text": "Great! I tested the Omarchy package this morning.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false
+       },
+       {
+        "id": 2,
+        "start": 18150,
+        "end": 21150,
+        "text": "Good. Are there any blockers left before we tag it?",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       },
+       {
+        "id": 3,
+        "start": 23040,
+        "end": 26040,
+        "text": "Only one. The restart banner stays visible after the daemon restarts.",
+        "source": "loopback",
+        "speakerId": "Remote 1",
+        "label": "Dana",
+        "who": "Dana",
+        "you": false,
+        "note": {
+         "text": "",
+         "highlight": true
+        }
+       },
+       {
+        "id": 4,
+        "start": 31000,
+        "end": 34000,
+        "text": "I can write that up for the notes.",
+        "source": "loopback",
+        "speakerId": "Remote 2",
+        "label": "Priya",
+        "who": "Priya",
+        "you": false
+       },
+       {
+        "id": 5,
+        "start": 41000,
+        "end": 44000,
+        "text": "So the thing I keep coming back to is that the restart banner stays visible after the daemon restarts, and it stays there even after you've dismissed it twice, which on a laptop that sleeps a lot means you see it every single morning, and nobody on the support channel could tell me why it happens only with the Omarchy package and not with the AUR one.",
+        "source": "loopback",
+        "speakerId": "Remote 3",
+        "label": "Dr. Anneliese Grünwald-Montgomery (Partner Success, EMEA)",
+        "who": "Dr. Anneliese Grünwald-Montgomery (Partner Success, EMEA)",
+        "you": false
+       },
+       {
+        "id": 6,
+        "start": 52000,
+        "end": 55000,
+        "text": "https://github.com/peteonrails/voxtype/issues/1137#issuecomment-2938471029384710293847 is the one",
+        "source": "microphone",
+        "speakerId": "You",
+        "label": "",
+        "who": "You",
+        "you": true
+       }
+      ],
+      "notice": false,
+      "announces": false,
+      "announcement": null,
+      "echoCancel": "webrtc",
+      "mic": -1,
+      "loopback": -1,
+      "levelAt": 0,
+      "summary": null,
+      "summaryFor": "",
+      "summarizing": "",
+      "problem": "",
+      "problemCode": "",
+      "lastId": "",
+      "lastTitle": "",
+      "lastStartedAt": 0,
+      "endedAt": 0
+     }
+    ]
+   ],
+   "props": {
+    "line": true,
+    "bars": true,
+    "moving": false
+   }
   }
  ]
 }
