@@ -45,9 +45,12 @@ Left:
       per-monitor wallpapers on two screens, Docker prune from Caches.
 - [x] A greetd login in the fresh VM: tests/fresh/vm.sh logs in through greetd
       and the kuwai greeter, password from a guest-only file (09bb818, 96/96).
-- [ ] After release: sweep's island panel (option A, thin), kitty pane-title
-      default (kittymux), notification centre in the island look, read
-      hotwatch captures if the shell gets busy again.
+- [x] Notification centre in the island look (6951884); kittymux's pxbar padding
+      read and the pxcard setting (kittymux #62, upgraded); Restart and Shut Down
+      no longer crash Hyprland (04915c6, fresh VM 101/101 with a SIGTERM logout).
+- [ ] Sweep's island panel (option A, thin; its look comes from the brand thread,
+      PR #18), kitty pane-title default (kittymux), read hotwatch captures if the
+      shell gets busy again.
 
 ## STATE (2026-11-27, late) — what is left, where UX falls short
 
