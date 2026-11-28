@@ -173,6 +173,37 @@ The screensaver is not a scene. `bin/kuwai-ui-test --case saver --backend x11
 (`clock-full.png`, `clock-bare.png`, `clock-long.png`) and fails when the face
 does not fit the screen.
 
+## The dictation pill
+
+The pill is shuush's (`osd/kitsune-hud/KitsuneHud.qml`), drawn in this shell
+by `VoxtypeHost`; how it shows a take is Settings → Dictation words
+(`dictationPill`: `ticker`, the default; `field`; `words`; `status`), which
+`VoxTarget` passes on with the Text size, the target window and the spring
+its ring glides on in `$XDG_RUNTIME_DIR/kuwai/voxtype-pill.json`.
+
+```sh
+bin/kuwai-rehearse --pill ~/Projects/ai-agents/shussh/osd/kitsune-hud/KitsuneHud.qml --out DIR
+```
+
+stages that file (`tests/ui/dictation.qml`, `bin/kuwai-ui-test --case
+dictation`) over a painted screen with this shell's own ring and caption, in a
+T3-like composer, a terminal, a maximised and a fullscreen window, at seven
+moments of a take (quiet, loud, a two-minute take, transcribing, delivered,
+cancelled, a mic that sends nothing), text at 1x and 2x. Out come one sheet per
+style (`sheet-words.png`, `sheet-ticker.png`, `sheet-status.png`) and
+`side-by-side.png` with today's beside them; a cell whose pill lies over the
+field says so. `hyprctl` there is a stand-in that answers with the staged
+window. Nothing is judged: it is for choosing.
+
+The ticker gets two more sheets (`--ticker` makes only these):
+`sheet-ticker-states.png`, at text 1x and 2x, in a composer loud and too
+quiet, a window moving mid-take (a frame mid-glide and one settled), a
+terminal's long take, a maximised window, transcribing, delivered and
+cancelled; and `sheet-ticker-seats.png`, where it sits inside a maximised or
+fullscreen window (the centre of the bottom edge, the bottom-left or the
+bottom-right corner) over T3 and a maximised terminal. A cell whose pill lies
+over the composer or the terminal's prompt says so.
+
 ## The known list
 
 `tests/ui/rehearsal-known.txt` holds faults that exist and are not fixed yet.

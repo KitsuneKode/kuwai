@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { listen, logical, place, quiet } from '../../shell/modules/voxtype/voxRing.mjs';
+import { captionWanted, listen, logical, pillWish, place, quiet } from '../../shell/modules/voxtype/voxRing.mjs';
 
 const look = { border: 2, rounding: 18, gap: 3, stroke: 3 };
 const dp = { id: 0, name: 'DP-3', x: 1920, y: 0, width: 2560, height: 1440, scale: 1, transform: 0, reserved: [0, 36, 0, 0],
@@ -75,5 +75,35 @@ describe('the voice on the ring', () => {
     s = listen(s, 0.001, 45);
     expect(up).toBeGreaterThan(0.5);
     expect(s.glow).toBeGreaterThan(up * 0.7);
+  });
+});
+
+describe('what the pill is told', () => {
+  test('the style, the text size and the target window in its monitor\'s pixels', () => {
+    const b = place('0xa', [win()], [dp], look);
+    expect(pillWish('ticker', 1.2, b, 3)).toEqual({ style: 'ticker', textScale: 1.2,
+      target: { address: '0xa', monitor: 'DP-3', x: 17, y: 48, w: 2526, h: 1380, seam: 1434.5 }, glide: null, still: false });
+  });
+  test('fullscreen: the target is the whole screen', () => {
+    const b = place('0xa', [win({ fullscreen: 2, at: [1920, 0], size: [2560, 1440] })], [dp], look);
+    expect(pillWish('ticker', 1, b, 3).target).toMatchObject({ x: 0, y: 0, w: 2560, h: 1440, seam: null });
+  });
+  test('the ring\'s spring and reduced motion go with it, so the pill glides as the ring does', () => {
+    const w = pillWish('ticker', 1, null, 3, { tier: { stiffness: 1069, damping: 57.5, exitMs: 160 }, still: true });
+    expect(w.glide).toEqual({ stiffness: 1069, damping: 57.5 });
+    expect(w.still).toBe(true);
+  });
+  test('an unknown style is the ticker, the default; the scale stays within 1 to 2, no box is no target', () => {
+    expect(pillWish('fancy', 7, null)).toEqual({ style: 'ticker', textScale: 2, target: null, glide: null, still: false });
+    expect(pillWish(undefined, 1, null).style).toBe('ticker');
+    expect(pillWish('field', 1, null).style).toBe('field');
+    expect(pillWish('status', 0, null).textScale).toBe(1);
+  });
+  test('the caption shows words only where nothing else does', () => {
+    expect(captionWanted('field', false)).toBe(true);
+    expect(captionWanted('status', false)).toBe(true);
+    expect(captionWanted('status', true)).toBe(false);
+    expect(captionWanted('words', false)).toBe(false);
+    expect(captionWanted('ticker', false)).toBe(false);
   });
 });

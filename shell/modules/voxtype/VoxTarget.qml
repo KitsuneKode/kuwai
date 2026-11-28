@@ -7,6 +7,11 @@
 // (maximised, fullscreen, against the screen's edge); voxRing.mjs places it.
 // The voice is the source linked into voxtype's capture stream (the default
 // source until that stream appears), on a dB scale that follows the session.
+// It also tells the pill (shuush's KitsuneHud, drawn by VoxtypeHost) how to
+// show a take (Settings → Dictation words), the Text size, where the target
+// window is and the spring the ring glides on when it moves, in
+// $XDG_RUNTIME_DIR/kuwai/voxtype-pill.json, so the pill glides with it; the
+// caption shows the words only where neither the field nor the pill does.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -36,12 +41,29 @@ Scope {
         onFileChanged: reload()
         onLoaded: { try { root.address = JSON.parse(text() || "{}").address || ""; } catch (e) { root.address = ""; } if (root.on) look.restart(); }
     }
-    onOnChanged: { if (on) look.restart(); }
+    onOnChanged: { if (on) look.restart(); else drawn = null; }
+
+    FileView { id: wishFile; path: root.runtime + "/kuwai/voxtype-pill.json"; printErrors: false }
+    readonly property string wish: JSON.stringify(VoxRing.pillWish(Settings.dictationPill, Theme.textScale, box, stroke, { tier: Theme.springSlow, still: Theme.reduceMotion }))
+    onWishChanged: wishFile.setText(wish + "\n")
+    Timer { interval: 1500; running: true; onTriggered: wishFile.setText(root.wish + "\n") }
 
     function read(address, clients, monitors, rnd, bsz) {
         if (rnd && rnd.int !== undefined) rounding = rnd.int;
         if (bsz && bsz.int !== undefined) border = bsz.int;
         box = VoxRing.place(address, clients, monitors, { border: border, rounding: rounding, gap: gap, stroke: stroke });
+    }
+    property var drawn: null
+    property Spring gx: Spring { tier: Theme.springSlow }
+    property Spring gy: Spring { tier: Theme.springSlow }
+    property Spring gw: Spring { tier: Theme.springSlow }
+    property Spring gh: Spring { tier: Theme.springSlow }
+    onBoxChanged: {
+        const b = box;
+        if (!b) return;
+        const jump = !on || !drawn || drawn.monitor !== b.monitor;
+        drawn = b;
+        for (const [s, v] of [[gx, b.x], [gy, b.y], [gw, b.w], [gh, b.h]]) { if (jump) s.snap(v); else s.target = v; }
     }
     Timer { id: look; interval: 60; onTriggered: if (root.on && root.address && !where.running) where.running = true }
     Process {
@@ -123,10 +145,10 @@ Scope {
                     readonly property real pad: 24
                     property bool born: false
                     Component.onCompleted: born = true
-                    x: root.box ? root.box.x - pad : 0
-                    y: root.box ? root.box.y - pad : 0
-                    width: root.box ? root.box.w + pad * 2 : 0
-                    height: root.box ? root.box.h + pad * 2 : 0
+                    x: root.gx.value - pad
+                    y: root.gy.value - pad
+                    width: root.gw.value + pad * 2
+                    height: root.gh.value + pad * 2
                     opacity: slot.here && born ? 1 : 0
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: slot.here ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
@@ -159,13 +181,15 @@ Scope {
                 Rectangle {
                     id: caption
                     readonly property var win: root.box ? root.box.win : null
-                    readonly property bool wanted: slot.here && Activities.voxListening && !Activities.voxInField && Activities.voxText !== "" && !!win && !Notifs.sharing
+                    readonly property bool wanted: slot.here && Activities.voxListening && VoxRing.captionWanted(Settings.dictationPill, Activities.voxInField) && Activities.voxText !== "" && !!win && !Notifs.sharing
+                    readonly property bool two: Settings.dictationPill === "status"
                     property bool want: false
                     onWantedChanged: { if (wanted) settle.restart(); else { settle.stop(); want = false; } }
                     Component.onCompleted: if (wanted) settle.restart()
                     Timer { id: settle; interval: Theme.enterMs * 2; onTriggered: { Activities.voxRecheckField(); caption.want = caption.wanted; } }
-                    width: Math.min(words.implicitWidth + Theme.s4 * 2, win ? win.w * 0.7 : 0)
-                    height: words.implicitHeight + Theme.s2 * 2
+                    width: two ? Math.min(lines.implicitWidth + Theme.s4 * 2, win ? Math.min(Theme.sp(560), win.w * 0.7) : 0)
+                         : Math.min(words.implicitWidth + Theme.s4 * 2, win ? win.w * 0.7 : 0)
+                    height: (two ? view.height : words.implicitHeight) + Theme.s2 * 2
                     x: win ? win.x + (win.w - width) / 2 : 0
                     y: win ? Math.min(win.y + win.h - height - Theme.s5, parent.height - Theme.s5 * 4 - height) : 0
                     radius: height / 2
@@ -174,8 +198,40 @@ Scope {
                     opacity: want ? 1 : 0
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: caption.want ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }
+                    Flickable {
+                        id: view
+                        visible: caption.two
+                        interactive: false
+                        x: Theme.s4; y: Theme.s2
+                        width: caption.width - Theme.s4 * 2
+                        readonly property real lineH: lines.lineCount > 0 ? lines.contentHeight / lines.lineCount : 0
+                        height: Math.min(lines.contentHeight, lineH * 2)
+                        contentWidth: width
+                        contentHeight: lines.contentHeight
+                        contentY: Math.max(0, contentHeight - height)
+                        clip: true
+                        Label {
+                            id: lines
+                            width: view.width
+                            wrapMode: Text.WordWrap
+                            text: Activities.voxText
+                            size: Theme.tCallout
+                            color: Theme.textPrimary
+                        }
+                    }
+                    Rectangle {
+                        x: view.x; y: view.y
+                        width: view.width
+                        height: view.lineH * 0.6
+                        visible: caption.two && lines.lineCount > 2
+                        gradient: Gradient {
+                            GradientStop { position: 0; color: caption.color }
+                            GradientStop { position: 1; color: Qt.alpha(caption.color, 0) }
+                        }
+                    }
                     Label {
                         id: words
+                        visible: !caption.two
                         anchors.centerIn: parent
                         width: Math.max(0, Math.min(implicitWidth, caption.width - Theme.s4 * 2))
                         elide: Text.ElideLeft

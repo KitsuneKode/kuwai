@@ -43,6 +43,7 @@ Singleton {
     readonly property bool restMedia: value("restMedia")
     readonly property bool meetingsInIsland: value("meetingsInIsland")
     readonly property bool meetingOffers: value("meetingOffers")
+    readonly property string dictationPill: value("dictationPill")
     readonly property var favoriteThemes: value("favoriteThemes")
     readonly property bool updatesAutoRoutine: value("updatesAutoRoutine")
     readonly property int updatesCheckHours: value("updatesCheckHours")
