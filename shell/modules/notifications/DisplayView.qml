@@ -24,6 +24,7 @@ import qs.config
 import qs.components
 import qs.components.ui
 import qs.services
+import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: view
@@ -601,7 +602,7 @@ Item {
                         SettingsRow {
                             required property var modelData
                             label: modelData.id
-                            detail: modelData.printer.replace(/_/g, " ") + " · " + Math.max(1, Math.round(modelData.bytes / 1024)) + " KB"
+                            detail: modelData.printer.replace(/_/g, " ") + " · " + Sizes.bytes(modelData.bytes)
                             Button { height: Theme.sp(30); size: Theme.tSub; text: "Cancel"; onClicked: NetExtras.cancelJob(modelData.id) }
                         }
                     }

@@ -6,7 +6,9 @@
 //
 //   import "../../services/links.mjs" as Links
 //   if (Links.safeLink(url)) Qt.openUrlExternally(url)
+/** @param {unknown} url */
 export function safeLink(url) { return /^(https?:\/\/|mailto:)/i.test(String(url || "").trim()); }
 
 // The link if it may be opened, else "" (for a button's `enabled`).
+/** @param {unknown} url */
 export function webLink(url) { return safeLink(url) ? String(url).trim() : ""; }

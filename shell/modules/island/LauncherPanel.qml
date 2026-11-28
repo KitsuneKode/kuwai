@@ -24,6 +24,7 @@ import qs.components.ui
 import qs.services
 import "../../services/links.mjs" as Links
 import "../../services/calc.js" as Calc
+import "../../services/sizes.mjs" as Sizes
 
 FocusScope {
     id: launcher
@@ -322,7 +323,7 @@ FocusScope {
         procEnd.running = true;
     }
     function procRows() {
-        const mb = n => n >= 1024 ? (n / 1024).toFixed(1) + " GB" : n + " MB";
+        const mb = n => Sizes.bytes(Sizes.fromMiB(n));
         // An app of many processes comes first as one row ({group: N}): its
         // main process, so ending it closes the app with every tab and helper.
         return procHits.map(p => ({

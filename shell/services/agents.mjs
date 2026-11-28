@@ -189,7 +189,7 @@ export function sessions(panes, threads, desktop, opts) {
  * How many sessions are in each state, in each section and from each surface:
  * the one tally the header, the capsule and the stack all read.
  * @param {Session[]} list
- * @returns {{ total: number, needs: number, working: number, error: number, limited: number, done: number, idle: number, bySection: Record<string, number>, bySource: { t3: number, tui: number, desktop: number } }}
+ * @returns {{ total: number, needs: number, working: number, error: number, limited: number, done: number, idle: number, bySection: Record<string, number>, bySource: { t3: number, tui: number, desktop: number }, reset?: number }}
  */
 export function counts(list) {
     /** @param {string} st */
@@ -290,7 +290,7 @@ export function until(at, now) {
  * What the left Agents capsule says. Limits are handled by the dedicated
  * right-side limit pills and never hijack active work here.
  * @param {Pane[]} panes @param {Thread[]} threads @param {number} doneKitty @param {number} doneT3 @param {number} now @param {Desktop[]} [desktop] @param {number} [doneDesktop]
- * @returns {{ word: string, glyph: string, stateKey: string, tone: string, count: number, working: number, done: number, limited: number, key: string, bySource: { t3: number, tui: number, desktop: number } }}
+ * @returns {{ word: string, glyph: string, stateKey: string, tone: string, count: number, working: number, done: number, limited: number, key: string, bySource: { t3: number, tui: number, desktop: number }, reset?: number }}
  */
 export function headline(panes, threads, doneKitty, doneT3, now, desktop, doneDesktop) {
     return headlineOf(sessions(panes, threads, desktop), doneKitty, doneT3, doneDesktop);

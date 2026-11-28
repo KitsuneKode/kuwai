@@ -1,11 +1,12 @@
 import { expect, test } from 'bun:test';
 import { functions } from '../helpers/qml.mjs';
+import * as Sizes from '../../shell/services/sizes.mjs';
 
 // services/Alerts.qml's commit(): what earns the island's orange pill.
 function alerts(v) {
   const s = functions('shell/services/Alerts.qml', ['commit'], {
     active: [], shown: {}, hot: 0, batteryLow: false, banner: null,
-    bannerFor: { restart() {} }, Screens: { focusedName: '' },
+    bannerFor: { restart() {} }, Screens: { focusedName: '' }, Sizes,
   });
   s.commit(v);
   return s.active.map(a => a.id);

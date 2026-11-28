@@ -14,6 +14,7 @@ import Quickshell.Widgets
 import qs.config
 import qs.components
 import qs.services
+import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: card
@@ -35,7 +36,7 @@ Item {
     readonly property var fileList: isFiles ? (Clipboard.fileInfo[Clipboard.ref(e)] || null) : null
     readonly property var file0: fileList && fileList.length ? fileList[0] : null
     readonly property int missing: fileList ? fileList.filter(f => !f.exists).length : 0
-    function bytes(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : n > 1024 ? Math.round(n / 1024) + " KB" : (n || 0) + " B"; }
+    function bytes(n) { return Sizes.bytes(n); }
 
     width: header ? 30 : 184
     height: ListView.view ? ListView.view.height : 220

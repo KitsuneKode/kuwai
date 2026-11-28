@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8").replace(/^\.pragma library\s*$/m, "");
+import * as Sizes from "../../shell/services/sizes.mjs";
+
+const lib = readFileSync(new URL("../../shell/services/sweepModel.js", import.meta.url), "utf8")
+    .replace(/^\.pragma library\s*$/m, "").replace(/^\.import .*$/gm, "");
 const names = ["compact", "long", "segments", "worthMark", "parseViewed", "viewedText", "isFresh", "reconcileViewed", "viewedAfterLook",
     "widths", "partAt", "where", "headline", "caption", "tilde", "emptyText", "footText", "idleText", "agoText"];
 const { widths, partAt, where, headline, caption, compact, long, segments, worthMark, parseViewed, viewedText, isFresh, reconcileViewed, viewedAfterLook, tilde, emptyText, footText, idleText, agoText } =
-    new Function(lib + "\nreturn { " + names.join(", ") + " };")();
+    new Function("Sizes", lib + "\nreturn { " + names.join(", ") + " };")(Sizes);
 const GB = 1e9;
 
 describe("sizes", () => {
@@ -153,6 +156,7 @@ describe("states", () => {
         const s = { protectedCount: 2, checkedAt: now / 1000 - 3 * 3600, pending: false, refreshing: false, error: "", counted: true };
         expect(footText(s, now)).toBe("2 protected · counted 3 h ago");
         expect(footText({ ...s, refreshing: true }, now)).toBe("2 protected · counted 3 h ago · counting again…");
+        expect(footText({ ...s, reviewing: true }, now)).toBe("review open · 2 protected · counted 3 h ago");
         expect(footText({ ...s, error: "scan failed (exit 3)" }, now)).toBe("2 protected · counted 3 h ago · couldn't count again: scan failed (exit 3)");
         expect(footText({ ...s, protectedCount: 0, checkedAt: 0, counted: false, pending: true, refreshing: true }, now)).toBe("");
     });

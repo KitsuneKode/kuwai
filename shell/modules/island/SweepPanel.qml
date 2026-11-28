@@ -286,7 +286,7 @@ FocusScope {
                 width: parent.width
                 wrapMode: Text.Wrap
                 text: Model.footText({ protectedCount: Sweep.protectedCount, checkedAt: Sweep.checkedAt, pending: Sweep.pending,
-                    refreshing: Sweep.refreshing, error: Sweep.error, counted: Sweep.counted }, Date.now())
+                    refreshing: Sweep.refreshing, error: Sweep.error, counted: Sweep.counted, reviewing: Sweep.reviewing }, Date.now())
                 size: Theme.tCaption
                 color: Sweep.error && !Sweep.refreshing ? Theme.orange : Theme.textTertiary
             }

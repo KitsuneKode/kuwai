@@ -1535,7 +1535,7 @@ def run_locked(args):
         while not os.path.exists(probe):
             probe = os.path.dirname(probe)
         st = os.statvfs(probe)
-        if st.f_bavail * st.f_frsize < 3 * 1024 ** 3:
+        if st.f_bavail * st.f_frsize < 3 * 10 ** 9:
             R.emit(e="error", msg=f"Less than 3 GB free at {destination}. Free some space first.")
             R.emit(e="done", **{**result, "ok": False})
             return 1

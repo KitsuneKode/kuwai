@@ -2,10 +2,12 @@
   // Types for the shell's plain-JS logic, checked, never compiled (Quickshell
   // loads .mjs as written). Add a module here once it passes:
   //   bunx -p typescript tsc -p tsconfig.check.json
-  // To do: shell/services/ai/turn.mjs (83 untyped parameters, 2026-11-17).
+  // To do (untyped parameters, 2026-11-28): shell/services/ai/turn.mjs, notifTidy, notifTriage,
+  // notifPrivacy, lockPlate, netExtras, faillock, welcomeNotes, pamTurn, surfaceState, voxScreens,
+  // osd/state, island/state, settingsState, contextMenu, saverPhotos, lib/spend.mjs, bin/kuwai_t3token.mjs.
   "compilerOptions": {
     "noEmit": true, "allowJs": true, "checkJs": true, "strict": true,
     "target": "es2022", "module": "nodenext", "moduleResolution": "nodenext", "skipLibCheck": true
   },
-  "files": ["shell/services/providers.mjs", "shell/services/otp.mjs", "shell/services/clipstate.mjs", "shell/services/notifUndo.mjs", "shell/services/moments.mjs", "shell/config/dates.mjs", "shell/services/usage.mjs", "shell/services/t3.mjs", "shell/services/agents.mjs", "shell/services/limits.mjs", "shell/services/spendreport.mjs", "shell/config/tr.mjs", "shell/services/caches.mjs", "shell/services/ai/chatstore.mjs", "shell/services/keychord.mjs"]
+  "files": ["shell/services/providers.mjs", "shell/services/otp.mjs", "shell/services/clipstate.mjs", "shell/services/notifUndo.mjs", "shell/services/moments.mjs", "shell/config/dates.mjs", "shell/services/usage.mjs", "shell/services/t3.mjs", "shell/services/agents.mjs", "shell/services/limits.mjs", "shell/services/spendreport.mjs", "shell/config/tr.mjs", "shell/services/caches.mjs", "shell/services/ai/chatstore.mjs", "shell/services/keychord.mjs", "shell/services/sizes.mjs", "shell/services/jobs.mjs", "shell/services/activity.mjs", "shell/services/cacheTools.mjs", "shell/services/links.mjs", "shell/services/notifMarkup.mjs", "shell/services/wallDayNight.mjs", "shell/services/authWords.mjs", "shell/services/idleLadder.mjs", "shell/services/wallOutcome.mjs"]
 }

@@ -19,6 +19,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "sizes.mjs" as Sizes
 
 Singleton {
     id: root
@@ -351,7 +352,7 @@ Singleton {
     readonly property int runnableCount: repoLive.length + (aurReadOnly ? 0 : aurLive.length) + flatpak.length
     readonly property int waitingReview: aurReadOnly ? 0 : aurLive.filter(p => !selectable(p.name)).length
     readonly property bool lowPower: !!(data && data.power && !data.power.ac && data.power.battery !== null && data.power.battery < 30)
-    readonly property bool lowSpace: !!(data && data.freeBytes < 3 * 1024 * 1024 * 1024)
+    readonly property bool lowSpace: !!(data && data.freeBytes < 3 * Sizes.GB)
 
     property bool running: false
     // True for a run this process started, or a rejoined one that reported

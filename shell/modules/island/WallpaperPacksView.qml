@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.config
 import qs.components
 import qs.components.ui as Ui
+import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: view
@@ -69,7 +70,7 @@ Item {
                                     ? "Downloading… " + view.done + " of " + view.total + " verified"
                                     : card.failed ? "Download failed."
                                     : card.modelData.images.length + " wallpapers · "
-                                        + (card.modelData.images.reduce((sum, image) => sum + image.bytes, 0) / 1000000).toFixed(1) + " MB"
+                                        + Sizes.bytes(card.modelData.images.reduce((sum, image) => sum + image.bytes, 0))
                                 size: Theme.tSub
                                 color: card.failed ? Theme.orange : Theme.textSecondary
                                 font.features: Theme.featTabular

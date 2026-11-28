@@ -1,18 +1,15 @@
 .pragma library
+.import "sizes.mjs" as Sizes
 
-const GB = 1e9;
+const GB = Sizes.GB;
 
 function compact(bytes) {
-    const b = Math.max(0, Number(bytes) || 0);
-    if (b >= 10 * GB) return Math.round(b / GB) + "G";
-    if (b >= GB) return (Math.round(b / GB * 10) / 10) + "G";
-    return Math.max(1, Math.round(b / 1e6)) + "M";
+    return Sizes.compact(bytes);
 }
 
 function long(bytes) {
     const b = Math.max(0, Number(bytes) || 0);
-    if (b >= GB) return (b >= 100 * GB ? Math.round(b / GB) : Math.round(b / GB * 10) / 10) + " GB";
-    return Math.max(1, Math.round(b / 1e6)) + " MB";
+    return b < Sizes.MB ? "1 MB" : Sizes.bytes(b, 100);
 }
 
 function segments(kinds, total, tones, max) {
@@ -123,6 +120,7 @@ function emptyText(s) {
 function footText(s, nowMs) {
     const ago = s.counted && !s.pending ? agoText(s.checkedAt, nowMs) : "";
     return [
+        s.reviewing ? "review open" : "",
         s.protectedCount > 0 ? s.protectedCount + " protected" : "",
         ago ? "counted " + ago : "",
         s.counted && s.refreshing ? "counting again…" : s.counted && s.error ? "couldn't count again: " + s.error : "",

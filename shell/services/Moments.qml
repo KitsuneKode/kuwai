@@ -20,6 +20,7 @@ import Quickshell.Networking
 import Quickshell.Services.UPower
 import qs.config
 import "moments.mjs" as MomentsLogic
+import "sizes.mjs" as Sizes
 
 Singleton {
     id: root
@@ -581,10 +582,7 @@ Singleton {
     }
     Timer { id: drivesLater; interval: 1200; onTriggered: if (!lsblk.running) lsblk.running = true }
     Timer { interval: 2000; running: true; onTriggered: lsblk.running = true }
-    function bytes(n) {
-        const gb = n / 1e9;
-        return gb >= 1000 ? (gb / 1000).toFixed(gb >= 10000 ? 0 : 1) + " TB" : gb >= 1 ? Math.round(gb) + " GB" : Math.round(n / 1e6) + " MB";
-    }
+    function bytes(n) { return Sizes.bytes(n); }
     Process {
         id: lsblk
         command: ["lsblk", "-J", "-b", "-o", "PATH,TYPE,TRAN,HOTPLUG,RM,SIZE,LABEL,MODEL,VENDOR,MOUNTPOINTS"]

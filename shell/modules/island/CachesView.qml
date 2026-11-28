@@ -6,6 +6,8 @@ import qs.components
 import qs.components.ui as Ui
 import qs.services
 import "../../services/cacheTools.mjs" as CacheTools
+import "../../services/jobs.mjs" as Jobs
+import "../../services/sizes.mjs" as Sizes
 
 Item {
     id: cv
@@ -20,7 +22,9 @@ Item {
     Timer { id: disarm; interval: Theme.undoMs; onTriggered: cv.armed = "" }
     property string copied: ""
     Timer { id: copiedFor; interval: Theme.copiedMs; onTriggered: cv.copied = "" }
-    property string clearing: ""
+    property var job: null
+    property string starting: ""
+    readonly property string clearing: Jobs.running(job) ? job.label : starting
     property string note: ""
     readonly property var items: report && report.items ? report.items : []
     readonly property var pal: [Theme.blue, Theme.green, Theme.indigo, Theme.cyan, Theme.mint, Theme.brown, Theme.pink, Theme.gray]
@@ -38,17 +42,24 @@ Item {
         if (armed !== item.id) { armed = item.id; note = ""; disarm.restart(); return; }
         armed = "";
         disarm.stop();
-        clearing = item.id;
-        clearer.label = item.label;
-        clearer.command = [Paths.bin + "/kuwai-storage", "clear", item.id];
-        clearer.running = true;
+        starting = item.id;
+        starter.label = item.label;
+        starter.command = [Paths.bin + "/kuwai-job", "start", "storage", item.id, "--", Paths.bin + "/kuwai-storage", "clear", item.id];
+        starter.running = true;
+    }
+    function watch() {
+        if (!watcher.running) watcher.running = true;
+    }
+    function labelOf(id) {
+        const hit = items.find(i => i.id === id);
+        return hit ? hit.label : id;
     }
     function copy(part) {
         Quickshell.execDetached(["sh", "-c", 'printf %s "$1" | wl-copy', "copy", part.command]);
         copied = part.id;
         copiedFor.restart();
     }
-    Component.onCompleted: { if (seed) { report = seed; loading = false; } else load(false); }
+    Component.onCompleted: { if (seed) { report = seed; loading = false; } else load(false); watch(); }
 
     Process {
         id: reader
@@ -61,18 +72,34 @@ Item {
         onExited: code => { if (code !== 0) { cv.failed = !cv.report; cv.loading = false; } }
     }
     Process {
-        id: clearer
+        id: starter
         property string label: ""
         stdout: StdioCollector {
             onStreamFinished: {
                 let r = {};
                 try { r = JSON.parse(text); } catch (e) {}
-                cv.note = r.ok ? clearer.label + " cleared · " + SystemStats.bytes(r.freed || 0) + " freed" : (r.why || "Couldn't clear " + clearer.label);
-                cv.clearing = "";
+                cv.starting = "";
+                if (r.ok || r.busy) cv.watch();
+                else cv.note = "Couldn't clear " + starter.label;
+            }
+        }
+    }
+    Process {
+        id: watcher
+        command: [Paths.bin + "/kuwai-job", "status", "storage"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                cv.job = Jobs.parse(text);
+                if (Jobs.running(cv.job)) { again.restart(); return; }
+                if (!Jobs.unseen(cv.job)) return;
+                cv.note = Jobs.storageNote(cv.job, cv.labelOf(cv.job.label));
+                acker.running = true;
                 cv.load(true);
             }
         }
     }
+    Timer { id: again; interval: 1000; onTriggered: cv.watch() }
+    Process { id: acker; command: [Paths.bin + "/kuwai-job", "ack", "storage"] }
 
     ScrollFade { flickable: flick }
     Flickable {
@@ -106,13 +133,13 @@ Item {
                 title: "Disk"
                 big: cv.report ? SystemStats.bytes(cv.report.disk.used) : ""
                 caption: cv.report ? "of " + SystemStats.bytes(cv.report.disk.total) + " used · " + SystemStats.bytes(cv.report.disk.free) + " free" : ""
-                total: cv.report ? cv.report.disk.total / 1073741824 : 1
+                total: cv.report ? Sizes.inGB(cv.report.disk.total) : 1
                 unit: " GB"
                 parts: {
                     if (!cv.report) return [];
-                    const found = cv.items.map((i, k) => ({ label: i.label, value: i.bytes / 1073741824, color: cv.pal[k % cv.pal.length],
+                    const found = cv.items.map((i, k) => ({ label: i.label, value: Sizes.inGB(i.bytes), color: cv.pal[k % cv.pal.length],
                         detail: i.clearable ? "comes back on its own" : "check first" }));
-                    const rest = Math.max(0, cv.report.disk.used / 1073741824 - found.reduce((n, p) => n + p.value, 0));
+                    const rest = Math.max(0, Sizes.inGB(cv.report.disk.used) - found.reduce((n, p) => n + p.value, 0));
                     return found.concat([{ label: "Everything else", value: rest, color: Theme.gray, detail: "your files, apps and the system" }]);
                 }
             }
@@ -214,7 +241,7 @@ Item {
                                     id: pside
                                     anchors { right: parent.right; top: parent.top }
                                     spacing: Theme.s2
-                                    Label { anchors.verticalCenter: parent.verticalCenter; text: part.modelData.bytes < 1048576 ? "< 1 MB" : SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
+                                    Label { anchors.verticalCenter: parent.verticalCenter; text: part.modelData.bytes < Sizes.MB ? "< 1 MB" : SystemStats.bytes(part.modelData.bytes); size: Theme.tSub; tabular: true; color: Theme.textSecondary }
                                     Ui.Button {
                                         visible: part.modelData.runnable
                                         height: Theme.sp(28); size: Theme.tSub

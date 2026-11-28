@@ -20,6 +20,8 @@ import qs.config
 import qs.components
 import qs.components.ui as Ui
 import qs.services
+import "../../services/jobs.mjs" as Jobs
+import "../../services/sizes.mjs" as Sizes
 
 FocusScope {
     id: cp
@@ -53,7 +55,7 @@ FocusScope {
         reader.command = [Paths.bin + "/kuwai-cleanup", "--days", String(days)].concat(fresh ? ["--fresh"] : []);
         reader.running = true;
     }
-    Component.onCompleted: { takeView(); if (!report) load(false); else loading = false; }
+    Component.onCompleted: { takeView(); if (!report) load(false); else loading = false; watch(); }
     onDaysChanged: { marked = ({}); confirm = false; load(false); }
 
     Process {
@@ -67,22 +69,47 @@ FocusScope {
         }
         onExited: code => { if (code !== 0) { cp.error = "Couldn't look through your agents' skills"; cp.loading = false; } }
     }
+    property var job: null
+    property bool starting: false
+    readonly property bool acting: starting || Jobs.running(job)
+    function watch() { if (!watcher.running) watcher.running = true; }
     Process {
-        id: actor
-        property string what: ""
-        property int kept: 0
-        stdout: StdioCollector { id: actOut }
-        onExited: code => {
-            if (actor.what === "restore") cp.status = code === 0 ? "Put back" : "Nothing to put back";
-            else cp.status = code !== 0 ? "Couldn't move all of " + actor.what
-                : "Moved " + actor.what + " to the Trash" + (actor.kept ? "; " + actor.kept + " linked from elsewhere: only the links went" : "");
-            cp.canPutBack = code === 0 && actor.what !== "restore";
-            cp.marked = ({});
-            cp.confirm = false;
-            cp.load(true);
+        id: starter
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let r = {};
+                try { r = JSON.parse(text); } catch (e) {}
+                cp.starting = false;
+                if (r.ok || r.busy) cp.watch();
+                else cp.status = "Couldn't start that";
+            }
         }
     }
-    function act(args, what) { actor.what = what; actor.command = [Paths.bin + "/kuwai-cleanup"].concat(args); actor.running = true; }
+    Process {
+        id: watcher
+        command: [Paths.bin + "/kuwai-job", "status", "cleanup"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                cp.job = Jobs.parse(text);
+                if (Jobs.running(cp.job)) { cp.status = Jobs.cleanupBusy(cp.job); again.restart(); return; }
+                if (!Jobs.unseen(cp.job)) return;
+                cp.status = Jobs.cleanupNote(cp.job);
+                cp.canPutBack = Jobs.cleanupPutBack(cp.job);
+                cp.marked = ({});
+                cp.confirm = false;
+                acker.running = true;
+                cp.load(true);
+            }
+        }
+    }
+    Timer { id: again; interval: 1000; onTriggered: cp.watch() }
+    Process { id: acker; command: [Paths.bin + "/kuwai-job", "ack", "cleanup"] }
+    function act(args, putBack, what) {
+        if (acting) return;
+        starting = true;
+        starter.command = [Paths.bin + "/kuwai-job", "start", "cleanup", Jobs.cleanupLabel(putBack, what), "--", Paths.bin + "/kuwai-cleanup"].concat(args);
+        starter.running = true;
+    }
     function toggle(name) {
         const m = Object.assign({}, marked);
         if (m[name]) delete m[name]; else m[name] = true;
@@ -97,17 +124,15 @@ FocusScope {
         confirm = false;
     }
     function trashMarked() {
-        if (!markedCount) return;
+        if (!markedCount || acting) return;
         if (!confirm) { confirm = true; return; }
         const names = Object.keys(marked);
         const chosen = rows.filter(r => marked[r.name]);
         const paths = [].concat(...chosen.map(r => r.paths || [r.path]));
-        const kept = [].concat(...chosen.map(r => r.externalPaths || []));
-        actor.kept = kept.length;
-        act(["trash"].concat(paths), names.length === 1 ? names[0] : names.length + " skills");
+        act(["trash"].concat(paths), false, names.length === 1 ? names[0] : names.length + " skills");
     }
     function num(n) { return Number(n || 0).toLocaleString(Qt.locale("en_US"), "f", 0); }
-    function gb(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.round(b / 1e6) + " MB"; }
+    function gb(b) { return Sizes.bytes(b); }
 
     Keys.onPressed: e => {
         if (e.key === Qt.Key_Escape && confirm) { confirm = false; e.accepted = true; return; }
@@ -124,7 +149,7 @@ FocusScope {
         else if (e.key === Qt.Key_Up) sel = Math.max(0, sel - 1);
         else if (e.key === Qt.Key_Space && rows[sel]) toggle(rows[sel].name);
         else if (e.key === Qt.Key_Delete || e.key === Qt.Key_Backspace) trashMarked();
-        else if (e.key === Qt.Key_U && canPutBack) act(["restore"], "restore");
+        else if (e.key === Qt.Key_U && canPutBack) act(["restore"], true, "");
         else return;
         list.positionViewAtIndex(sel, ListView.Contain);
         e.accepted = true;
@@ -329,7 +354,7 @@ FocusScope {
                         anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
                         kind: "secondary"
                         text: lo.modelData.safe ? "Move to Trash" : "Show"
-                        onClicked: lo.modelData.safe ? cp.act(["trash-path"].concat(lo.modelData.paths), lo.modelData.label.toLowerCase())
+                        onClicked: lo.modelData.safe ? cp.act(["trash-path"].concat(lo.modelData.paths), false, lo.modelData.label.toLowerCase())
                                                      : Apps.open(lo.modelData.paths[0])
                     }
                 }
@@ -369,7 +394,7 @@ FocusScope {
                     kind: "secondary"
                     glyph: "\u{f054d}"
                     text: "Put back"
-                    onClicked: cp.act(["restore"], "restore")
+                    onClicked: cp.act(["restore"], true, "")
                 }
             }
         }
