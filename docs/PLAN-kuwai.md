@@ -43,8 +43,8 @@ Left:
 - [ ] Real hardware only: Plymouth at boot, lock plate and swipe, saver styles,
       live wallpaper pause/resume, DPMS, Activity Stop/Force quit, warm mic,
       per-monitor wallpapers on two screens, Docker prune from Caches.
-- [ ] A greetd login in the fresh VM (a third harness, t3/e9adfe54, drove it;
-      port it to tests/fresh when there's time).
+- [x] A greetd login in the fresh VM: tests/fresh/vm.sh logs in through greetd
+      and the kuwai greeter, password from a guest-only file (09bb818, 96/96).
 - [ ] After release: sweep's island panel (option A, thin), kitty pane-title
       default (kittymux), notification centre in the island look, read
       hotwatch captures if the shell gets busy again.
