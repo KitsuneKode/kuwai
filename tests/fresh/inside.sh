@@ -133,7 +133,7 @@ check "the stable channel is checked out" as_user "[ -f '$STABLE/hypr/init.lua' 
 check "migrations recorded, none pending" as_user "'$STABLE/bin/kuwai-migrations' --list | grep -q done && ! '$STABLE/bin/kuwai-migrations' --list | grep -q pending"
 check "kuwai's Hyprland entry is in ~/.config/kuwai/hypr; ~/.config/hypr is untouched" as_user "cmp -s ~/.config/kuwai/hypr/hyprland.lua '$K/hypr/templates/hyprland.lua' && [ ! -e ~/.config/hypr/hyprland.lua ]"
 check "the kuwai command is linked in ~/.local/bin and runs" as_user "[ -L ~/.local/bin/kuwai ] && ~/.local/bin/kuwai version | grep -q '^kuwai '"
-check "the environment.d drop-in puts ~/.local/bin on the session's systemd PATH" as_user "[ -e ~/.config/environment.d/kuwai.conf ] && systemctl --user show-environment | grep -q '^PATH=.*$H/.local/bin'"
+check "the environment.d drop-in puts ~/.local/bin on the user manager's PATH, for units started outside a kuwai session" as_user "[ -e ~/.config/environment.d/kuwai.conf ] && systemctl --user show-environment | grep -q '^PATH=.*$H/.local/bin'"
 check "user units linked" as_user "for u in kuwai-shell kuwai-auth kuwai-wallpaper kuwai-clipboard kuwai-feeds kuwai-backup; do [ -L ~/.config/systemd/user/\$u.service ] || exit 1; done"
 installed_snap=$(snap)
 as_user "cd '$K' && ./install.sh" >"$OUT/install2.log" 2>&1

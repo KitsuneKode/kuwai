@@ -69,6 +69,10 @@ def test_stop_only_signals_the_controller(tmp_path):
     script.write_text("import time\ntime.sleep(30)\n")
     daemon = subprocess.Popen([sys.executable, str(script), "--serve"])
     try:
+        cmdline = Path(f"/proc/{daemon.pid}/cmdline")
+        deadline = time.monotonic() + 5
+        while b"--serve" not in cmdline.read_bytes() and time.monotonic() < deadline:
+            time.sleep(0.01)
         (tmp_path / "pid").write_text(str(daemon.pid))
         assert bc.stop_daemon(tmp_path) is True
         assert daemon.wait(timeout=5) is not None
