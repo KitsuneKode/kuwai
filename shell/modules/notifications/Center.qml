@@ -1,15 +1,13 @@
 // The center: Notifications, and Controls with Sound, as a glass card at the
-// right (Waybar or the floating pill). With the island as a notch they are
-// the island's own panels instead (island/CenterPanel: the notch grown, one
-// surface with Agents and the rest); this card then never opens.
+// right when Waybar is the bar. With the island (notch or floating) they are
+// the island's own panels instead (island/CenterPanel); this card then never opens.
 //
 // Open: Super+N, Super+Ctrl+Alt+W (Controls), `bin/kuwai center [tab]`. Esc
 // clears the search, then closes; so does a click anywhere else.
 //
-// Motion: as a notch it grows out of the notch's rest shape on the island's
-// spring (a peek grows out of the peek); as a card it scales up from its
-// top-right corner, or morphs out of the front toast. Its content fades in
-// once, on the card's own progress. Reopening mid-close turns it around.
+// Motion: it scales up from its top-right corner, or morphs out of the front
+// toast. Its content fades in once, on the card's own progress. Reopening
+// mid-close turns it around.
 // Reduced motion: a plain fade.
 //
 // The surface never goes away. Qt stops laying out (polishing) a window's
@@ -33,13 +31,12 @@ import "../../services/surfaceState.mjs" as Surface
 Scope {
     id: root
 
-    readonly property bool open: Notifs.centerOpen && !notch
+    readonly property bool open: Notifs.centerOpen && !Island.hostsCenter
     readonly property string tab: Notifs.centerTab
     // The hosting monitor's content (CenterContent), once built.
     property Item ui: null
 
-    // Search, matching and tips for the content (shared with the notch's panels).
-    readonly property CenterHost host: CenterHost { open: root.open; notch: root.notch; ui: root.ui }
+    readonly property CenterHost host: CenterHost { open: root.open; ui: root.ui }
 
     // One entrance: the content fades in as one, on the card's own progress.
     readonly property real contentIn: Theme.reduceMotion || !open ? 1 : Math.max(0, Math.min(1, (p - 0.3) / 0.5))
@@ -66,7 +63,7 @@ Scope {
         id: foldAnim; target: root; property: "closeT"; to: 0
         duration: root.mode === "morph" ? Theme.springSlow.exitMs : Theme.springModerate.exitMs
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: root.mode === "morph" && !root.notch ? Theme.easeInOut : Theme.easeOut
+        easing.bezierCurve: root.mode === "morph" ? Theme.easeInOut : Theme.easeOut
         onFinished: {
             morph.snap(0);
             root.dispatchSurface({ type: "foldDone", seq: root.foldSeq });
@@ -75,15 +72,9 @@ Scope {
     NumberAnimation { id: contentOut; target: root; property: "contentFade"; to: 0; duration: Theme.springFast.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut }
 
     // Card geometry, shared by every monitor's surface.
-    readonly property bool notch: Settings.bar === "island" && Settings.islandStyle === "notch"
-    readonly property int restH: 34
-    function restW(screen) {
-        const r = screen ? Island.restShapes[screen.name] : null;
-        return (r && r.w) || 220;
-    }
-    readonly property int cardW: notch ? Theme.panelS + 20 : 420
+    readonly property int cardW: 420
     readonly property int padX: 52                 // room for the shadow (none above: it hangs from the bar)
-    readonly property int padY: notch ? 0 : 6
+    readonly property int padY: 6
     readonly property int padBottom: 84
     function cardH(screen) { return Math.round(Math.min(780, Math.max(440, Theme.screenSize(screen, "height", 1000) * 0.74))); }
     // The card fits what the tab shows (one notification: a short card, not
@@ -108,12 +99,12 @@ Scope {
         // Always the right edge: the card's window is anchored top-right in
         // every bar style. (Centring it under the island here left the scrim's
         // hole mid-screen, an undimmed slab, while the card itself was dimmed.)
-        const ox = notch ? (sw - (cardW + 2 * padX)) / 2 : sw - (cardW + 12 + padX);
-        const oy = notch ? 0 : reservedTop + Theme.barGap;
+        const ox = sw - (cardW + 12 + padX);
+        const oy = reservedTop + Theme.barGap;
         const dh = fitH(shownScreen);
         if (mode === "morph")
-            return { x: ox + lerp(from.x, padX, p), y: oy + lerp(from.y, padY, p), w: lerp(from.w, cardW, p), h: lerp(from.h, dh, p), r: lerp(from.r, 22, Math.min(1, p)) };
-        return { x: ox + padX, y: oy + padY, w: cardW, h: dh, r: 22 };
+            return { x: ox + lerp(from.x, padX, p), y: oy + lerp(from.y, padY, p), w: lerp(from.w, cardW, p), h: lerp(from.h, dh, p), r: lerp(from.r, Theme.r4, Math.min(1, p)) };
+        return { x: ox + padX, y: oy + padY, w: cardW, h: dh, r: Theme.r4 };
     }
     onOpenChanged: {
         if (open) { warm = true; coolDown.stop(); } else { coolDown.restart(); peeking = false; }
@@ -128,18 +119,13 @@ Scope {
                     morph.tier = Theme.springSlow;
                     from = {
                         x: padX + (cardW - pr.w) / 2,
-                        y: notch ? 0 : padY + 6,
+                        y: padY + 6,
                         w: pr.w,
                         h: pr.h,
                         r: pr.r
                     };
                     Notifs.centerMorphFrom = "";
                     Notifs.centerMorphFromRect = null;
-                } else if (notch && !Theme.reduceMotion) {
-                    mode = "morph";
-                    morph.tier = Notifs.centerVia === "key" ? Theme.surfaceKeyIn : Theme.surfaceIn;
-                    const rw = restW(shownScreen);
-                    from = { x: padX + (cardW - rw) / 2, y: 0, w: rw, h: restH, r: 14 };
                 } else if (ft && ft.screen === (Notifs.centerScreen || Screens.focusedName) && !Theme.reduceMotion) {
                     mode = "morph";
                     morph.tier = Theme.springSlow;
@@ -147,8 +133,6 @@ Scope {
                 } else {
                     mode = "pop";
                     morph.tier = Theme.springModerate;
-                    if (Settings.bar === "island" && !Theme.reduceMotion)
-                        from = { x: padX + (cardW - 48) / 2, y: padY - 4, w: 48, h: 34, r: 17 };
                 }
             }
             dispatchSurface({ type: "open", peeking: root.peeking });
@@ -164,10 +148,6 @@ Scope {
             if (ui && !Notifs.centerFocusReply) ui.search.forceActiveFocus();
         } else {
             dispatchSurface({ type: "close" });
-            if (notch && mode === "morph" && !Notifs.centerMorphFrom) {
-                const rw = restW(shownScreen);
-                from = { x: padX + (cardW - rw) / 2, y: 0, w: rw, h: restH, r: 14 };
-            }
             root.foldSeq = root.surface.seq;
             closeT = morph.value;
             contentOut.restart();
@@ -252,11 +232,10 @@ Scope {
         function unpeek(): void { Notifs.setCenter(false, "key"); root.peeking = false; }
         function dump(): string {
             const kids = it => { const o = []; if (!it) return o; for (let k = 0; k < it.children.length; k++) { const c = it.children[k]; o.push([Math.round(c.x), Math.round(c.width), c.visible]); } return o; };
-            const tabsRow = root.ui ? root.ui.tabs.children[1] : null;
             return JSON.stringify({
                 open: root.open, folding: root.folding, capturing: root.capturing, p: root.p,
                 screen: root.shownScreen ? root.shownScreen.name : null, ui: !!root.ui,
-                tabs: root.ui ? { w: root.ui.tabs.width, implicit: root.ui.tabs.implicitWidth, items: kids(tabsRow) } : null,
+                tabs: root.ui ? { w: root.ui.tabs.width, implicit: root.ui.tabs.implicitWidth, items: kids(root.ui.tabs) } : null,
                 groups: root.ui ? root.ui.notifications.groupCount : null,
                 listCount: root.ui ? root.ui.notifications.listCount : null,
                 limits: { source: Limits.source, providers: (Limits.providers || []).length, watching: Limits.watching }
@@ -300,7 +279,7 @@ Scope {
                     fillRule: ShapePath.OddEvenFill
                     strokeWidth: -1
                     fillGradient: RadialGradient {
-                        centerX: root.notch ? spot.c.x + spot.c.w / 2 : spot.c.x + spot.c.w; centerY: spot.c.y
+                        centerX: spot.c.x + spot.c.w; centerY: spot.c.y
                         focalX: centerX; focalY: centerY
                         centerRadius: Math.hypot(spot.width, spot.height) * (Theme.reduceMotion ? 1 : 0.75 + 0.25 * spot.t)
                         focalRadius: 0
@@ -334,16 +313,16 @@ Scope {
             }
             onHostsChanged: claim()
             readonly property bool up: hosts && (root.open || root.folding)
-            readonly property int fullW: root.notch ? root.cardW + 2 * root.padX : root.cardW + 12 + root.padX
+            readonly property int fullW: root.cardW + 12 + root.padX
             readonly property int fullH: root.cardH(modelData) + root.padY + root.padBottom
 
             anchors.top: true
-            anchors.right: !root.notch
-            margins.top: root.notch ? 0 : Theme.barGap
+            anchors.right: true
+            margins.top: Theme.barGap
             implicitWidth: up ? fullW : 1
             implicitHeight: up ? fullH : 1
             onHeightChanged: if (up && height >= fullH) Qt.callLater(root.begin)
-            exclusionMode: root.notch ? ExclusionMode.Ignore : ExclusionMode.Normal
+            exclusionMode: ExclusionMode.Normal
             color: "transparent"
 
             WlrLayershell.namespace: "kuwai-center"
@@ -385,47 +364,30 @@ Scope {
                             : win.dy - (Theme.reduceMotion ? 0 : (1 - Math.min(1, root.p)) * 6)
                 width: morphing ? Math.max(1, root.lerp(root.from.w, win.dw, root.p)) : win.dw
                 height: morphing ? Math.max(1, root.lerp(root.from.h, win.dh, root.p)) : win.dh
-                readonly property real radius: morphing ? root.lerp(root.from.r, 22, Math.min(1, root.p)) : 22
-                readonly property real grownT: Math.max(0, Math.min(1, (height - root.restH) / 24))
-                readonly property real ear: root.notch ? 9 + 5 * grownT : 0
+                readonly property real radius: morphing ? root.lerp(root.from.r, Theme.r4, Math.min(1, root.p)) : Theme.r4
                 transformOrigin: Item.TopRight
                 scale: morphing || Theme.reduceMotion ? 1 : 0.96 + 0.04 * root.p
-                opacity: root.notch && !Theme.reduceMotion ? 1 : morphing ? Math.min(1, root.p * 5) : Math.min(1, root.p * 1.6)
+                opacity: morphing ? Math.min(1, root.p * 5) : Math.min(1, root.p * 1.6)
 
                 // Elevation from layered shadows, not one big smudge: a tight
                 // contact shadow that grounds the edge, a mid one for form,
                 // and a wide soft ambient one that lifts the card off the page.
                 Elevation {
-                    visible: !root.notch
                     target: glass
                     radius: glass.radius
                     strength: Math.min(1, root.p)
                 }
                 GlassCard {
                     id: glass
-                    visible: !root.notch
                     anchors.fill: parent
                     radius: frame.radius
                     tint: Theme.glassIsland
                 }
-                NotchShape {
-                    visible: root.notch
-                    x: -frame.ear
-                    w: frame.width
-                    h: frame.height
-                    ear: frame.ear
-                    radius: 14 + 16 * frame.grownT
-                    fill: Qt.rgba(0, 0, 0, 0.94)
-                    expand: Math.min(1, root.p)
-                    capH: root.restH
-                }
                 // The island's glass edge, so the center reads as the same material.
                 LiquidRim {
-                    x: -frame.ear
-                    width: frame.width + 2 * frame.ear
+                    width: frame.width
                     height: frame.height
-                    ear: frame.ear
-                    radius: root.notch ? (14 + 16 * frame.grownT) * 1.2 : glass.radius
+                    radius: glass.radius
                     full: 1
                     strength: Math.min(1, root.p) * 0.8
                     light: centerHover.hovered && !Theme.reduceMotion ? centerHover.point.position : Qt.point(width * 0.22, height + 120)

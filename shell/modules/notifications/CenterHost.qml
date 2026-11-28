@@ -6,7 +6,7 @@ QtObject {
     id: host
 
     property bool open: false
-    property bool notch: false
+    property bool inIsland: false
     property Item ui: null
     readonly property string tab: Notifs.centerTab
 

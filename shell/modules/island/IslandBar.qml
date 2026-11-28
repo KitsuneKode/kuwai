@@ -1218,37 +1218,14 @@ Scope {
                             // the one under the pointer 7 %, ⌥1–4 from the keys.
                             // A click switches in place (Clove's tab strip):
                             // hover would switch under a pointer passing by.
-                            Row {
+                            SectionChips {
                                 id: secRow
                                 visible: win.sectioned
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 y: 10
-                                spacing: 2
-                                Repeater {
-                                    model: Island.sections
-                                    delegate: Rectangle {
-                                        id: sec
-                                        required property var modelData
-                                        required property int index
-                                        readonly property bool picked: win.shownPanel === modelData.id
-                                        width: 30; height: 24; radius: Theme.r2
-                                        color: picked ? Theme.wash(3) : secArea.containsMouse ? Theme.wash(1) : "transparent"
-                                        Behavior on color { ColorAnimation { duration: Theme.hoverMs } }
-                                        Accessible.role: Accessible.PageTab
-                                        Accessible.name: modelData.label
-                                        Accessible.selected: picked
-                                        Text {
-                                            textFormat: Text.PlainText
-                                            anchors.centerIn: parent
-                                            text: sec.modelData.glyph
-                                            font.family: Theme.fontGlyph; font.pixelSize: 13
-                                            color: sec.picked ? Theme.textPrimary : secArea.containsMouse ? Theme.textSecondary : Theme.textTertiary
-                                        }
-                                        MouseArea { id: secArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Island.switchTo(sec.modelData.id) }
-                                        Accessible.onPressAction: Island.switchTo(sec.modelData.id)
-                                        Tip { text: sec.modelData.label + "  Alt+" + (sec.index + 1); shown: secArea.containsMouse; below: true }
-                                    }
-                                }
+                                model: Island.sections
+                                current: win.shownPanel
+                                onPicked: id => Island.switchTo(id)
                             }
                             Row {
                                 id: headRow

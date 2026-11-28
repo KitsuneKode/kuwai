@@ -170,7 +170,7 @@ Singleton {
 
     // `from` "island": opened from the island itself (its clock, rings…);
     // going back returns to it, expanded while the pointer is still there.
-    readonly property bool hostsCenter: Settings.bar === "island" && Settings.islandStyle === "notch"
+    readonly property bool hostsCenter: Settings.bar === "island"
     function isCenter(name) { return name === "notifications" || name === "controls"; }
     function open(name, screenName, how, from) {
         if (name === "notifs" || name === "notifications") { Notifs.toggleCenter("notifications", how || "key", screenName || ""); return; }
