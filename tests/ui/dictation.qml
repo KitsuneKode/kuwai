@@ -13,10 +13,14 @@ ShellRoot {
         width: 1600; height: 1000
         color: "#000000"
 
-        readonly property string style: Quickshell.env("KUWAI_PILL_STYLE") || "field"
+        readonly property string style: Quickshell.env("KUWAI_PILL_STYLE") || "ticker"
+        readonly property string seat: Quickshell.env("KUWAI_PILL_SEAT") || ""
         readonly property var contexts: ["composer", "terminal", "maximised", "fullscreen"]
         readonly property var moments: ["quiet", "loud", "long", "transcribing", "delivered", "cancelled", "muted"]
         readonly property var frames: {
+            let asked = null;
+            try { asked = JSON.parse(Quickshell.env("KUWAI_PILL_FRAMES") || "null"); } catch (e) { asked = null; }
+            if (Array.isArray(asked) && asked.length) return asked;
             const out = [];
             for (const c of contexts) for (const m of moments) out.push([c, m]);
             return out;
@@ -27,10 +31,12 @@ ShellRoot {
         property var ring: null
         property var pill: null
         property var pillComp: null
-        readonly property bool app: ctx !== "terminal"
+        readonly property bool app: ctx !== "terminal" && ctx !== "maxterm"
         readonly property bool preedit: app && style !== "words"
-        readonly property var geo: ctx === "maximised" ? { x: 0, y: 36, w: 1600, h: 964, fs: 1 }
+        property bool moved: false
+        readonly property var geo: ctx === "maximised" || ctx === "maxterm" ? { x: 0, y: 36, w: 1600, h: 964, fs: 1 }
             : ctx === "fullscreen" ? { x: 0, y: 0, w: 1600, h: 1000, fs: 2 }
+            : ctx === "moving" && moved ? { x: 520, y: 60, w: 1000, h: 720, fs: 0 }
             : { x: 300, y: 120, w: 1000, h: 720, fs: 0 }
 
         readonly property string shortTake: "so the idea is we cache the tokens"
@@ -181,9 +187,11 @@ ShellRoot {
             }
             Item {
                 id: term
+                readonly property Item prompt: termLines.children[termLines.children.length - 1]
                 anchors.fill: parent
                 visible: !stage.app
                 Column {
+                    id: termLines
                     x: 18; y: parent.height - height - 18; spacing: 3
                     Repeater {
                         model: ["~/Projects/kuwai  main ❯ git log --oneline -4", "148f8b0 Merge branch 't3/kuwai-meeting-activity-ui'", "3602b7a The dictation caption reads the in-field marker again", "38ba575 Meetings in the island: voxtype's meeting mode", "a68f48b The dictation ring shows on every window", "~/Projects/kuwai  main ❯ bun test", "  1486 pass", "  0 fail", "Ran 1486 tests across 212 files. [9.41s]"]
@@ -246,7 +254,7 @@ ShellRoot {
             if (++at >= frames.length) { console.log("UI_SMOKE_CAPTURED"); Qt.quit(); return; }
             ctx = frames[at][0];
             moment = frames[at][1];
-            fieldText = ""; fieldPreedit = false; liveNow = "";
+            fieldText = ""; fieldPreedit = false; liveNow = ""; moved = false;
             Activities.voxState = "idle";
             Activities.voxText = "";
             gap.restart();
@@ -256,7 +264,9 @@ ShellRoot {
             setVox("streaming", "");
             ring.read("0xa", client(), screenInfo(), { int: 18 }, { int: 2 });
             adoptLater.restart();
-            pill = pillComp.createObject(pillLayer, { width: stage.width, height: stage.height, theme: fakeTheme, audio: fakeAudio });
+            const props = { width: stage.width, height: stage.height, theme: fakeTheme, audio: fakeAudio };
+            if (seat) props.insideSeat = seat;
+            pill = pillComp.createObject(pillLayer, props);
             if (!pill) { fail("the pill did not start: " + pillComp.errorString()); return; }
             takeLater.restart();
         }
@@ -269,7 +279,10 @@ ShellRoot {
             voice = moment === "muted" ? "muted" : moment === "quiet" ? "quiet" : "loud";
             const words = moment === "long" ? [longTake.split(" ").slice(0, -12).join(" "), longTake] : [firstTake, shortTake];
             const finish = (ms) => [ms, () => stage.capture()];
-            if (moment === "quiet") play([finish(1600)]);
+            if (ctx === "moving") play([[300, () => say(words[0])], [700, () => say(words[1])],
+                [900, () => { moved = true; ring.read("0xa", client(), screenInfo(), { int: 18 }, { int: 2 }); }],
+                [940, () => stage.capture("move-mid", true)], finish(1700)]);
+            else if (moment === "quiet") play([finish(1600)]);
             else if (moment === "muted") play([finish(1200)]);
             else if (moment === "loud" || moment === "long") play([[300, () => say(words[0])], [700, () => say(words[1])], finish(1500)]);
             else if (moment === "transcribing") play([[300, () => say(words[0])], [700, () => say(words[1])],
@@ -282,15 +295,16 @@ ShellRoot {
         }
         Timer { id: adoptLater; interval: 120; onTriggered: stage.adoptRing() }
         function rect(item) { if (!item) return null; const r = item.mapToItem(stage.contentItem, 0, 0, item.width, item.height); return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]; }
-        function capture() {
+        function capture(tag, more) {
             adoptRing();
+            const name = tag || moment;
             const card = pill ? find(pill, c => c.fullW !== undefined && c.morph !== undefined) : null;
-            const fieldBox = app ? rect(composer) : rect(term.children[0]);
-            console.log("PILL_FRAME " + JSON.stringify({ ctx: ctx, moment: moment, style: style, pill: card && card.opacity > 0.02 ? rect(card) : null, field: fieldBox,
-                                                         caption: Activities.voxListening }));
+            const fieldBox = app ? rect(composer) : ctx === "maxterm" ? rect(term.prompt) : rect(termLines);
+            console.log("PILL_FRAME " + JSON.stringify({ ctx: ctx, moment: name, style: style, seat: seat, pill: card && card.opacity > 0.02 ? rect(card) : null, field: fieldBox,
+                                                         window: [geo.x, geo.y, geo.w, geo.h], caption: Activities.voxListening }));
             stage.contentItem.grabToImage(result => {
-                if (!result.saveToFile("/out/" + ctx + "__" + moment + ".png")) { stage.fail("capture failed: " + ctx + " " + moment); return; }
-                stage.next();
+                if (!result.saveToFile("/out/" + ctx + "__" + name + ".png")) { stage.fail("capture failed: " + ctx + " " + name); return; }
+                if (!more) stage.next();
             });
         }
         Timer {

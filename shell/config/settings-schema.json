@@ -983,7 +983,7 @@
     {
       "key": "dictationPill",
       "type": "string",
-      "default": "field",
+      "default": "ticker",
       "enum": [
         "field",
         "words",

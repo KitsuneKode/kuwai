@@ -54,11 +54,13 @@ export function listen(s, peak, dtMs) {
 
 export const PILL_STYLES = ['field', 'words', 'ticker', 'status'];
 
-export function pillWish(style, textScale, box, stroke) {
+export function pillWish(style, textScale, box, stroke, motion) {
     const target = box && box.address && box.win
         ? { address: box.address, monitor: box.monitor, x: box.win.x, y: box.win.y, w: box.win.w, h: box.win.h,
             seam: box.inside ? null : box.y + box.h - (stroke || 0) / 2 } : null;
-    return { style: PILL_STYLES.includes(style) ? style : 'field', textScale: Math.max(1, Math.min(2, Number(textScale) || 1)), target };
+    const tier = motion && motion.tier;
+    return { style: PILL_STYLES.includes(style) ? style : 'ticker', textScale: Math.max(1, Math.min(2, Number(textScale) || 1)), target,
+             glide: tier ? { stiffness: tier.stiffness, damping: tier.damping } : null, still: !!(motion && motion.still) };
 }
 
 export function captionWanted(style, inField) {

@@ -15,7 +15,10 @@
   kuwai-rehearse --pill FILE             the dictation pill (shuush's
                                          KitsuneHud.qml) in each style, four
                                          windows, seven moments, text 1x and 2x:
-                                         one sheet per style and one side by side
+                                         one sheet per style and one side by side,
+                                         then the ticker's own states and where it
+                                         sits in a maximised window
+  kuwai-rehearse --pill FILE --ticker    only the ticker's sheets
 
 A whole run also drives the gestures with a real pointer, with motion and
 without (tests/ui/gestures.qml): the row follows the pointer 1:1, a flick or
@@ -144,12 +147,22 @@ PILL_WINDOWS = [("composer", "T3 composer"), ("terminal", "terminal"), ("maximis
 PILL_MOMENTS = [("quiet", "quiet listening"), ("loud", "loud listening"), ("long", "long take (2 min)"), ("transcribing", "transcribing"),
                 ("delivered", "delivered"), ("cancelled", "cancelled"), ("muted", "mic muted")]
 PILL_CROP = (260, 520, 1340, 1000)
+WIDE_CROP = (0, 480, 1600, 1000)
+TICKER_FRAMES = [("composer", "loud", "composer, loud"), ("composer", "quiet", "composer, too quiet"),
+                 ("moving", "move-mid", "moving: mid-glide"), ("moving", "loud", "moving: settled"),
+                 ("terminal", "long", "terminal, long take"), ("maximised", "loud", "maximised T3"),
+                 ("composer", "transcribing", "transcribing"), ("composer", "delivered", "delivered"), ("composer", "cancelled", "cancelled")]
+SEATS = [("centre", "centre of the bottom edge"), ("left", "bottom-left corner"), ("right", "bottom-right corner")]
+SEAT_FRAMES = [("maximised", "loud", 1, "maximised T3, text 1x"), ("fullscreen", "loud", 1, "fullscreen T3, text 1x"),
+               ("maxterm", "long", 1, "maximised terminal,\nlong take, 1x"), ("maximised", "loud", 2, "maximised T3, text 2x"),
+               ("maxterm", "long", 2, "maximised terminal,\nlong take, 2x")]
 
 
-def pill_stage(pill, style, scale, out):
+def pill_stage(pill, style, scale, out, frames=None, seat=""):
+    extra = ["--pill-frames", json.dumps(frames)] if frames else []
     run = subprocess.run([str(ROOT / "bin/kuwai-ui-test"), "--case", "dictation", "--backend", "x11", "--motion", "full",
-                          "--text-scale", f"{scale:g}", "--pill", str(pill), "--pill-style", style, "--output", str(out)],
-                         capture_output=True, text=True)
+                          "--text-scale", f"{scale:g}", "--pill", str(pill), "--pill-style", style, "--pill-seat", seat,
+                          "--output", str(out)] + extra, capture_output=True, text=True)
     log = out / "runtime.log"
     facts = {}
     for m in re.finditer(r"PILL_FRAME (\{.*\})", log.read_text(errors="replace") if log.is_file() else ""):
@@ -165,7 +178,13 @@ def pill_covers(d):
     return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
 
 
-def pill_grid(title, columns, rows, cell, path, k=0.7):
+def pill_note(d):
+    if pill_covers(d):
+        return "the pill is over the prompt" if d.get("ctx") == "maxterm" else "the pill is over the field"
+    return ""
+
+
+def pill_grid(title, columns, rows, cell, path, k=0.7, crop=PILL_CROP):
     from PIL import Image, ImageDraw, ImageFont
     def face(bold, size):
         found = subprocess.run(["fc-match", "-f", "%{file}", "sans-serif:bold" if bold else "sans-serif"], capture_output=True, text=True).stdout.strip()
@@ -174,7 +193,7 @@ def pill_grid(title, columns, rows, cell, path, k=0.7):
         except OSError:
             return ImageFont.load_default(size)
     big, font = face(True, 30), face(False, 19)
-    cw, ch = round((PILL_CROP[2] - PILL_CROP[0]) * k), round((PILL_CROP[3] - PILL_CROP[1]) * k)
+    cw, ch = round((crop[2] - crop[0]) * k), round((crop[3] - crop[1]) * k)
     side, top, pad = 220, 96, 12
     page = Image.new("RGB", (side + len(columns) * (cw + pad) + pad, top + len(rows) * (ch + pad) + pad), (24, 24, 28))
     draw = ImageDraw.Draw(page)
@@ -192,11 +211,37 @@ def pill_grid(title, columns, rows, cell, path, k=0.7):
                 draw.rectangle([x, y, x + cw, y + ch], outline=(255, 59, 48), width=2)
                 draw.text((x + 12, y + 12), "not staged", fill=(255, 59, 48), font=font)
                 continue
-            page.paste(img.crop(PILL_CROP).resize((cw, ch), Image.LANCZOS), (x, y))
+            page.paste(img.crop(crop).resize((cw, ch), Image.LANCZOS), (x, y))
             if note:
                 draw.rectangle([x, y, x + cw, y + 28], fill=(0, 0, 0))
                 draw.text((x + 8, y + 3), note, fill=(255, 179, 64), font=font)
     page.save(path)
+
+
+def ticker_sheets(pill, out):
+    from concurrent.futures import ThreadPoolExecutor
+    from PIL import Image
+    staged = sorted({(c, "loud" if m == "move-mid" else m) for c, m, _ in TICKER_FRAMES}, key=lambda f: [x[:2] for x in TICKER_FRAMES].index(f))
+    runs = [("states", "", sc, staged) for sc in (1, 2)]
+    runs += [("seat-" + seat, seat, sc, [[c, m] for c, m, s, _ in SEAT_FRAMES if s == sc]) for seat, _ in SEATS for sc in (1, 2)]
+    with ThreadPoolExecutor(2) as pool:
+        done = dict(zip([(r[0], r[2]) for r in runs],
+                        pool.map(lambda r: pill_stage(pill, "ticker", r[2], out / "ticker" / r[0] / f"x{r[2]}", [list(f) for f in r[3]], r[1]), runs)))
+    bad = [f"ticker {name} x{sc}" for (name, sc), (code, facts) in done.items() if code or not facts]
+
+    def shot(name, sc, ctx, moment):
+        path = out / "ticker" / name / f"x{sc}" / f"{ctx}__{moment}.png"
+        facts = done[(name, sc)][1].get((ctx, moment), {})
+        return (Image.open(path).convert("RGB") if path.is_file() else None), pill_note(facts)
+
+    states = out / "sheet-ticker-states.png"
+    pill_grid("B · the ticker, by state (text 1x and 2x)", ["text 1x", "text 2x"], [label for _, _, label in TICKER_FRAMES],
+              lambda j, i: shot("states", i + 1, TICKER_FRAMES[j][0], TICKER_FRAMES[j][1]), states, k=0.5, crop=WIDE_CROP)
+    seats = out / "sheet-ticker-seats.png"
+    pill_grid("B · inside a maximised or fullscreen window: where it sits", [label for _, label in SEATS],
+              [label for _, _, _, label in SEAT_FRAMES],
+              lambda j, i: shot("seat-" + SEATS[i][0], SEAT_FRAMES[j][2], SEAT_FRAMES[j][0], SEAT_FRAMES[j][1]), seats, k=0.42, crop=WIDE_CROP)
+    return bad, [states, seats]
 
 
 def pill_sheets(pill, out):
@@ -210,8 +255,7 @@ def pill_sheets(pill, out):
     def shot(st, sc, ctx, moment):
         path = out / st / f"x{sc}" / f"{ctx}__{moment}.png"
         facts = done[(st, sc)][1].get((ctx, moment), {})
-        note = "the pill is over the field" if pill_covers(facts) else ""
-        return (Image.open(path).convert("RGB") if path.is_file() else None), note
+        return (Image.open(path).convert("RGB") if path.is_file() else None), pill_note(facts)
 
     sheets = []
     for st in ("words", "ticker", "status"):
@@ -243,11 +287,15 @@ def main():
                     help="instead of staging: can the lock screen's date and clock be read over these wallpapers? (exit 1 if not)")
     ap.add_argument("--accent", default="#0a84ff", help="with --wall: the theme's accent, which tints the clock")
     ap.add_argument("--pill", type=Path, metavar="FILE", help="instead of the scenes: the dictation pill in each style (one sheet per style, one side by side)")
+    ap.add_argument("--ticker", action="store_true", help="with --pill: only the ticker's sheets (its states, and where it sits in a maximised window)")
     args = ap.parse_args()
 
     if args.pill:
         out = args.out or Path(tempfile.mkdtemp(prefix="kuwai-pill-"))
-        bad, sheets = pill_sheets(args.pill.resolve(), out)
+        bad, sheets = ticker_sheets(args.pill.resolve(), out)
+        if not args.ticker:
+            more_bad, more = pill_sheets(args.pill.resolve(), out)
+            bad, sheets = bad + more_bad, sheets + more
         for b in bad:
             print(f"could not stage the pill in {b} ({out})", file=sys.stderr)
         for path in sheets:

@@ -177,9 +177,9 @@ does not fit the screen.
 
 The pill is shuush's (`osd/kitsune-hud/KitsuneHud.qml`), drawn in this shell
 by `VoxtypeHost`; how it shows a take is Settings → Dictation words
-(`dictationPill`: `field`, today's; `words`; `ticker`; `status`), which
-`VoxTarget` passes on with the Text size and the target window in
-`$XDG_RUNTIME_DIR/kuwai/voxtype-pill.json`.
+(`dictationPill`: `ticker`, the default; `field`; `words`; `status`), which
+`VoxTarget` passes on with the Text size, the target window and the spring
+its ring glides on in `$XDG_RUNTIME_DIR/kuwai/voxtype-pill.json`.
 
 ```sh
 bin/kuwai-rehearse --pill ~/Projects/ai-agents/shussh/osd/kitsune-hud/KitsuneHud.qml --out DIR
@@ -194,6 +194,15 @@ style (`sheet-words.png`, `sheet-ticker.png`, `sheet-status.png`) and
 `side-by-side.png` with today's beside them; a cell whose pill lies over the
 field says so. `hyprctl` there is a stand-in that answers with the staged
 window. Nothing is judged: it is for choosing.
+
+The ticker gets two more sheets (`--ticker` makes only these):
+`sheet-ticker-states.png`, at text 1x and 2x, in a composer loud and too
+quiet, a window moving mid-take (a frame mid-glide and one settled), a
+terminal's long take, a maximised window, transcribing, delivered and
+cancelled; and `sheet-ticker-seats.png`, where it sits inside a maximised or
+fullscreen window (the centre of the bottom edge, the bottom-left or the
+bottom-right corner) over T3 and a maximised terminal. A cell whose pill lies
+over the composer or the terminal's prompt says so.
 
 ## The known list
 

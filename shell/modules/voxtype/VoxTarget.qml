@@ -8,10 +8,10 @@
 // The voice is the source linked into voxtype's capture stream (the default
 // source until that stream appears), on a dB scale that follows the session.
 // It also tells the pill (shuush's KitsuneHud, drawn by VoxtypeHost) how to
-// show a take (Settings → Dictation words), the Text size and where the
-// target window is, in $XDG_RUNTIME_DIR/kuwai/voxtype-pill.json beside the
-// host pid file; the caption below shows the words only where neither the
-// field nor the pill does.
+// show a take (Settings → Dictation words), the Text size, where the target
+// window is and the spring the ring glides on when it moves, in
+// $XDG_RUNTIME_DIR/kuwai/voxtype-pill.json, so the pill glides with it; the
+// caption shows the words only where neither the field nor the pill does.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -41,10 +41,10 @@ Scope {
         onFileChanged: reload()
         onLoaded: { try { root.address = JSON.parse(text() || "{}").address || ""; } catch (e) { root.address = ""; } if (root.on) look.restart(); }
     }
-    onOnChanged: { if (on) look.restart(); }
+    onOnChanged: { if (on) look.restart(); else drawn = null; }
 
     FileView { id: wishFile; path: root.runtime + "/kuwai/voxtype-pill.json"; printErrors: false }
-    readonly property string wish: JSON.stringify(VoxRing.pillWish(Settings.dictationPill, Theme.textScale, box, stroke))
+    readonly property string wish: JSON.stringify(VoxRing.pillWish(Settings.dictationPill, Theme.textScale, box, stroke, { tier: Theme.springSlow, still: Theme.reduceMotion }))
     onWishChanged: wishFile.setText(wish + "\n")
     Timer { interval: 1500; running: true; onTriggered: wishFile.setText(root.wish + "\n") }
 
@@ -52,6 +52,18 @@ Scope {
         if (rnd && rnd.int !== undefined) rounding = rnd.int;
         if (bsz && bsz.int !== undefined) border = bsz.int;
         box = VoxRing.place(address, clients, monitors, { border: border, rounding: rounding, gap: gap, stroke: stroke });
+    }
+    property var drawn: null
+    property Spring gx: Spring { tier: Theme.springSlow }
+    property Spring gy: Spring { tier: Theme.springSlow }
+    property Spring gw: Spring { tier: Theme.springSlow }
+    property Spring gh: Spring { tier: Theme.springSlow }
+    onBoxChanged: {
+        const b = box;
+        if (!b) return;
+        const jump = !on || !drawn || drawn.monitor !== b.monitor;
+        drawn = b;
+        for (const [s, v] of [[gx, b.x], [gy, b.y], [gw, b.w], [gh, b.h]]) { if (jump) s.snap(v); else s.target = v; }
     }
     Timer { id: look; interval: 60; onTriggered: if (root.on && root.address && !where.running) where.running = true }
     Process {
@@ -133,10 +145,10 @@ Scope {
                     readonly property real pad: 24
                     property bool born: false
                     Component.onCompleted: born = true
-                    x: root.box ? root.box.x - pad : 0
-                    y: root.box ? root.box.y - pad : 0
-                    width: root.box ? root.box.w + pad * 2 : 0
-                    height: root.box ? root.box.h + pad * 2 : 0
+                    x: root.gx.value - pad
+                    y: root.gy.value - pad
+                    width: root.gw.value + pad * 2
+                    height: root.gh.value + pad * 2
                     opacity: slot.here && born ? 1 : 0
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: slot.here ? Theme.enterMs : Theme.exitMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOut } }

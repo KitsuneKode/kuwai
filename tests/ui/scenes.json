@@ -16262,6 +16262,11 @@
    "kind": "typical",
    "set": [
     [
+     "@setting",
+     "dictationPill",
+     "field"
+    ],
+    [
      "Notifs",
      "shareKnown",
      true

@@ -82,14 +82,21 @@ describe('what the pill is told', () => {
   test('the style, the text size and the target window in its monitor\'s pixels', () => {
     const b = place('0xa', [win()], [dp], look);
     expect(pillWish('ticker', 1.2, b, 3)).toEqual({ style: 'ticker', textScale: 1.2,
-      target: { address: '0xa', monitor: 'DP-3', x: 17, y: 48, w: 2526, h: 1380, seam: 1434.5 } });
+      target: { address: '0xa', monitor: 'DP-3', x: 17, y: 48, w: 2526, h: 1380, seam: 1434.5 }, glide: null, still: false });
   });
   test('fullscreen: the target is the whole screen', () => {
     const b = place('0xa', [win({ fullscreen: 2, at: [1920, 0], size: [2560, 1440] })], [dp], look);
     expect(pillWish('ticker', 1, b, 3).target).toMatchObject({ x: 0, y: 0, w: 2560, h: 1440, seam: null });
   });
-  test('an unknown style is the default, the scale stays within 1 to 2, no box is no target', () => {
-    expect(pillWish('fancy', 7, null)).toEqual({ style: 'field', textScale: 2, target: null });
+  test('the ring\'s spring and reduced motion go with it, so the pill glides as the ring does', () => {
+    const w = pillWish('ticker', 1, null, 3, { tier: { stiffness: 1069, damping: 57.5, exitMs: 160 }, still: true });
+    expect(w.glide).toEqual({ stiffness: 1069, damping: 57.5 });
+    expect(w.still).toBe(true);
+  });
+  test('an unknown style is the ticker, the default; the scale stays within 1 to 2, no box is no target', () => {
+    expect(pillWish('fancy', 7, null)).toEqual({ style: 'ticker', textScale: 2, target: null, glide: null, still: false });
+    expect(pillWish(undefined, 1, null).style).toBe('ticker');
+    expect(pillWish('field', 1, null).style).toBe('field');
     expect(pillWish('status', 0, null).textScale).toBe(1);
   });
   test('the caption shows words only where nothing else does', () => {

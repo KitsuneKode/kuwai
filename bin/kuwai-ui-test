@@ -31,7 +31,9 @@ def main():
     parser.add_argument('--backend', choices=['offscreen', 'x11'], default='offscreen', help='x11 uses private Xvfb/Mesa and can compile PanelWindow components')
     parser.add_argument('--scenes', type=Path, help='--case rehearse: the scenes to stage (JSON list; bin/kuwai-rehearse writes it)')
     parser.add_argument('--pill', type=Path, help="--case dictation: the dictation pill to stage (shuush's KitsuneHud.qml)")
-    parser.add_argument('--pill-style', choices=['field', 'words', 'ticker', 'status'], default='field')
+    parser.add_argument('--pill-style', choices=['field', 'words', 'ticker', 'status'], default='ticker')
+    parser.add_argument('--pill-seat', choices=['', 'centre', 'left', 'right'], default='', help="--case dictation: where the pill sits inside a maximised window (default: the pill's own)")
+    parser.add_argument('--pill-frames', default='', help='--case dictation: the frames to stage, a JSON list of [window, moment] (default: every window at every moment)')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     if args.compile_components and args.case != 'primitives':
@@ -116,7 +118,7 @@ def main():
              'XDG_CONFIG_HOME':'/home/test/config','XDG_STATE_HOME':'/home/test/state',
              'XDG_CACHE_HOME':'/home/test/cache','XDG_DATA_HOME':'/home/test/data',
              'QT_QPA_PLATFORM':'offscreen','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic',
-             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_UI_PIXELS':f'{args.pixels:g}','KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','KUWAI_PILL_STYLE':args.pill_style,'LANG':'C.UTF-8'}
+             'KUWAI_UI_COMPILE':json.dumps([str(p.relative_to(root/'shell')) for directory in ('components','modules') for p in (root/'shell'/directory).rglob('*.qml')] if args.compile_components else []),'KUWAI_UI_TEXT_SCALE':str(args.text_scale),'KUWAI_UI_PIXELS':f'{args.pixels:g}','KUWAI_ROOT':'/app','KUWAI_REDUCE_MOTION':'1' if args.motion == 'reduced' else '0','KUWAI_PILL_STYLE':args.pill_style,'KUWAI_PILL_SEAT':args.pill_seat,'KUWAI_PILL_FRAMES':args.pill_frames,'LANG':'C.UTF-8'}
         if args.backend == 'x11':
             vendors = sorted(Path('/usr/share/glvnd/egl_vendor.d').glob('*mesa*.json'))
             if not vendors:
