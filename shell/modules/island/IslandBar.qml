@@ -469,9 +469,11 @@ Scope {
             readonly property real backH: Island.canBack || sectioned ? Theme.sp(34) : 0
             // A panel's own size, but never past the window (room for the shadow):
             // on a normal screen nothing changes, on a small one it fits.
-            readonly property size panelSize: panelLoader.item
+            readonly property size livePanelSize: panelLoader.item
                 ? Qt.size(Math.min(panelLoader.item.implicitWidth, maxWinW - 40), Math.min(panelLoader.item.implicitHeight + backH, maxWinH - 40))
                 : Qt.size(Theme.panelS, 300)
+            property size panelSize: Qt.size(Theme.panelS, 300)
+            Binding on panelSize { value: win.livePanelSize; when: win.panelHere; restoreMode: Binding.RestoreNone }
             // Expanded, recent background work from the assistant gets a row at the bottom.
             // Its width is IslandHover's own (wider with many agent accounts,
             // so the rings clear both sides); 720 until it's loaded.
