@@ -21,13 +21,12 @@ ClockFace {
     readonly property color soft: Qt.alpha(ink, 0.72)
 
     running: showing
-    centered: false
     longDate: true
     unit: Theme.saverClockScale
     screenH: areaH
     opacity: 1 - level * (1 - Theme.saverLongDim)
-    x: Math.max(areaW * margin, Math.min(areaW * 0.07, areaW * (1 - margin) - width))
-    y: Math.max(areaH * margin, Math.min(areaH * 0.62, areaH * (1 - margin) - height))
+    x: Math.round((areaW - width) / 2)
+    y: Math.max(areaH * margin, Math.round(areaH * 0.42 - height / 2))
     Behavior on x { NumberAnimation { duration: Theme.saverMoveMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine } }
     Behavior on y { NumberAnimation { duration: Theme.saverMoveMs; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSine } }
 
@@ -46,6 +45,7 @@ ClockFace {
 
     ClockChip {
         visible: Weather.ok && !face.dark
+        anchors.horizontalCenter: parent.horizontalCenter
         opacity: face.dim
         glyph: SystemStats.weatherGlyph
         text: Weather.temp + "°" + (Weather.desc ? " · " + Weather.desc : "")
@@ -53,6 +53,7 @@ ClockFace {
     }
     ClockChip {
         visible: !!face.next && !face.dark
+        anchors.horizontalCenter: parent.horizontalCenter
         opacity: face.dim
         glyph: "\u{f00f0}"
         text: face.next ? (face.named ? Dates.time(face.next.start) + " · " + face.named : "Next event at " + Dates.time(face.next.start)) : ""
@@ -60,6 +61,7 @@ ClockFace {
     }
     ClockChip {
         visible: Media.playing && !!Media.active && !face.dark && !Settings.screensaverPulse
+        anchors.horizontalCenter: parent.horizontalCenter
         opacity: face.dim
         glyph: "\u{f075a}"
         text: Media.active ? Media.title(Media.active) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
@@ -67,6 +69,7 @@ ClockFace {
     }
     MediaPulse {
         visible: Settings.screensaverPulse && Media.playing && !!Media.active && !face.dark
+        anchors.horizontalCenter: parent.horizontalCenter
         opacity: face.dim
         active: visible && face.showing
         title: Media.active ? Media.title(Media.active) + (Media.active.trackArtist ? " · " + Media.active.trackArtist : "") : ""
