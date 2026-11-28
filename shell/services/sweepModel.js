@@ -120,6 +120,7 @@ function emptyText(s) {
 function footText(s, nowMs) {
     const ago = s.counted && !s.pending ? agoText(s.checkedAt, nowMs) : "";
     return [
+        s.reviewing ? "review open" : "",
         s.protectedCount > 0 ? s.protectedCount + " protected" : "",
         ago ? "counted " + ago : "",
         s.counted && s.refreshing ? "counting again…" : s.counted && s.error ? "couldn't count again: " + s.error : "",

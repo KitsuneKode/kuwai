@@ -156,6 +156,7 @@ describe("states", () => {
         const s = { protectedCount: 2, checkedAt: now / 1000 - 3 * 3600, pending: false, refreshing: false, error: "", counted: true };
         expect(footText(s, now)).toBe("2 protected · counted 3 h ago");
         expect(footText({ ...s, refreshing: true }, now)).toBe("2 protected · counted 3 h ago · counting again…");
+        expect(footText({ ...s, reviewing: true }, now)).toBe("review open · 2 protected · counted 3 h ago");
         expect(footText({ ...s, error: "scan failed (exit 3)" }, now)).toBe("2 protected · counted 3 h ago · couldn't count again: scan failed (exit 3)");
         expect(footText({ ...s, protectedCount: 0, checkedAt: 0, counted: false, pending: true, refreshing: true }, now)).toBe("");
     });

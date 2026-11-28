@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import "sweepModel.js" as Model
 import "sizes.mjs" as Sizes
+import "jobs.mjs" as Jobs
 
 Singleton {
     id: root
@@ -99,11 +100,40 @@ Singleton {
     }
     Timer { id: cacheMoved; interval: 250; onTriggered: if (root.data !== null) root.check(true) }
 
+    property var review: null
+    property bool opening: false
+    readonly property bool reviewing: opening || Jobs.running(review)
+    function watchReview() { if (!reviewProbe.running) reviewProbe.running = true; }
     function openUi(path) {
         markViewed();
+        if (reviewing) return;
         const dir = path || scanRoot || Quickshell.env("HOME") + "/Projects";
-        Quickshell.execDetached([bin, "--open", dir]);
+        opening = true;
+        reviewStart.command = [Paths.bin + "/kuwai-job", "start", "sweep", "review", "--", bin, "--open", dir, "--wait"];
+        reviewStart.running = true;
     }
+    Component.onCompleted: if (enabled) watchReview()
+    Process {
+        id: reviewStart
+        stdout: StdioCollector {
+            onStreamFinished: { root.opening = false; root.watchReview(); }
+        }
+    }
+    Process {
+        id: reviewProbe
+        command: [Paths.bin + "/kuwai-job", "status", "sweep"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.review = Jobs.parse(text);
+                if (Jobs.running(root.review)) { reviewAgain.restart(); return; }
+                if (!Jobs.unseen(root.review)) return;
+                reviewAck.running = true;
+                root.check(true);
+            }
+        }
+    }
+    Timer { id: reviewAgain; interval: 3000; onTriggered: root.watchReview() }
+    Process { id: reviewAck; command: [Paths.bin + "/kuwai-job", "ack", "sweep"] }
     IpcHandler {
         target: "sweep"
         function open(): void { root.openUi(); }

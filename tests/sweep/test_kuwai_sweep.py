@@ -300,3 +300,18 @@ def test_a_status_that_is_not_a_summary_is_not_trusted(rs, tmp_path, monkeypatch
     for junk in (b"not json", b"[]", b'{"reclaimableBytes":"lots"}', b'{"reclaimableBytes":1}'):
         monkeypatch.setattr(rs, "_run", lambda args, junk=junk: junk)
         assert rs.status(str(tmp_path)) is None
+
+
+def test_waiting_for_the_review_blocks_until_the_window_closes(rs, tmp_path, monkeypatch):
+    ran = []
+    monkeypatch.setattr(rs.subprocess, "run", lambda cmd, **kw: ran.append((cmd, kw["cwd"])))
+    monkeypatch.setattr(rs.subprocess, "Popen", lambda *a, **kw: pytest.fail("a waiting review is not left detached"))
+    monkeypatch.setattr(rs, "find_sweep", lambda: "/x/sweep")
+    monkeypatch.delenv("KUWAI_TERMINAL", raising=False)
+    assert rs.main(["--open", str(tmp_path), "--wait"]) == 0
+    assert "--wait-for-single-instance-window-close" in ran[0][0] and ran[0][1] == str(tmp_path)
+    assert "--wait-for-single-instance-window-close" not in rs.open_cmd("", "/x/sweep", "/p/app")
+    monkeypatch.setenv("KUWAI_TERMINAL", "foot")
+    ran.clear()
+    assert rs.main(["--open", str(tmp_path), "--wait"]) == 0
+    assert ran[0][0][0] == "foot"

@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+"""Run something that deletes outside the shell, and say how it is going.
+
+  kuwai-job start KIND LABEL -- CMD [ARG…]   run CMD in a unit of its own, return at once
+  kuwai-job status KIND                      JSON: what the last run of KIND is doing or did
+  kuwai-job ack KIND                         mark a finished run as seen
+
+The shell runs in one systemd cgroup that is killed whole when it stops
+(KillMode=control-group, SIGKILL): a crash, `kuwai restart` or a panel that
+unloads would end a deletion half-way. `start` hands CMD to systemd-run --user
+(a transient unit, collected when it ends) so it outlives all three; outside
+the shell's unit it is a detached process. One run per KIND at a time: the
+runner holds a lock file for its whole life, so a second start is refused and
+a dead runner is seen as dead (the kernel drops the lock) instead of running
+for ever.
+
+The runner keeps state in $XDG_STATE_HOME/kuwai/jobs/KIND.json, replaced whole:
+{"id","kind","label","state":"queued|running|done|lost","started","finished",
+ "code","result","seen"}. `result` is the last JSON line CMD printed. A panel
+that comes back after a restart reads it: running means still going, done
+means a result nobody has seen yet.
+"""
+import fcntl
+import json
+import os
+import re
+import secrets
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+KIND = re.compile(r"^[a-z][a-z0-9-]{0,23}$")
+QUEUE_GRACE_S = 20
+KEPT_ENV = ("PATH", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CONFIG_HOME")
+
+
+def jobs_dir() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(base) / "kuwai" / "jobs"
+
+
+def state_path(kind: str) -> Path:
+    return jobs_dir() / f"{kind}.json"
+
+
+def lock_path(kind: str) -> Path:
+    return jobs_dir() / f"{kind}.lock"
+
+
+def write_state(kind: str, data: dict) -> None:
+    d = jobs_dir()
+    d.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=f".{kind}.")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, separators=(",", ":"))
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, state_path(kind))
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def read_state(kind: str) -> dict | None:
+    try:
+        data = json.loads(state_path(kind).read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and isinstance(data.get("state"), str) else None
+
+
+def held(kind: str) -> bool:
+    try:
+        with open(lock_path(kind), "a") as f:
+            try:
+                fcntl.flock(f, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except OSError:
+                return True
+            fcntl.flock(f, fcntl.LOCK_UN)
+            return False
+    except OSError:
+        return False
+
+
+def status(kind: str, now: float | None = None) -> dict:
+    now = time.time() if now is None else now
+    s = read_state(kind)
+    if s is None:
+        return {"state": "none", "kind": kind}
+    if s["state"] in ("queued", "running") and not held(kind):
+        young = s["state"] == "queued" and now - float(s.get("started") or 0) < QUEUE_GRACE_S
+        if not young:
+            s = {**s, "state": "lost", "finished": int(now), "seen": False}
+            write_state(kind, s)
+    return s
+
+
+def ack(kind: str) -> dict:
+    s = read_state(kind)
+    if s is not None and s["state"] in ("done", "lost") and not s.get("seen"):
+        s = {**s, "seen": True}
+        write_state(kind, s)
+    return s or {"state": "none", "kind": kind}
+
+
+def last_json(text: str):
+    for line in reversed((text or "").strip().splitlines()):
+        try:
+            return json.loads(line)
+        except ValueError:
+            continue
+    return None
+
+
+def run(kind: str, label: str, jid: str, cmd: list[str]) -> int:
+    jobs_dir().mkdir(parents=True, exist_ok=True, mode=0o700)
+    with open(lock_path(kind), "a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return 3
+        base = {"id": jid, "kind": kind, "label": label, "started": int(time.time()), "seen": False}
+        write_state(kind, {**base, "state": "running"})
+        try:
+            p = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            code, result = p.returncode, last_json(p.stdout)
+        except (OSError, ValueError):
+            code, result = 127, None
+        write_state(kind, {**base, "state": "done", "finished": int(time.time()), "code": code, "result": result})
+        return 0
+
+
+def systemd_run() -> str | None:
+    if os.environ.get("KUWAI_SHELL_UNIT") != "1":
+        return None
+    return shutil.which("systemd-run")
+
+
+def launch_argv(kind: str, runner: list[str], jid: str) -> list[str]:
+    exe = systemd_run()
+    if not exe:
+        return runner
+    argv = [exe, "--user", "--collect", "--quiet", f"--unit=kuwai-job-{kind}-{jid}", "--slice=app.slice",
+            f"--description=kuwai: {kind} (a deletion that outlives the shell)",
+            "--property=StandardOutput=null", "--property=StandardError=null",
+            f"--working-directory={Path.home()}"]
+    for name in KEPT_ENV:
+        if os.environ.get(name):
+            argv.append(f"--setenv={name}={os.environ[name]}")
+    return [*argv, "--", *runner]
+
+
+def start(kind: str, label: str, cmd: list[str]) -> dict:
+    if held(kind):
+        return {"ok": False, "busy": True}
+    jid = secrets.token_hex(4)
+    write_state(kind, {"id": jid, "kind": kind, "label": label, "state": "queued", "started": int(time.time()), "seen": False})
+    runner = [sys.executable, os.path.abspath(__file__), "run", kind, label, jid, "--", *cmd]
+    try:
+        subprocess.Popen(launch_argv(kind, runner, jid), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:
+        write_state(kind, {"id": jid, "kind": kind, "label": label, "state": "lost", "started": int(time.time()),
+                           "finished": int(time.time()), "seen": False})
+        return {"ok": False}
+    return {"ok": True, "id": jid}
+
+
+def split(args: list[str]) -> tuple[list[str], list[str]]:
+    if "--" not in args:
+        return args, []
+    i = args.index("--")
+    return args[:i], args[i + 1:]
+
+
+def main(argv: list[str]) -> int:
+    head, cmd = split(argv)
+    if len(head) >= 2 and head[0] in ("status", "ack") and KIND.match(head[1]):
+        print(json.dumps(status(head[1]) if head[0] == "status" else ack(head[1]), separators=(",", ":")))
+        return 0
+    if len(head) == 3 and head[0] == "start" and KIND.match(head[1]) and cmd:
+        out = start(head[1], head[2], cmd)
+        print(json.dumps(out, separators=(",", ":")))
+        return 0 if out["ok"] else 1
+    if len(head) == 4 and head[0] == "run" and KIND.match(head[1]) and cmd:
+        return run(head[1], head[2], head[3], cmd)
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
