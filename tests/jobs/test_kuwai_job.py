@@ -71,7 +71,8 @@ def fake_systemd_run(fakebin, record):
         printf '%s\\n' "$@" > {record}
         while [ "$1" != "--" ]; do shift; done
         shift
-        exec setsid "$@"
+        setsid "$@" </dev/null >/dev/null 2>&1 &
+        exit 0
         """))
     path.chmod(0o755)
 
@@ -173,15 +174,93 @@ def test_inside_the_shells_unit_it_goes_to_systemd_with_values_as_arguments(worl
     record = tmp / "systemd-run.args"
     fake_systemd_run(fakebin, record)
     script, _, _ = deleter(tmp, files=1, pause=0.01)
-    env = {**env, "KUWAI_SHELL_UNIT": "1"}
+    env = {**env, "KUWAI_SHELL_UNIT": "1", "SWEEP_CONFIG_DIR": "/sweep config$HOME"}
     assert job(env, "start", "cleanup", "trash:a b; rm -rf /", "--", str(script), "x y")[1]["ok"] is True
     assert wait_for(lambda: record.exists() and job(env, "status", "cleanup")[1]["state"] == "done")
     args = record.read_text().splitlines()
-    assert args[:3] == ["--user", "--collect", "--quiet"]
+    assert args[:4] == ["--user", "--collect", "--quiet", "--expand-environment=no"]
     assert any(a.startswith("--unit=kuwai-job-cleanup-") for a in args)
     assert "--slice=app.slice" in args and f"--setenv=PATH={env['PATH']}" in args
+    assert f"--setenv=HOME={env['HOME']}" in args and f"--setenv=SWEEP_CONFIG_DIR={env['SWEEP_CONFIG_DIR']}" in args
+    assert "--property=Type=exec" in args
+    assert "--property=StandardOutput=null" in args and "--property=StandardError=null" in args
     tail = args[args.index("--") + 1:]
     assert tail[2:5] == ["run", "cleanup", "trash:a b; rm -rf /"] and tail[-3:] == ["--", str(script), "x y"]
+
+
+def test_systemd_failure_falls_back_to_one_detached_process_and_says_so(world):
+    tmp, fakebin, env = world
+    fakebin.joinpath("systemd-run").write_text("#!/bin/sh\nexit 1\n")
+    fakebin.joinpath("systemd-run").chmod(0o755)
+    script, victims, _ = deleter(tmp, files=2, pause=0.03)
+    env = {**env, "KUWAI_SHELL_UNIT": "1"}
+    r = subprocess.run([sys.executable, str(JOB), "start", "storage", "pip", "--", str(script)],
+                       capture_output=True, text=True, env=env, timeout=20)
+    assert r.returncode == 0 and json.loads(r.stdout)["ok"] is True
+    assert "systemd-run could not start" in r.stderr and "detached process" in r.stderr
+    assert wait_for(lambda: job(env, "status", "storage")[1]["state"] == "done")
+    assert list(victims.iterdir()) == []
+
+
+def test_without_systemd_run_the_fallback_is_detached_and_says_so(world):
+    tmp, fakebin, env = world
+    script, victims, _ = deleter(tmp, files=2, pause=0.03)
+    env = {**env, "KUWAI_SHELL_UNIT": "1", "PATH": str(fakebin)}
+    r = subprocess.run([sys.executable, str(JOB), "start", "storage", "pip", "--", str(script)],
+                       capture_output=True, text=True, env=env, timeout=20)
+    assert r.returncode == 0 and json.loads(r.stdout)["ok"] is True
+    assert "systemd-run is unavailable" in r.stderr and "detached process" in r.stderr
+    assert wait_for(lambda: job(env, "status", "storage")[1]["state"] == "done")
+    assert list(victims.iterdir()) == []
+
+
+def load_job_module(monkeypatch, env):
+    from importlib.machinery import SourceFileLoader
+    import importlib.util
+    monkeypatch.setenv("XDG_STATE_HOME", env["XDG_STATE_HOME"])
+    loader = SourceFileLoader("kuwai_job_under_test", str(JOB))
+    spec = importlib.util.spec_from_loader("kuwai_job_under_test", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod
+
+
+def test_a_queued_run_is_busy_even_before_the_runner_takes_the_lock(world, monkeypatch):
+    _, _, env = world
+    m = load_job_module(monkeypatch, env)
+    monkeypatch.setattr(m.transient, "launch", lambda *a, **kw: pytest.fail("the queued run must not be started twice"))
+    m.write_state("storage", {"id": "q", "kind": "storage", "label": "pip", "state": "queued",
+                              "started": int(time.time()), "seen": False})
+    assert m.start("storage", "pip", ["/bin/true"]) == {"ok": False, "busy": True}
+
+
+def test_a_stale_queued_run_can_be_started_again(world, monkeypatch):
+    _, _, env = world
+    m = load_job_module(monkeypatch, env)
+    launches = []
+    monkeypatch.setattr(m.transient, "launch", lambda *a, **kw: launches.append(a) or "detached")
+    m.write_state("storage", {"id": "q", "kind": "storage", "label": "pip", "state": "queued",
+                              "started": int(time.time() - m.QUEUE_GRACE_S - 1), "seen": False})
+    out = m.start("storage", "pip", ["/bin/true"])
+    assert out["ok"] is True and len(launches) == 1
+    assert m.read_state("storage")["state"] == "queued" and m.read_state("storage")["id"] != "q"
+
+
+def test_two_starts_at_the_same_time_run_the_deletion_once(world):
+    tmp, _, env = world
+    script, victims, log = deleter(tmp, files=6, pause=0.25)
+    cmd = [sys.executable, str(JOB), "start", "storage", "pip", "--", str(script)]
+    a = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+    b = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+    results = []
+    for p in (a, b):
+        out, _ = p.communicate(timeout=20)
+        results.append((p.returncode, json.loads(out)))
+    assert sorted(rc for rc, _ in results) == [0, 1]
+    assert sum(1 for _, out in results if out.get("ok") is True) == 1
+    assert sum(1 for _, out in results if out == {"ok": False, "busy": True}) == 1
+    assert wait_for(lambda: job(env, "status", "storage")[1]["state"] == "done")
+    assert list(victims.iterdir()) == [] and log.read_text() == "run\n"
 
 
 def test_outside_the_unit_it_is_a_detached_process_not_systemd(world):

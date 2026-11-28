@@ -36,6 +36,7 @@ project names and paths, kept on this machine).
 import fcntl
 import json
 import os
+import secrets
 import shlex
 import shutil
 import subprocess
@@ -43,6 +44,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+import transient
 
 TTL_S = int(os.environ.get("KUWAI_SWEEP_TTL", str(6 * 3600)))
 FAIL_RETRY_S = 1800
@@ -318,6 +322,19 @@ def open_cmd(term: str, exe: str, d: str, wait: bool = False) -> list[str]:
     return [*shlex.split(term), "-e", *run]
 
 
+def refresh_argv(root: str) -> list[str]:
+    return [sys.executable, os.path.abspath(__file__), "--refresh", "--root", root]
+
+
+def launch_detached(unit: str, description: str, cmd: list[str], cwd: str | None = None) -> str:
+    return transient.launch(unit, description, cmd, cwd=cwd, log_prefix="kuwai-sweep")
+
+
+def start_refresh(root: str) -> str:
+    unit = "kuwai-sweep-refresh-" + secrets.token_hex(4)
+    return launch_detached(unit, "kuwai: sweep scan (outlives the shell)", refresh_argv(root))
+
+
 def open_review(d: str, wait: bool = False) -> int:
     exe = find_sweep()
     if not exe:
@@ -331,8 +348,9 @@ def open_review(d: str, wait: bool = False) -> int:
         if wait:
             subprocess.run(cmd, cwd=d, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         else:
-            subprocess.Popen(cmd, cwd=d, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL, start_new_session=True)
+            unit = "kuwai-sweep-review-" + secrets.token_hex(4)
+            if launch_detached(unit, "kuwai: sweep review (outlives the shell)", cmd, cwd=d) == "failed":
+                return 1
     except OSError as e:
         print(f"kuwai-sweep: couldn't start {cmd[0]}: {e}", file=sys.stderr)
         return 1
@@ -369,9 +387,7 @@ def main(argv: list[str]) -> int:
     print(json.dumps(out, separators=(",", ":")))
     sys.stdout.flush()
     if needs_refresh:
-        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--refresh", "--root", root],
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
+        start_refresh(root)
     return 0
 
 

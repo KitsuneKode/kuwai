@@ -223,6 +223,55 @@ def test_the_background_beat_is_6h_and_the_panel_asks_for_30_min(rs, tmp_path, p
     assert rs.main(["--max-age", "soon"]) == 2
 
 
+def fake_systemd_service(rs, monkeypatch):
+    import types
+    calls = []
+    monkeypatch.setattr(rs.transient, "systemd_run", lambda env=None: "/usr/bin/systemd-run")
+    monkeypatch.setattr(rs.transient.subprocess, "run",
+                        lambda argv, **kw: calls.append((argv, kw)) or types.SimpleNamespace(returncode=0))
+    return calls
+
+
+def test_the_refresh_unit_is_a_transient_user_service_with_a_literal_argv(rs, monkeypatch):
+    calls = fake_systemd_service(rs, monkeypatch)
+    root = "/p/a $HOME"
+    cmd = rs.refresh_argv(root)
+    assert rs.launch_detached("kuwai-sweep-refresh-test", "kuwai: sweep scan", cmd) == "unit"
+    argv, kw = calls[0]
+    assert argv[:4] == ["/usr/bin/systemd-run", "--user", "--collect", "--quiet"]
+    assert "--expand-environment=no" in argv and "--property=Type=exec" in argv
+    assert "--unit=kuwai-sweep-refresh-test" in argv and "--slice=app.slice" in argv
+    assert "--property=StandardOutput=null" in argv and "--property=StandardError=null" in argv
+    tail = argv[argv.index("--") + 1:]
+    assert tail == cmd and tail[-2:] == ["--root", root]
+    assert "sh" not in tail and "-c" not in tail
+
+
+def test_the_review_unit_keeps_shell_values_as_arguments_not_interpolation(rs, monkeypatch):
+    calls = fake_systemd_service(rs, monkeypatch)
+    target = "/p/a $HOME"
+    cmd = rs.open_cmd("foot", "/x/sweep", target)
+    assert rs.launch_detached("kuwai-sweep-review-test", "kuwai: sweep review", cmd, cwd=target) == "unit"
+    argv = calls[0][0]
+    assert f"--working-directory={target}" in argv
+    tail = argv[argv.index("--") + 1:]
+    assert tail == cmd
+    at = tail.index("sh")
+    assert tail[at:at + 5] == ["sh", "-c", rs.REVIEW_SH, "sh", "/x/sweep"]
+    assert tail[at + 5] == target
+
+
+def test_the_sweep_fallback_is_detached_and_says_why(rs, monkeypatch, capsys):
+    calls = []
+    monkeypatch.setenv("KUWAI_SHELL_UNIT", "1")
+    monkeypatch.setattr(rs.transient, "systemd_run", lambda env=None: None)
+    monkeypatch.setattr(rs.transient, "detached", lambda cmd, cwd=None: calls.append((cmd, cwd)) or object())
+    mode = rs.launch_detached("kuwai-sweep-refresh-test", "kuwai: sweep scan", ["/bin/true"], cwd="/tmp")
+    assert mode == "detached" and calls == [(["/bin/true"], "/tmp")]
+    err = capsys.readouterr().err
+    assert "systemd-run is unavailable" in err and "detached process" in err and "shell restart" in err
+
+
 def test_the_review_opens_in_your_terminal(rs):
     run = ["sh", "-c", rs.REVIEW_SH, "sh", "/x/sweep", "/p/app"]
     assert rs.open_cmd("", "/x/sweep", "/p/app") == [
