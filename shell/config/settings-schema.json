@@ -991,11 +991,11 @@
         "status"
       ],
       "maxLength": 512,
-      "section": "island",
+      "section": "dictation",
       "label": "Dictation words",
       "detail": "Where the words of a take show while you speak",
-      "group": "Dictation",
-      "searchTerms": "dictation words where the words of a take show while you speak field words ticker status dictation voxtype pill",
+      "group": "Words on screen",
+      "searchTerms": "dictation words where the words of a take show while you speak field words ticker status dictation voxtype pill words on screen",
       "requires": [],
       "restartScope": "live"
     },
@@ -1304,6 +1304,90 @@
       "detail": "Reloads everything; notifications stay",
       "group": "",
       "words": "restart the shell reloads everything; notifications stay  "
+    },
+    {
+      "page": "dictation",
+      "label": "Keep the microphone warm",
+      "detail": "Open a few seconds after a take, so the next one catches its first word",
+      "group": "Listening",
+      "words": "keep the microphone warm open a few seconds after a take, so the next one catches its first word listening warm mic microphone seconds first word"
+    },
+    {
+      "page": "dictation",
+      "label": "Listen after you let go",
+      "detail": "Keeps the microphone open this long after the key, for the end of the last word",
+      "group": "Listening",
+      "words": "listen after you let go keeps the microphone open this long after the key, for the end of the last word listening release tail buffer end of take last word"
+    },
+    {
+      "page": "dictation",
+      "label": "Queue takes",
+      "detail": "Start the next take while the last one is still being written; they arrive in order",
+      "group": "Listening",
+      "words": "queue takes start the next take while the last one is still being written; they arrive in order listening queue dictations next take order"
+    },
+    {
+      "page": "dictation",
+      "label": "Words in the field as you speak",
+      "detail": "Shown in the field, not yet final, where the app allows it",
+      "group": "Listening",
+      "words": "words in the field as you speak shown in the field, not yet final, where the app allows it listening preedit live words field"
+    },
+    {
+      "page": "dictation",
+      "label": "Restart dictation",
+      "detail": "These settings apply once dictation restarts; it takes a few seconds",
+      "group": "Listening",
+      "words": "restart dictation these settings apply once dictation restarts; it takes a few seconds listening restart voxtype apply"
+    },
+    {
+      "page": "dictation",
+      "label": "Tidied by",
+      "detail": "Which services tidy your words, in order",
+      "group": "Cleanup",
+      "words": "tidied by which services tidy your words, in order cleanup cleanup providers cloud local ollama groq order llm"
+    },
+    {
+      "page": "dictation",
+      "label": "Offline only",
+      "detail": "Only this computer tidies your words",
+      "group": "Cleanup",
+      "words": "offline only only this computer tidies your words cleanup offline local private air-gapped"
+    },
+    {
+      "page": "dictation",
+      "label": "Studio",
+      "detail": "History, corrections and vocabulary",
+      "group": "Cleanup",
+      "words": "studio history, corrections and vocabulary cleanup studio history corrections vocabulary shuush"
+    },
+    {
+      "page": "dictation",
+      "label": "Corrections",
+      "detail": "Fixes it learned and the ones you taught it",
+      "group": "Learning",
+      "words": "corrections fixes it learned and the ones you taught it learning learning rules fixes corrections inbox"
+    },
+    {
+      "page": "dictation",
+      "label": "To review",
+      "detail": "Suggestions waiting for you",
+      "group": "Learning",
+      "words": "to review suggestions waiting for you learning review pending suggestions inbox"
+    },
+    {
+      "page": "dictation",
+      "label": "Key up to text",
+      "detail": "How long from letting go of the key to the words in the field",
+      "group": "Speed and reliability",
+      "words": "key up to text how long from letting go of the key to the words in the field speed and reliability speed latency fast slow p50 p90 delivered reliability"
+    },
+    {
+      "page": "dictation",
+      "label": "Change them",
+      "detail": "In Shortcuts, with the rest of the desktop's keys",
+      "group": "Shortcuts",
+      "words": "change them in shortcuts, with the rest of the desktop's keys shortcuts dictation keys dictate cancel bring back"
     }
   ]
 }

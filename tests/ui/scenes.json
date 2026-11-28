@@ -15761,7 +15761,7 @@
    "name": "settings",
    "panel": "SettingsPanel",
    "props": {
-    "current": 12,
+    "current": 13,
     "searchText": "sunrise"
    },
    "set": [
@@ -15782,7 +15782,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 12
+    "current": 13
    }
   },
   {
@@ -15791,7 +15791,7 @@
    "panel": "SettingsPanel",
    "kind": "typical",
    "props": {
-    "current": 12
+    "current": 13
    },
    "set": [
     [
@@ -15820,7 +15820,7 @@
    "panel": "SettingsPanel",
    "kind": "worst",
    "props": {
-    "current": 12
+    "current": 13
    },
    "set": [
     [
@@ -15830,6 +15830,3069 @@
      [
       "screensaverFolder",
       "/home/someone-with-a-long-name/Pictures/Photographs/2025/Holidays in the mountains with the whole family and friends/Favourites"
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-no-engine",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": false
+      },
+      "last": null,
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-no-cleanup",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": false
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-mid-take",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "restart dictation"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     true
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     true
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "recording"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-restart",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "restart dictation"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     true
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-no-stats",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 0,
+        "by_source": {},
+        "pending_fixes": 0,
+        "pending_vocab": 0,
+        "vocab": 0
+       },
+       "speed": null,
+       "delivered": null
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-unreadable",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     true
+    ],
+    [
+     "Dictation",
+     "report",
+     null
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-worst",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "worst",
+   "props": {
+    "current": 10
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-tdt-0.6b-v3-multilingual-int8-onnx-community-quantised-build",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "unloaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 10,
+        "tail": 250,
+        "queue": false,
+        "preedit": false
+       }
+      },
+      "last": {
+       "outcome": "recovered",
+       "at": "@now-172800000ms",
+       "chars": 4200,
+       "limit": true
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "local",
+        "groq",
+        "groq2",
+        "openrouter",
+        "opencode",
+        "cerebras"
+       ],
+       "offline": false,
+       "cleanup_ready": false,
+       "learn": {
+        "rules": 1284,
+        "by_source": {
+         "seed": 32,
+         "auto": 906,
+         "user fix": 311,
+         "accepted hint": 29,
+         "edit-watch": 6
+        },
+        "pending_fixes": 118,
+        "pending_vocab": 12,
+        "vocab": 128
+       },
+       "speed": {
+        "n": 2400,
+        "p50": 1840,
+        "p90": 12400
+       },
+       "delivered": {
+        "n": 2400,
+        "rate": 0.912
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-cleanup",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "tidied by"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-speed",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "key up to text"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-keys",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "change them"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 43,
+        "by_source": {
+         "seed": 32,
+         "auto": 6,
+         "user fix": 4,
+         "accepted hint": 1,
+         "edit-watch": 0
+        },
+        "pending_fixes": 6,
+        "pending_vocab": 0,
+        "vocab": 55
+       },
+       "speed": {
+        "n": 48,
+        "p50": 610,
+        "p90": 1180
+       },
+       "delivered": {
+        "n": 100,
+        "rate": 0.97
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-no-cleanup-lower",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "tidied by"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": false
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-no-stats-lower",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "typical",
+   "props": {
+    "current": 10,
+    "searchText": "key up to text"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-unified-en-0.6b-fp16",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "loaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 3,
+        "tail": 400,
+        "queue": true,
+        "preedit": true
+       }
+      },
+      "last": {
+       "outcome": "ok",
+       "at": "@now-720000ms",
+       "chars": 157,
+       "limit": false
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "groq",
+        "groq2",
+        "openrouter"
+       ],
+       "offline": false,
+       "cleanup_ready": true,
+       "learn": {
+        "rules": 0,
+        "by_source": {},
+        "pending_fixes": 0,
+        "pending_vocab": 0,
+        "vocab": 0
+       },
+       "speed": null,
+       "delivered": null
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-worst-cleanup",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "worst",
+   "props": {
+    "current": 10,
+    "searchText": "tidied by"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-tdt-0.6b-v3-multilingual-int8-onnx-community-quantised-build",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "unloaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 10,
+        "tail": 250,
+        "queue": false,
+        "preedit": false
+       }
+      },
+      "last": {
+       "outcome": "recovered",
+       "at": "@now-172800000ms",
+       "chars": 4200,
+       "limit": true
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "local",
+        "groq",
+        "groq2",
+        "openrouter",
+        "opencode",
+        "cerebras"
+       ],
+       "offline": false,
+       "cleanup_ready": false,
+       "learn": {
+        "rules": 1284,
+        "by_source": {
+         "seed": 32,
+         "auto": 906,
+         "user fix": 311,
+         "accepted hint": 29,
+         "edit-watch": 6
+        },
+        "pending_fixes": 118,
+        "pending_vocab": 12,
+        "vocab": 128
+       },
+       "speed": {
+        "n": 2400,
+        "p50": 1840,
+        "p90": 12400
+       },
+       "delivered": {
+        "n": 2400,
+        "rate": 0.912
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "settings/dictation-worst-speed",
+   "name": "settings",
+   "panel": "SettingsPanel",
+   "kind": "worst",
+   "props": {
+    "current": 10,
+    "searchText": "key up to text"
+   },
+   "set": [
+    [
+     "Dictation",
+     "pinned",
+     true
+    ],
+    [
+     "Dictation",
+     "loaded",
+     true
+    ],
+    [
+     "Dictation",
+     "failed",
+     false
+    ],
+    [
+     "Dictation",
+     "report",
+     {
+      "at": "@now-0ms",
+      "voxtype": {
+       "installed": true,
+       "answered": true,
+       "running": true,
+       "state": "idle",
+       "engine": "parakeet",
+       "model": "parakeet-tdt-0.6b-v3-multilingual-int8-onnx-community-quantised-build",
+       "backend": "GPU (Vulkan)",
+       "gpu": true,
+       "model_state": "unloaded",
+       "unload_after": 120,
+       "config": {
+        "warm": 10,
+        "tail": 250,
+        "queue": false,
+        "preedit": false
+       }
+      },
+      "last": {
+       "outcome": "recovered",
+       "at": "@now-172800000ms",
+       "chars": 4200,
+       "limit": true
+      },
+      "shuush": {
+       "installed": true,
+       "answered": true,
+       "order": [
+        "local",
+        "groq",
+        "groq2",
+        "openrouter",
+        "opencode",
+        "cerebras"
+       ],
+       "offline": false,
+       "cleanup_ready": false,
+       "learn": {
+        "rules": 1284,
+        "by_source": {
+         "seed": 32,
+         "auto": 906,
+         "user fix": 311,
+         "accepted hint": 29,
+         "edit-watch": 6
+        },
+        "pending_fixes": 118,
+        "pending_vocab": 12,
+        "vocab": 128
+       },
+       "speed": {
+        "n": 2400,
+        "p50": 1840,
+        "p90": 12400
+       },
+       "delivered": {
+        "n": 2400,
+        "rate": 0.912
+       }
+      }
+     }
+    ],
+    [
+     "Dictation",
+     "restartNeeded",
+     false
+    ],
+    [
+     "Dictation",
+     "restartWaiting",
+     false
+    ],
+    [
+     "Dictation",
+     "note",
+     ""
+    ],
+    [
+     "Activities",
+     "voxState",
+     "idle"
+    ],
+    [
+     "KeyBinds",
+     "pinned",
+     true
+    ],
+    [
+     "KeyBinds",
+     "loaded",
+     true
+    ],
+    [
+     "KeyBinds",
+     "entries",
+     [
+      {
+       "id": "b198",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + CTRL + D",
+       "aid": "SUPER+CTRL+D",
+       "def": "SUPER + CTRL + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b199",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate (again to stop)",
+       "keys": "SUPER + SHIFT + F23",
+       "aid": "SUPER+SHIFT+F23",
+       "def": "SUPER + SHIFT + F23",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b200",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Cancel dictation",
+       "keys": "SUPER + SHIFT + D",
+       "aid": "SUPER+SHIFT+D",
+       "def": "SUPER + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b201",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Bring back the cancelled dictation",
+       "keys": "SUPER + CTRL + ALT + D",
+       "aid": "SUPER+CTRL+ALT+D",
+       "def": "SUPER + CTRL + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b202",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Teach a dictation fix",
+       "keys": "SUPER + CTRL + SHIFT + D",
+       "aid": "SUPER+CTRL+SHIFT+D",
+       "def": "SUPER + CTRL + SHIFT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b203",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Voxtype Studio (history, corrections, vocabulary, snippets)",
+       "keys": "SUPER + ALT + D",
+       "aid": "SUPER+ALT+D",
+       "def": "SUPER + ALT + D",
+       "custom": false,
+       "fixed": false
+      },
+      {
+       "id": "b204",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Dictate while held (tap: hands-free)",
+       "keys": "F9",
+       "aid": "F9",
+       "def": "F9",
+       "custom": false,
+       "fixed": true
+      },
+      {
+       "id": "b205",
+       "kind": "bind",
+       "group": "Dictation",
+       "text": "Edit the selection by voice",
+       "keys": "SUPER + CTRL + E",
+       "aid": "SUPER+CTRL+E",
+       "def": "SUPER + CTRL + E",
+       "custom": false,
+       "fixed": false
+      }
      ]
     ]
    ]

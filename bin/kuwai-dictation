@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+"""What Settings → Dictation shows and changes: voxtype (the engine) and shuush (cleanup, learning).
+
+  kuwai-dictation read              one JSON object: the engine, the listening choices, the last take,
+                                    and shuush's report (cleanup order, learning, speed); a part that
+                                    isn't installed is {"installed": false}
+  kuwai-dictation set NAME VALUE    warm 0|3|5 · tail 0|200|400|600 · queue on|off · preedit on|off,
+                                    through `voxtype config set` (needs a restart of the daemon)
+  kuwai-dictation restart           restarts voxtype.service only while voxtype's state file says idle;
+                                    prints {"restarted": bool, "state": "idle|recording|…|stopped"}
+
+The page runs these only while it is open. Nothing here records, types or reads the microphone.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+CHOICES = {
+    "warm": ("audio.warm_mic_secs", ("0", "3", "5")),
+    "tail": ("audio.release_tail_ms", ("0", "200", "400", "600")),
+    "queue": ("audio.queue_dictations", ("true", "false")),
+    "preedit": ("output.preedit", ("true", "false")),
+}
+SWITCH = {"on": "true", "off": "false", "true": "true", "false": "false", "1": "true", "0": "false"}
+OUTCOMES = {
+    "ok", "delivered", "no_speech", "no_input", "too_short", "empty", "cancelled", "error",
+    "failed", "output_failed", "clipboard_only", "recovered", "private_not_inserted",
+}
+SOURCES = ("seed", "auto", "user fix", "accepted hint", "edit-watch")
+PROVIDER = re.compile(r"^[a-z0-9_-]{1,32}$")
+
+
+def runtime():
+    return os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+
+
+def config_home():
+    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+
+
+def run_json(cmd, timeout=8):
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    text = out.stdout.strip()
+    start = min((i for i in (text.find("{"), text.find("[")) if i >= 0), default=-1)
+    if start < 0:
+        return None
+    try:
+        return json.loads(text[start:])
+    except ValueError:
+        return None
+
+
+def read_text(path, limit=65536):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read(limit)
+    except OSError:
+        return None
+
+
+def vox_state():
+    text = read_text(os.path.join(runtime(), "voxtype", "state"), 64)
+    word = (text or "").strip().lower()
+    return word if re.fullmatch(r"[a-z_]{1,24}", word) else ""
+
+
+def number(v):
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def flag(v):
+    return v if isinstance(v, bool) else None
+
+
+def last_take():
+    raw = read_text(os.path.join(runtime(), "voxtype", "outcome.json"), 4096)
+    try:
+        o = json.loads(raw) if raw else None
+    except ValueError:
+        o = None
+    if not isinstance(o, dict) or o.get("outcome") not in OUTCOMES:
+        return None
+    return {"outcome": o["outcome"], "at": number(o.get("at_ms")), "chars": number(o.get("chars")) or 0,
+            "limit": o.get("limit_reached") is True}
+
+
+def model_state(engine, config, last, now_ms):
+    unload = number(config.get(f"{engine}.idle_unload_secs")) or 0
+    if config.get(f"{engine}.on_demand_loading") is True:
+        return "on_demand", 0
+    if unload <= 0:
+        return "loaded", 0
+    at = last and last.get("at")
+    return ("loaded" if at and now_ms - at < unload * 1000 else "unloaded"), int(unload)
+
+
+def voxtype_part(status, config, state, last, now_ms):
+    config = config if isinstance(config, dict) else {}
+    status = status if isinstance(status, dict) else {}
+    alt = str(status.get("alt") or "")
+    running = bool(status) and alt != "stopped"
+    engine = str(config.get("engine") or status.get("engine") or "")
+    backend = str(status.get("backend") or "")
+    model = os.path.basename(str(status.get("model") or config.get(f"{engine}.model") or "").rstrip("/"))
+    loaded, unload = model_state(engine, config, last, now_ms) if running else ("", 0)
+    return {
+        "installed": True,
+        "answered": bool(status) or bool(config),
+        "running": running,
+        "state": state or (alt if alt in ("idle", "recording", "transcribing", "stopped") else ""),
+        "engine": engine,
+        "model": model,
+        "backend": backend,
+        "gpu": ("GPU" in backend) if backend else None,
+        "model_state": loaded,
+        "unload_after": unload,
+        "config": {
+            "warm": number(config.get("audio.warm_mic_secs")),
+            "tail": number(config.get("audio.release_tail_ms")),
+            "queue": flag(config.get("audio.queue_dictations")),
+            "preedit": flag(config.get("output.preedit")),
+        },
+    }
+
+
+def env_order():
+    text = read_text(os.path.join(config_home(), "voxtype", "postprocess.env"))
+    order = "local groq"
+    for line in (text or "").splitlines():
+        m = re.match(r"\s*(?:export\s+)?PP_ORDER=(['\"]?)([^'\"#]*)\1\s*(?:#.*)?$", line)
+        if m:
+            order = m.group(2)
+    return order.split()
+
+
+def clean_order(order):
+    seen = []
+    for p in order if isinstance(order, list) else []:
+        p = str(p).strip().lower()
+        if PROVIDER.match(p) and p not in seen:
+            seen.append(p)
+    return seen[:8]
+
+
+def metric(latency, name):
+    m = (((latency or {}).get("overall") or {}).get("metrics") or {}).get(name)
+    if not isinstance(m, dict) or (number(m.get("n")) or 0) < 3:
+        return None
+    p50, p90 = number(m.get("p50")), number(m.get("p90"))
+    return {"n": int(m["n"]), "p50": p50, "p90": p90} if p50 is not None and p90 is not None else None
+
+
+def delivered(rel):
+    if not isinstance(rel, dict):
+        return None
+    rel = rel.get("overall") if isinstance(rel.get("overall"), dict) else rel
+    n = number(rel.get("total")) or number(rel.get("count")) or number(rel.get("n"))
+    rate = number(rel.get("delivered_rate"))
+    if rate is None and n and number(rel.get("delivered")) is not None:
+        rate = rel["delivered"] / n
+    if rate is None or not n or n < 3:
+        return None
+    return {"n": int(n), "rate": max(0.0, min(1.0, float(rate)))}
+
+
+def learn_part(learn):
+    if not isinstance(learn, dict):
+        return None
+    by = learn.get("by_source") if isinstance(learn.get("by_source"), dict) else {}
+    vocab = learn.get("vocab") if isinstance(learn.get("vocab"), dict) else {}
+    return {
+        "rules": int(number(learn.get("total_rules")) or 0),
+        "by_source": {k: int(number(by.get(k)) or 0) for k in SOURCES},
+        "pending_fixes": int(number(learn.get("pending_fixes")) or 0),
+        "pending_vocab": int(number(learn.get("pending_vocab")) or 0),
+        "vocab": int(number(vocab.get("global")) or 0),
+    }
+
+
+def shuush_part(doctor, learn, latency, rel):
+    doctor = doctor if isinstance(doctor, dict) else {}
+    cleanup = doctor.get("cleanup") if isinstance(doctor.get("cleanup"), dict) else {}
+    order = clean_order(cleanup.get("order") or doctor.get("provider_order") or env_order())
+    checks = {c.get("id"): c.get("status") for c in doctor.get("checks") or [] if isinstance(c, dict)}
+    ready = checks.get("llm_ready")
+    return {
+        "installed": True,
+        "answered": bool(doctor) or learn is not None or latency is not None,
+        "order": order,
+        "offline": order == ["local"],
+        "cleanup_ready": None if ready is None else ready == "ok",
+        "learn": learn_part(learn),
+        "speed": metric(latency, "release_to_done_ms"),
+        "delivered": delivered(rel),
+    }
+
+
+def read():
+    vox, sh = shutil.which("voxtype"), shutil.which("shuush")
+    jobs = {}
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        if vox:
+            jobs["status"] = pool.submit(run_json, [vox, "status", "--format", "json", "--extended"])
+            jobs["config"] = pool.submit(run_json, [vox, "config", "get", "--json"])
+        if sh:
+            jobs["doctor"] = pool.submit(run_json, [sh, "doctor", "--json"], 12)
+            jobs["learn"] = pool.submit(run_json, [sh, "learn", "stats", "--json"])
+            jobs["latency"] = pool.submit(run_json, [sh, "stats", "latency", "--json"])
+            jobs["reliability"] = pool.submit(run_json, [sh, "stats", "reliability", "--json"])
+        got = {k: f.result() for k, f in jobs.items()}
+    now_ms = int(time.time() * 1000)
+    last = last_take() if vox else None
+    return {
+        "at": now_ms,
+        "voxtype": voxtype_part(got.get("status"), got.get("config"), vox_state(), last, now_ms) if vox else {"installed": False},
+        "last": last,
+        "shuush": shuush_part(got.get("doctor"), got.get("learn"), got.get("latency"), got.get("reliability")) if sh else {"installed": False},
+    }
+
+
+def set_choice(name, value):
+    if name not in CHOICES:
+        return {"ok": False, "why": "unknown"}
+    key, allowed = CHOICES[name]
+    value = SWITCH.get(value, "") if allowed[0] == "true" else value
+    if value not in allowed:
+        return {"ok": False, "why": "value"}
+    vox = shutil.which("voxtype")
+    if not vox:
+        return {"ok": False, "why": "missing"}
+    try:
+        done = subprocess.run([vox, "config", "set", key, value], capture_output=True, text=True, timeout=10, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return {"ok": False, "why": "failed"}
+    return {"ok": done.returncode == 0, "why": "" if done.returncode == 0 else "failed", "name": name, "value": value}
+
+
+def restart():
+    state = vox_state()
+    if not state or state == "stopped":
+        return {"restarted": False, "state": "stopped"}
+    if state != "idle":
+        return {"restarted": False, "state": state}
+    try:
+        done = subprocess.run(["systemctl", "--user", "try-restart", "voxtype.service"], capture_output=True, timeout=20, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return {"restarted": False, "state": state, "why": "failed"}
+    return {"restarted": done.returncode == 0, "state": state, "why": "" if done.returncode == 0 else "failed"}
+
+
+def main(argv):
+    if argv[:1] == ["read"] and len(argv) == 1:
+        out, code = read(), 0
+    elif argv[:1] == ["set"] and len(argv) == 3:
+        out = set_choice(argv[1], argv[2])
+        code = 0 if out["ok"] else 1
+    elif argv[:1] == ["restart"] and len(argv) == 1:
+        out = restart()
+        code = 0 if out["restarted"] or out["state"] != "idle" else 1
+    else:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    print(json.dumps(out, separators=(",", ":")))
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
