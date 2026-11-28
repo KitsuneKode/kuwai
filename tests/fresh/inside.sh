@@ -402,6 +402,60 @@ check "the login screen can read the user's name as the greeter account" bash -c
 check "greetd.service is enabled for the next boot" bash -c "systemctl is-enabled greetd.service | grep -qx enabled"
 as_user "cd '$K' && sudo ./greeter/install --trust-clone --code" >"$OUT/greeter-code.log" 2>&1
 check "greeter/install --code (just the code, again) exits 0" [ $? -eq 0 ]
+install_greeter_input() {
+    python3 - "$1" "$K/tests/fresh/greeter-input.qml.inc" <<'PYTHON'
+from pathlib import Path
+import sys
+
+qml, hook = map(Path, sys.argv[1:])
+source = qml.read_text()
+marker = "    id: root\n"
+if source.count(marker) != 1:
+    raise SystemExit(f"cannot locate the root object in {qml}")
+qml.write_text(source.replace(marker, marker + hook.read_text(), 1))
+PYTHON
+}
+if [ "$MODE" = vm ] && [ "$ONLY" != install ]; then
+    phase "greetd: the staged login screen on the guest's tty1, then the handoff to the user's session"
+    systemctl start greetd.service >"$OUT/greetd-start.log" 2>&1
+    greeter_ready() { journalctl -t kuwai-greeter-ui -b --no-pager -o cat | grep 'Configuration Loaded' >/dev/null; }
+    check "greetd starts Hyprland and the login face loads" wait_for 45 greeter_ready
+    journalctl -t kuwai-greeter-ui -t kuwai-greeter -b --no-pager >"$OUT/greeter-first.journal"
+    check "greetd's login face log has no load failure" bash -c "! grep -q 'Failed to load' '$OUT/greeter-first.journal'"
+    systemctl stop greetd.service
+
+    greeter_qml=$G/shell/greeter.qml
+    greeter_input=/run/kuwai-fresh-greeter
+    cp "$greeter_qml" "$OUT/greeter.original.qml"
+    check "the guest-only input file reader is installed in the greeter" install_greeter_input "$greeter_qml"
+    install -d -m 0700 -o greeter -g "$(id -gn greeter)" "$greeter_input"
+    printf '%s' "$PW" | runuser -u greeter -- tee -- "$greeter_input/password" >/dev/null
+    systemctl start greetd.service >>"$OUT/greetd-start.log" 2>&1
+    greeter_handoff() {
+        local session
+        session=$(loginctl list-sessions --no-legend | awk -v user="$U" '$3 == user && $4 == "seat0" { print $1; exit }')
+        [ -n "$session" ] && [ "$(loginctl show-session "$session" -p Service --value)" = greetd ] && sock_up
+    }
+    check "greetd authenticated the test user and started a Wayland session on seat0" wait_for 60 greeter_handoff
+    WLD=$(find "$RT" -maxdepth 1 -regex '.*/wayland-[0-9]+' -printf '%f\n' | head -1)
+    session_up() { pgrep -u "$U" -x Hyprland >/dev/null; }
+    check "the user's Hyprland is running" wait_for 15 session_up
+    shell_unit_active() { [ "$(as_user 'systemctl --user is-active kuwai-shell.service' 2>/dev/null)" = active ]; }
+    check "kuwai-shell.service is active in the greetd session" wait_for 60 shell_unit_active
+    check "kuwai-shell loads after the greetd handoff" wait_for 45 shell_loaded
+    greeter_gone() { ! pgrep -u greeter -x Hyprland >/dev/null && ! pgrep -u greeter -x qs >/dev/null; }
+    check "the greeter's compositor and login face are gone" wait_for 30 greeter_gone
+    as_sess "hyprctl dispatch 'hl.dsp.exit()'" >/dev/null 2>&1
+    check "the greetd session logs out" wait_for 30 gone
+    systemctl stop greetd.service
+    cp "$OUT/greeter.original.qml" "$greeter_qml"
+    rm -f "$OUT/greeter.original.qml" "$greeter_input/password"
+    rmdir "$greeter_input"
+    {
+        journalctl -u greetd.service -b --no-pager
+        journalctl -t kuwai-greeter-ui -t kuwai-greeter -t kuwai-session -b --no-pager
+    } >"$OUT/greetd.journal"
+fi
 yes | as_user "cd '$K' && sudo ./greeter/install --trust-clone --undo" >"$OUT/greeter-undo.log" 2>&1
 check "greeter/install --undo exits 0" [ "${PIPESTATUS[1]}" -eq 0 ]
 check "greetd is off again and its package config is as it was" bash -c "! systemctl is-enabled greetd.service 2>/dev/null | grep -qx enabled"
@@ -420,6 +474,9 @@ if [ $rc -ne 0 ]; then
     check "running uninstall again, as it says, exits 0" [ $? -eq 0 ]
 fi
 as_user "'$STABLE/bin/kuwai' auth unpin" >"$OUT/auth-unpin.log" 2>&1
+check "kuwai auth unpin exits 0 after uninstall" [ $? -eq 0 ]
+as_user "'$STABLE/bin/kuwai' auth unpin" >>"$OUT/auth-unpin.log" 2>&1
+check "a repeated auth unpin exits 0" [ $? -eq 0 ]
 check "kuwai auth unpin removes root's copy" bash -c "[ ! -e $PINNED ]"
 as_user "sudo '$K/system/session' --undo --trust-clone" >"$OUT/session-undo.log" 2>&1
 check "the login entry is gone" bash -c "[ ! -e /usr/share/wayland-sessions/kuwai.desktop ] && [ ! -e /usr/local/bin/kuwai-session ]"

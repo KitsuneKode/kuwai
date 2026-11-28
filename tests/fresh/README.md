@@ -19,6 +19,7 @@ Two ways to run it, the same checks (`inside.sh`):
 | `greeter/install --yes`, `--code`, `--undo` (greetd's files written, then put back) | yes | yes |
 | `kuwai auth pin` / `unpin` (root's copy of the password prompt) | yes | yes |
 | Hyprland, island, lock, panels, `kuwai doctor` | **no** (see below) | yes |
+| greetd starts the login screen, which logs the user in and hands off to their session | **no** | yes |
 | the lock opened by typing the password, a wrong one first | **no** | yes |
 | real logind/PAM session on tty1 | no | yes |
 | suspend and resume while locked | no | `--suspend` |
@@ -97,7 +98,8 @@ Unlock and the login screen (both):
   puts `/etc/pam.d/greetd`, `/etc/greetd/config.toml` and the display-manager
   link back as they were (compared by hash).
 - `kuwai auth pin` leaves a root-owned, non-writable copy of the password prompt
-  in `/usr/local/share/kuwai/shell-auth`; `unpin` removes it.
+  in `/usr/local/share/kuwai/shell-auth`; `unpin` removes it, and exits 0 again
+  when run a second time after the uninstall.
 
 Nothing written outside the expected places (both): every file newer than the
 start of the install, not owned by a package and not under the home, `/tmp`,
@@ -131,6 +133,18 @@ Session (VM only):
   keyboard is simulated, and it is the guest's own session.
 - Logging out ends the session and nothing of kuwai's keeps running.
 
+The login handoff (VM only, after `greeter/install` and before its `--undo`):
+`greetd.service` starts the staged login screen on tty1 and its log has no load
+failure. Then it is stopped, `tests/fresh/greeter-input.qml.inc` is added to the
+root's copy of `greeter.qml` in the guest, and greetd starts again. That
+include reads the test user's password from a file in `/run/kuwai-fresh-greeter`
+(a 0700 folder of the `greeter` account) and calls the greeter's own `submit()`,
+so the password goes through greetd's PAM stack and nobody types or moves
+anything. The test asserts a logind session of the user on seat0 whose service
+is `greetd`, the user's Hyprland running, `kuwai-shell.service` active and the
+shell loaded, and the greeter's compositor and login face gone; it then logs out,
+stops greetd and puts the original `greeter.qml` back.
+
 Uninstall (both): `./install.sh --uninstall` exits 0 (if it says to run it again,
 that run is checked too); the login entry is removed and `kuwai auth unpin` run;
 every file install placed is gone (the stable checkout and `~/.config/kuwai`,
@@ -160,10 +174,10 @@ staging folder is gone, and the host's home and temp folder are untouched.
   pacing, the `kuwai-check` CPU/memory budgets, shaders' cost and anything
   GPU-specific (the NVIDIA path, `kuwai gpu`) are not exercised. Run
   `bin/kuwai-check` and `bin/kuwai-rehearse --gate` on real hardware.
-- The greeter taking over a VT. `greeter/install` writes greetd's files and the
-  test undoes them, but greetd never starts: the login face is loaded offscreen
-  only. A real greetd boot, the greeter's own compositor and its PAM stack with
-  a keyboard are not exercised; fingerprint (`pam_fprintd`) neither.
+- The greeter taking input from a keyboard. greetd, the greeter's compositor and
+  its PAM stack run for real in the VM, but the password reaches the login face
+  from a file read by the test's include, not from keys; the container never
+  starts greetd. Fingerprint (`pam_fprintd`) is not exercised either.
 - Real hardware sleep: the VM's suspend is s2idle on QEMU's firmware; lid
   switches, alarms that wake the laptop (`system/install`), NVIDIA resume.
 - Network features beyond the one wallpaper download: GitHub/Gmail feeds (no
