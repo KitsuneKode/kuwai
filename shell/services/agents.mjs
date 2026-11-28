@@ -299,7 +299,7 @@ export function headline(panes, threads, doneKitty, doneT3, now, desktop, doneDe
 /**
  * The same, from sessions already made.
  * @param {Session[]} sessionList @param {number} doneKitty @param {number} doneT3 @param {number} [doneDesktop]
- * @returns {{ word: string, glyph: string, stateKey: string, tone: string, count: number, working: number, done: number, limited: number, key: string, bySource: { t3: number, tui: number, desktop: number } }}
+ * @returns {{ word: string, glyph: string, stateKey: string, tone: string, count: number, working: number, done: number, limited: number, reset?: number, key: string, bySource: { t3: number, tui: number, desktop: number } }}
  */
 export function headlineOf(sessionList, doneKitty, doneT3, doneDesktop) {
     const all = ranked(sessionList);

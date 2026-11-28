@@ -207,14 +207,14 @@ Singleton {
         function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
         return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b);
     }
-    function contrast(a, b) {
+    function contrastRatio(a, b) {
         const la = luminance(Qt.color(a)), lb = luminance(Qt.color(b));
         return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
     }
     function inkFor(surfaces, target) {
         const list = Array.isArray(surfaces) && surfaces.length ? surfaces : [themeBg];
-        const minW = Math.min.apply(null, list.map(s => contrast("#ffffff", s)));
-        const minB = Math.min.apply(null, list.map(s => contrast("#000000", s)));
+        const minW = Math.min.apply(null, list.map(s => contrastRatio("#ffffff", s)));
+        const minB = Math.min.apply(null, list.map(s => contrastRatio("#000000", s)));
         return minB >= minW ? "#000000" : "#ffffff";
     }
     function wash(step) {
