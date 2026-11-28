@@ -24,6 +24,7 @@ Singleton {
         { id: "pointer", keys: "mouse trackpad touchpad pointer speed acceleration natural scrolling tap to click scroll", label: "Mouse & Trackpad", glyph: "\u{f037d}", tint: Theme.gray },
         { id: "displays", keys: "displays screens monitors scale resolution refresh rate hz hidpi", label: "Displays", glyph: "\u{f0379}", tint: Theme.blue },
         { id: "island", keys: "island style minimal hidden everything reveal approach proximity quick switch caffeine meetings record calls transcript voxtype", label: "Island Behaviour", glyph: "\u{f0741}", tint: Theme.orange },
+        { id: "dictation", keys: "dictation voice speech dictate microphone mic warm listen queue takes live words field preedit cleanup tidy offline studio learning corrections vocabulary speed delivered restart voxtype shuush", label: "Dictation", glyph: "\u{f036c}", tint: Theme.pink },
         { id: "workspaces", keys: "workspaces screens monitors desktops pills keys", label: "Workspaces", glyph: "\u{f0570}", tint: Theme.indigo },
         { id: "power", keys: "power idle dim lock screen off sleep battery hypridle suspend caffeine music", label: "Power & Idle", glyph: "\u{f0425}", tint: Theme.green },
         { id: "saver", keys: "screensaver dusk live wallpaper still battery", label: "Screensaver", glyph: "\u{f1104}", tint: Theme.indigo },
@@ -33,7 +34,7 @@ Singleton {
         { id: "about", keys: "about restart version shell", label: "About", glyph: "\u{f02fd}", tint: Theme.gray }
     ]
     // The panel's page Components, in sections' order (SettingsPanel's Loader).
-    readonly property var pages: ({ barPage: "bar", clockPage: "clock", notifPage: "notifs", assistantPage: "assistant", motionPage: "motion", keyboardPage: "keyboard", shortcutsPage: "shortcuts", pointerPage: "pointer", displaysPage: "displays", islandRestPage: "island", workspacesPage: "workspaces", powerPage: "power", saverPage: "saver", timePage: "time", clipboardPage: "clipboard", updatesPage: "updates", aboutPage: "about" })
+    readonly property var pages: ({ barPage: "bar", clockPage: "clock", notifPage: "notifs", assistantPage: "assistant", motionPage: "motion", keyboardPage: "keyboard", shortcutsPage: "shortcuts", pointerPage: "pointer", displaysPage: "displays", islandRestPage: "island", dictationPage: "dictation", workspacesPage: "workspaces", powerPage: "power", saverPage: "saver", timePage: "time", clipboardPage: "clipboard", updatesPage: "updates", aboutPage: "about" })
     readonly property var rows: Contract.rows(Settings.schema)
     // Rows and pages matching every word of q, best first:
     // [{ section, row: { label, detail, group } | null }] (the Settings search).

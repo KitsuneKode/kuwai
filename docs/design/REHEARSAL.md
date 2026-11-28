@@ -176,8 +176,8 @@ does not fit the screen.
 ## The dictation pill
 
 The pill is shuush's (`osd/kitsune-hud/KitsuneHud.qml`), drawn in this shell
-by `VoxtypeHost`; how it shows a take is Settings → Dictation words
-(`dictationPill`: `ticker`, the default; `field`; `words`; `status`), which
+by `VoxtypeHost`; how it shows a take is Settings → Dictation → Words on
+screen (`dictationPill`; the page offers every value the schema allows), which
 `VoxTarget` passes on with the Text size, the target window and the spring
 its ring glides on in `$XDG_RUNTIME_DIR/kuwai/voxtype-pill.json`.
 
